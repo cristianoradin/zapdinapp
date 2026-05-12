@@ -18,19 +18,6 @@ jobs:
           choco install innosetup --yes --no-progress
         shell: powershell
 
-      - name: Gerar ícone padrão
-        run: |
-          Add-Type -AssemblyName System.Drawing
-          $bmp = New-Object System.Drawing.Bitmap(64, 64)
-          $g = [System.Drawing.Graphics]::FromImage($bmp)
-          $g.Clear([System.Drawing.Color]::FromArgb(61, 127, 31))
-          $font = New-Object System.Drawing.Font("Arial", 16, [System.Drawing.FontStyle]::Bold)
-          $brush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::White)
-          $g.DrawString("ZD", $font, $brush, 5, 18)
-          $bmp.Save("instalador\icon.ico", [System.Drawing.Imaging.ImageFormat]::Icon)
-          $g.Dispose(); $bmp.Dispose()
-        shell: powershell
-
       - name: Compilar ZapDin-Setup.exe
         run: |
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" instalador\setup.iss

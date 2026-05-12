@@ -25,7 +25,6 @@ DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 OutputDir=.
 OutputBaseFilename=ZapDin-Setup
-SetupIconFile=icon.ico
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
