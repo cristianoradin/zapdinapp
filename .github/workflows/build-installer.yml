@@ -1,0 +1,67 @@
+name: Build ZapDin-Setup.exe
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:  # permite rodar manualmente pelo GitHub
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Instalar Inno Setup 6
+        run: |
+          choco install innosetup --yes --no-progress
+        shell: powershell
+
+      - name: Gerar ícone padrão
+        run: |
+          Add-Type -AssemblyName System.Drawing
+          $bmp = New-Object System.Drawing.Bitmap(64, 64)
+          $g = [System.Drawing.Graphics]::FromImage($bmp)
+          $g.Clear([System.Drawing.Color]::FromArgb(61, 127, 31))
+          $font = New-Object System.Drawing.Font("Arial", 16, [System.Drawing.FontStyle]::Bold)
+          $brush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::White)
+          $g.DrawString("ZD", $font, $brush, 5, 18)
+          $bmp.Save("instalador\icon.ico", [System.Drawing.Imaging.ImageFormat]::Icon)
+          $g.Dispose(); $bmp.Dispose()
+        shell: powershell
+
+      - name: Compilar ZapDin-Setup.exe
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" instalador\setup.iss
+        shell: powershell
+
+      - name: Upload artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZapDin-Setup
+          path: instalador\ZapDin-Setup.exe
+          retention-days: 30
+
+      - name: Criar Release automático
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: "ZapDin App v${{ github.run_number }}"
+          body: |
+            ### Instalador Windows — ZapDin App
+
+            **Baixe o `ZapDin-Setup.exe` abaixo e execute na máquina do cliente.**
+
+            O instalador instala automaticamente:
+            - Python 3.12
+            - PostgreSQL 16
+            - Git
+            - ZapDin App (serviço Windows)
+
+            > Requer conexão com a internet durante a instalação.
+          files: instalador\ZapDin-Setup.exe
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
