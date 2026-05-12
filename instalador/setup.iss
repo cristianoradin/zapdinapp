@@ -263,7 +263,7 @@ begin
         '  "" | Out-File "$env:TEMP\zapdin_nome.txt" -NoNewline' + #13#10 +
         '}';
       RunPS(Script);
-      LoadStringFromFile(ExpandConstant('{tmp}') + '\..\..\Temp\zapdin_nome.txt', ClientName);
+      LoadStringFromFile(ExpandConstant('{%TEMP}') + '\zapdin_nome.txt', ClientName);
       if Trim(ClientName) = '' then ClientName := 'Posto ZapDin';
 
       // Gera SECRET_KEY
@@ -271,7 +271,7 @@ begin
         '$key = -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 64 | % {[char]$_})' + #13#10 +
         '$key | Out-File "$env:TEMP\zapdin_key.txt" -NoNewline';
       RunPS(Script);
-      LoadStringFromFile(ExpandConstant('{tmp}') + '\..\..\Temp\zapdin_key.txt', SecretKey);
+      LoadStringFromFile(ExpandConstant('{%TEMP}') + '\zapdin_key.txt', SecretKey);
       if Trim(SecretKey) = '' then SecretKey := 'zapdin-secret-key-change-in-production';
 
       // Grava .env
