@@ -64,8 +64,8 @@ echo  [OK]
 :: ── Dependencias ─────────────────────────────────────────────────────────────
 echo.
 echo  [2/4] Instalando dependencias (pode levar alguns minutos)...
-.venv\Scripts\pip install --upgrade pip -q
-.venv\Scripts\pip install -r requirements.txt -q
+.venv\Scripts\python -m pip install --upgrade pip -q
+.venv\Scripts\python -m pip install -r requirements.txt -q
 echo  [OK]
 
 :: ── Playwright ────────────────────────────────────────────────────────────────

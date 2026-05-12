@@ -54,7 +54,7 @@ echo  [OK] Codigo atualizado.
 :: ── 4. Atualiza dependências ──────────────────────────────────────────────────
 echo.
 echo  [4/5] Atualizando dependencias Python...
-.venv\Scripts\pip install -r requirements.txt -q --upgrade
+.venv\Scripts\python -m pip install -r requirements.txt -q --upgrade
 echo  [OK] Dependencias atualizadas.
 
 :: ── 5. Reinicia o serviço ─────────────────────────────────────────────────────
