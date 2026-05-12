@@ -1,0 +1,47 @@
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# Env — nunca commitar .env real
+.env
+!.env.example
+
+# Banco de dados e sessões
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+data/
+
+# Logs
+*.log
+logs/
+app_startup.log
+
+# WhatsApp sessions (Playwright)
+data/wa_sessions/
+sessions/
+
+# Build
+dist/
+build/
+*.exe
+*.zip
+*.ico
+output/
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Playwright browsers
+playwright/.local-browsers/
+
+# macOS launchers
+"▶ Iniciar App.command"
