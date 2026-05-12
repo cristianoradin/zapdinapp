@@ -84,7 +84,7 @@ begin
   PageConfig.Add('Nome deste posto (ex: Loja Centro, PDV 01):', False);
 
   // Valores padrão
-  PageConfig.Values[0] := 'http://zapdin.gruposgapetro.com.br:5000';
+  PageConfig.Values[0] := 'http://zapdin.gruposgapetro.com.br:5000/';
   PageConfig.Values[1] := '';
   PageConfig.Values[2] := 'Posto Principal';
 end;

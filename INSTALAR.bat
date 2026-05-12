@@ -141,7 +141,8 @@ for /f %%k in ('"%INSTALL_DIR%\.venv\Scripts\python" -c "import secrets; print(s
 :: Perguntas ao usuario
 echo  Responda as perguntas abaixo:
 echo.
-set /p MONITOR_URL="  URL do Monitor (ex: http://zapdin.gruposgapetro.com.br:5000): "
+set /p MONITOR_URL="  URL do Monitor [http://zapdin.gruposgapetro.com.br:5000/]: "
+IF "%MONITOR_URL%"=="" set MONITOR_URL=http://zapdin.gruposgapetro.com.br:5000/
 set /p CLIENT_TOKEN="  Token do cliente (gerado no painel Monitor): "
 set /p CLIENT_NAME="  Nome deste posto (ex: Loja Centro): "
 
