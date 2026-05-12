@@ -76,17 +76,15 @@ begin
   PageConfig := CreateInputQueryPage(
     wpWelcome,
     'Configuração do Sistema',
-    'Informe os dados de conexão com o Monitor ZapDin',
+    'Informe os dados de conexão com o Monitor ZapDin.',
     ''
   );
-  PageConfig.Add('URL do Monitor (ex: http://zapdin.gruposgapetro.com.br:5000):', False);
+  PageConfig.Add('URL do Monitor:', False);
   PageConfig.Add('Token do cliente (gerado no painel Monitor):', False);
-  PageConfig.Add('Nome deste posto (ex: Loja Centro, PDV 01):', False);
 
   // Valores padrão
   PageConfig.Values[0] := 'http://zapdin.gruposgapetro.com.br:5000/';
   PageConfig.Values[1] := '';
-  PageConfig.Values[2] := 'Posto Principal';
 end;
 
 // ── Valida campos obrigatórios ────────────────────────────────────────────────
@@ -107,15 +105,8 @@ begin
       Result := False;
       Exit;
     end;
-    if Trim(PageConfig.Values[2]) = '' then
-    begin
-      MsgBox('Por favor, informe o Nome do posto.', mbError, MB_OK);
-      Result := False;
-      Exit;
-    end;
-    MonitorURL   := Trim(PageConfig.Values[0]);
-    ClientToken  := Trim(PageConfig.Values[1]);
-    ClientName   := Trim(PageConfig.Values[2]);
+    MonitorURL  := Trim(PageConfig.Values[0]);
+    ClientToken := Trim(PageConfig.Values[1]);
   end;
 end;
 
@@ -259,19 +250,30 @@ begin
     // ── PASSO 9: Pasta data ───────────────────────────────────────────────────
     ForceDirectories('C:\ZapDinApp\data');
 
-    // ── PASSO 10: Gera SECRET_KEY e .env ─────────────────────────────────────
-    WizardForm.StatusLabel.Caption := 'Configurando sistema...';
+    // ── PASSO 10: Busca nome do cliente + gera .env ───────────────────────────
+    WizardForm.StatusLabel.Caption := 'Validando token e buscando dados do cliente...';
     if not FileExists('C:\ZapDinApp\.env') then
     begin
-      // Gera chave
+      // Busca nome do cliente pelo token no Monitor
+      Script :=
+        'try {' + #13#10 +
+        '  $url = "' + MonitorURL + 'api/activate/client-info?token=' + ClientToken + '"' + #13#10 +
+        '  $r = Invoke-RestMethod -Uri $url -Method GET -ErrorAction Stop' + #13#10 +
+        '  $r.nome | Out-File "$env:TEMP\zapdin_nome.txt" -NoNewline' + #13#10 +
+        '} catch {' + #13#10 +
+        '  "" | Out-File "$env:TEMP\zapdin_nome.txt" -NoNewline' + #13#10 +
+        '}';
+      RunPS(Script);
+      LoadStringFromFile(ExpandConstant('{tmp}') + '\..\..\Temp\zapdin_nome.txt', ClientName);
+      if Trim(ClientName) = '' then ClientName := 'Posto ZapDin';
+
+      // Gera SECRET_KEY
       Script :=
         '$key = -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 64 | % {[char]$_})' + #13#10 +
         '$key | Out-File "$env:TEMP\zapdin_key.txt" -NoNewline';
       RunPS(Script);
-
-      // Lê a chave
       LoadStringFromFile(ExpandConstant('{tmp}') + '\..\..\Temp\zapdin_key.txt', SecretKey);
-      if SecretKey = '' then SecretKey := 'zapdin-secret-key-change-in-production';
+      if Trim(SecretKey) = '' then SecretKey := 'zapdin-secret-key-change-in-production';
 
       // Grava .env
       SaveStringToFile(

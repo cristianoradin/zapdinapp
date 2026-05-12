@@ -144,7 +144,18 @@ echo.
 set /p MONITOR_URL="  URL do Monitor [http://zapdin.gruposgapetro.com.br:5000/]: "
 IF "%MONITOR_URL%"=="" set MONITOR_URL=http://zapdin.gruposgapetro.com.br:5000/
 set /p CLIENT_TOKEN="  Token do cliente (gerado no painel Monitor): "
-set /p CLIENT_NAME="  Nome deste posto (ex: Loja Centro): "
+
+:: Busca o nome do cliente automaticamente pelo token
+echo.
+echo  Validando token no Monitor...
+for /f "delims=" %%n in ('powershell -NoProfile -Command "(Invoke-RestMethod -Uri '%MONITOR_URL%api/activate/client-info?token=%CLIENT_TOKEN%' -Method GET -ErrorAction SilentlyContinue).nome"') do set CLIENT_NAME=%%n
+
+IF "%CLIENT_NAME%"=="" (
+    echo  [AVISO] Nao foi possivel validar o token. Verifique a URL e o token.
+    set /p CLIENT_NAME="  Nome do posto (informe manualmente): "
+) ELSE (
+    echo  [OK] Cliente identificado: %CLIENT_NAME%
+)
 
 :: Grava .env
 (
