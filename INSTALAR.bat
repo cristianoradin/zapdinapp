@@ -75,7 +75,8 @@ echo  [3/4] Instalando navegador Playwright (Chromium)...
 echo  [OK]
 
 :: ── Pasta de dados ────────────────────────────────────────────────────────────
-IF NOT EXIST "data" mkdir data
+IF NOT EXIST "%INSTALL_DIR%\data" mkdir "%INSTALL_DIR%\data"
+echo  [OK] Pasta data criada.
 
 :: ── Configuracao .env ─────────────────────────────────────────────────────────
 echo.
