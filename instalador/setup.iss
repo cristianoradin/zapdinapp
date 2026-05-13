@@ -63,6 +63,7 @@ Type: filesandordirs; Name: "{#InstallDir}"
 var
   PageConfig: TInputQueryWizardPage;
   PagePG: TInputQueryWizardPage;
+  ProgressPage: TOutputProgressWizardPage;
   MonitorURL: String;
   ClientToken: String;
   PGHost: String;
@@ -204,6 +205,12 @@ begin
     PagePG.Values[2] := 'postgres';
     PagePG.Values[3] := '';
   end;
+
+  // ── Página de progresso (exibida durante os passos pós-instalação) ──────────
+  ProgressPage := CreateOutputProgressPage(
+    'Configurando ZapDin App',
+    'Por favor aguarde. Este processo pode levar alguns minutos...'
+  );
 end;
 
 // ── Oculta página PG se PostgreSQL NÃO estiver instalado ─────────────────────
@@ -292,31 +299,54 @@ var
   ResultCode: Integer;
   Script: String;
   DatabaseURL: String;
+  TotalSteps: Integer;
 begin
-  if CurStep = ssInstall then
-  begin
 
-    // ── PASSO 1: PostgreSQL ───────────────────────────────────────────────────
+  // ── ssPostInstall: roda APÓS os arquivos serem copiados para C:\ZapDinApp ────
+  if CurStep = ssPostInstall then
+  begin
+    // Calcula número total de passos para a barra de progresso
+    if PGAlreadyInstalled then
+      TotalSteps := 4
+    else
+      TotalSteps := 5;
+
+    ProgressPage.Show;
+    ProgressPage.SetProgress(0, TotalSteps);
+
+    // ── PASSO 1: PostgreSQL (somente se não instalado) ─────────────────────────
     if not PGAlreadyInstalled then
     begin
-      // Instala PostgreSQL 16 com senha padrão zapdin2024
-      WizardForm.StatusLabel.Caption := 'Baixando PostgreSQL 16 (aguarde, arquivo grande)...';
+      ProgressPage.SetText(
+        'Passo 1/' + IntToStr(TotalSteps) + ' — Baixando e instalando PostgreSQL 16...',
+        'Arquivo de ~200 MB. Pode levar de 3 a 10 minutos dependendo da internet.' + #13#10 +
+        'Por favor, não feche esta janela.'
+      );
       Script :=
         '$url = "https://get.enterprisedb.com/postgresql/postgresql-16.4-1-windows-x64.exe"' + #13#10 +
         '$out = "$env:TEMP\pg_installer.exe"' + #13#10 +
+        'Write-Host "Baixando PostgreSQL 16..."' + #13#10 +
         'Invoke-WebRequest -Uri $url -OutFile $out' + #13#10 +
+        'Write-Host "Instalando PostgreSQL (modo silencioso)..."' + #13#10 +
         'Start-Process $out -ArgumentList "--mode unattended --superpassword zapdin2024 --serverport 5432" -Wait' + #13#10 +
-        'Remove-Item $out -Force';
+        'Remove-Item $out -Force' + #13#10 +
+        'Write-Host "PostgreSQL instalado com sucesso."';
       RunPS(Script);
-      // Define credenciais padrão da instalação nova
       PGHost   := 'localhost';
       PGPort   := '5432';
       PGUser   := 'postgres';
       PGPasswd := 'zapdin2024';
+      ProgressPage.SetProgress(1, TotalSteps);
     end;
 
-    // ── PASSO 2: Cria banco via PowerShell (busca psql automaticamente) ─────────
-    WizardForm.StatusLabel.Caption := 'Criando banco de dados...';
+    // ── PASSO 2: Pasta de dados ────────────────────────────────────────────────
+    ForceDirectories('C:\ZapDinApp\data');
+
+    // ── PASSO 3: Criar banco de dados ──────────────────────────────────────────
+    ProgressPage.SetText(
+      'Passo ' + IntToStr(Ord(not PGAlreadyInstalled) + 2) + '/' + IntToStr(TotalSteps) + ' — Criando banco de dados zapdin_app...',
+      'Conectando ao PostgreSQL em ' + PGHost + ':' + PGPort + '...'
+    );
     Script :=
       '$env:PGPASSWORD = "' + PGPasswd + '"' + #13#10 +
       '$pgHost = "' + PGHost + '"' + #13#10 +
@@ -349,18 +379,17 @@ begin
       'if ($exists -notmatch "1") {' + #13#10 +
       '  Write-Host "Criando banco $dbName..."' + #13#10 +
       '  & $psql -h $pgHost -p $pgPort -U $pgUser -c "CREATE DATABASE $dbName;"' + #13#10 +
-      '} else { Write-Host "Banco $dbName ja existe." }';
+      '  Write-Host "Banco $dbName criado com sucesso."' + #13#10 +
+      '} else { Write-Host "Banco $dbName ja existe, pulando criacao." }';
     RunPS(Script);
+    ProgressPage.SetProgress(Ord(not PGAlreadyInstalled) + 2, TotalSteps);
 
-    // ── PASSO 3: Pasta data ───────────────────────────────────────────────────
-    ForceDirectories('C:\ZapDinApp\data');
-
-    // ── PASSO 5: Gera DATABASE_URL com as credenciais corretas ────────────────
-    // Sempre inclui a porta explicitamente para evitar problemas com asyncpg
+    // ── PASSO 4: Gera .env ─────────────────────────────────────────────────────
+    ProgressPage.SetText(
+      'Passo ' + IntToStr(Ord(not PGAlreadyInstalled) + 3) + '/' + IntToStr(TotalSteps) + ' — Gerando configuração do sistema...',
+      'Validando token e gravando arquivo .env...'
+    );
     DatabaseURL := 'postgresql://' + PGUser + ':' + PGPasswd + '@' + PGHost + ':' + PGPort + '/{#DBName}';
-
-    // ── PASSO 6: Busca nome + gera .env via PowerShell ────────────────────────
-    WizardForm.StatusLabel.Caption := 'Validando token e configurando sistema...';
     if not FileExists('C:\ZapDinApp\.env') then
     begin
       Script :=
@@ -368,7 +397,8 @@ begin
         'try {' + #13#10 +
         '  $r = Invoke-RestMethod -Uri "' + MonitorURL + 'api/activate/client-info?token=' + ClientToken + '" -Method GET -ErrorAction Stop' + #13#10 +
         '  if ($r.nome) { $clientName = $r.nome }' + #13#10 +
-        '} catch {}' + #13#10 +
+        '  Write-Host "Cliente identificado: $clientName"' + #13#10 +
+        '} catch { Write-Host "Monitor indisponivel, usando nome padrao." }' + #13#10 +
         '$key = -join ((65..90)+(97..122)+(48..57) | Get-Random -Count 64 | ForEach-Object {[char]$_})' + #13#10 +
         '$lines = @(' + #13#10 +
         '  "APP_STATE=active",' + #13#10 +
@@ -381,34 +411,43 @@ begin
         '  "CLIENT_CNPJ=",' + #13#10 +
         '  "ERP_TOKEN="' + #13#10 +
         ')' + #13#10 +
-        '$lines | Out-File "C:\ZapDinApp\.env" -Encoding UTF8';
+        '$lines | Out-File "C:\ZapDinApp\.env" -Encoding UTF8' + #13#10 +
+        'Write-Host "Arquivo .env gravado em C:\ZapDinApp\.env"';
       RunPS(Script);
     end;
+    ProgressPage.SetProgress(Ord(not PGAlreadyInstalled) + 3, TotalSteps);
 
-    // ── PASSO 7: NSSM + Serviço ───────────────────────────────────────────────
-    WizardForm.StatusLabel.Caption := 'Instalando serviço Windows...';
+    // ── PASSO 5: NSSM + Serviço Windows ───────────────────────────────────────
+    ProgressPage.SetText(
+      'Passo ' + IntToStr(TotalSteps) + '/' + IntToStr(TotalSteps) + ' — Instalando serviço Windows (auto-start)...',
+      'Registrando ZapDin App como serviço. Aguarde...'
+    );
     Script :=
-      '# Baixa NSSM' + #13#10 +
+      '# Baixa NSSM se necessario' + #13#10 +
       'if (-not (Test-Path "C:\ZapDinApp\nssm.exe")) {' + #13#10 +
+      '  Write-Host "Baixando NSSM..."' + #13#10 +
       '  Invoke-WebRequest -Uri "https://nssm.cc/release/nssm-2.24.zip" -OutFile "$env:TEMP\nssm.zip"' + #13#10 +
       '  Expand-Archive "$env:TEMP\nssm.zip" -DestinationPath "$env:TEMP\nssm_tmp" -Force' + #13#10 +
       '  Copy-Item "$env:TEMP\nssm_tmp\nssm-2.24\win64\nssm.exe" "C:\ZapDinApp\nssm.exe"' + #13#10 +
       '  Remove-Item "$env:TEMP\nssm_tmp" -Recurse -Force' + #13#10 +
       '  Remove-Item "$env:TEMP\nssm.zip" -Force' + #13#10 +
-      '}' + #13#10 +
-      '# Mata qualquer processo na porta 4000 antes de (re)instalar' + #13#10 +
+      '  Write-Host "NSSM instalado."' + #13#10 +
+      '} else { Write-Host "NSSM ja existe, reutilizando." }' + #13#10 +
+      '# Mata qualquer processo na porta 4000' + #13#10 +
       '$conn = Get-NetTCPConnection -LocalPort 4000 -State Listen -ErrorAction SilentlyContinue' + #13#10 +
       'if ($conn) {' + #13#10 +
       '  $pids = $conn | Select-Object -ExpandProperty OwningProcess -Unique' + #13#10 +
-      '  foreach ($p in $pids) { try { Stop-Process -Id $p -Force -ErrorAction Stop; Write-Host "Matou PID $p na porta 4000" } catch {} }' + #13#10 +
+      '  foreach ($p in $pids) { try { Stop-Process -Id $p -Force -EA Stop; Write-Host "Matou PID $p na porta 4000" } catch {} }' + #13#10 +
       '  Start-Sleep 2' + #13#10 +
       '}' + #13#10 +
       '# Para e remove servico antigo (ignora erros se nao existir)' + #13#10 +
+      'Write-Host "Parando servico anterior (se existir)..."' + #13#10 +
       '& "C:\ZapDinApp\nssm.exe" stop ZapDinApp 2>$null' + #13#10 +
       'Start-Sleep 3' + #13#10 +
       '& "C:\ZapDinApp\nssm.exe" remove ZapDinApp confirm 2>$null' + #13#10 +
       'Start-Sleep 2' + #13#10 +
-      '# Instala servico' + #13#10 +
+      '# Instala e configura servico' + #13#10 +
+      'Write-Host "Registrando servico ZapDinApp..."' + #13#10 +
       '& "C:\ZapDinApp\nssm.exe" install ZapDinApp "C:\ZapDinApp\ZapDinApp.exe"' + #13#10 +
       '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppDirectory "C:\ZapDinApp"' + #13#10 +
       '& "C:\ZapDinApp\nssm.exe" set ZapDinApp DisplayName "ZapDin App"' + #13#10 +
@@ -418,20 +457,21 @@ begin
       '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppStdoutCreationDisposition ROLLOVER' + #13#10 +
       '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppRotateFiles 1' + #13#10 +
       '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppRotateBytes 10485760' + #13#10 +
-      '# Throttle de restart: espera 5 s antes de reiniciar; para apos 3 falhas em 60 s' + #13#10 +
       '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppRestartDelay 5000' + #13#10 +
       '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppThrottle 60000' + #13#10 +
       '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppExit Default Restart' + #13#10 +
-      '# Shutdown gracioso: tenta Ctrl+C primeiro, depois termina em 8 s' + #13#10 +
       '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppStopMethodSkip 0' + #13#10 +
       '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppKillProcessTree 1' + #13#10 +
       '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppKillConsoleDelay 5000' + #13#10 +
       '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppKillWindowDelay 5000' + #13#10 +
-      '# Mata processos na porta 4000 antes de cada restart via hook PreStart' + #13#10 +
       '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppPreStart "powershell.exe -NoProfile -Command ""Get-NetTCPConnection -LocalPort 4000 -State Listen -EA SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Stop-Process -Id $_ -Force -EA SilentlyContinue }"""' + #13#10 +
-      '& "C:\ZapDinApp\nssm.exe" start ZapDinApp';
+      'Write-Host "Iniciando servico ZapDinApp..."' + #13#10 +
+      '& "C:\ZapDinApp\nssm.exe" start ZapDinApp' + #13#10 +
+      'Write-Host "Servico iniciado com sucesso."';
     RunPS(Script);
+    ProgressPage.SetProgress(TotalSteps, TotalSteps);
 
+    ProgressPage.Hide;
   end;
 
   if CurStep = ssDone then
