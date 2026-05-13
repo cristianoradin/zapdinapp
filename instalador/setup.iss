@@ -349,10 +349,18 @@ begin
     );
     Script :=
       '$env:PGPASSWORD = "' + PGPasswd + '"' + #13#10 +
+      '$env:PGCONNECT_TIMEOUT = "10"' + #13#10 +
       '$pgHost = "' + PGHost + '"' + #13#10 +
       '$pgPort = "' + PGPort + '"' + #13#10 +
       '$pgUser = "' + PGUser + '"' + #13#10 +
       '$dbName = "{#DBName}"' + #13#10 +
+      '# Garante que o servico PostgreSQL esta rodando' + #13#10 +
+      '$pgSvc = Get-Service -Name "postgresql*" -ErrorAction SilentlyContinue | Where-Object { $_.Status -ne "Running" } | Select-Object -First 1' + #13#10 +
+      'if ($pgSvc) {' + #13#10 +
+      '  Write-Host "Iniciando servico $($pgSvc.Name)..."' + #13#10 +
+      '  Start-Service $pgSvc.Name -ErrorAction SilentlyContinue' + #13#10 +
+      '  Start-Sleep 3' + #13#10 +
+      '}' + #13#10 +
       '# 1) psql no PATH' + #13#10 +
       '$psql = $null' + #13#10 +
       'try { $psql = (Get-Command psql -ErrorAction Stop).Source } catch {}' + #13#10 +
