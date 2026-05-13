@@ -460,7 +460,7 @@ begin
       'Write-Host "Registrando tarefa ZapDinApp..."' + #13#10 +
       '$action   = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c \"C:\ZapDinApp\StartZapDin.bat\"" -WorkingDirectory "C:\ZapDinApp"' + #13#10 +
       '$trigger  = New-ScheduledTaskTrigger -AtStartup' + #13#10 +
-      '$trigger.Delay = "PT30S"' + #13#10 +
+      '$trigger.Delay = "PT60S"' + #13#10 +
       '$settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 2)' + #13#10 +
       '$principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest' + #13#10 +
       'Register-ScheduledTask -TaskName "ZapDinApp" -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null' + #13#10 +

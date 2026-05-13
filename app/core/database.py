@@ -7,9 +7,13 @@ são isolados por empresa_id.
 """
 from __future__ import annotations
 
+import asyncio
+import logging
 import asyncpg
 from contextlib import asynccontextmanager
 from .config import settings
+
+logger = logging.getLogger(__name__)
 
 # ── Pool global ───────────────────────────────────────────────────────────────
 _pool: asyncpg.Pool | None = None
@@ -126,8 +130,26 @@ async def get_db_direct():
 # ── Inicialização multi-tenant ────────────────────────────────────────────────
 
 async def init_db() -> None:
+    """Inicializa o pool PostgreSQL com retry automático.
+
+    Ao iniciar como serviço Windows (Task Scheduler / SYSTEM), o stack de rede
+    pode não estar totalmente pronto. Tentamos até 10 vezes com espera crescente
+    antes de desistir, evitando o crash imediato por getaddrinfo/WinSock.
+    """
     global _pool
-    _pool = await asyncpg.create_pool(settings.database_url, min_size=2, max_size=10)
+    max_attempts = 10
+    for attempt in range(1, max_attempts + 1):
+        try:
+            _pool = await asyncpg.create_pool(settings.database_url, min_size=2, max_size=10)
+            logger.info("[db] Pool PostgreSQL criado na tentativa %d", attempt)
+            break
+        except Exception as exc:
+            if attempt >= max_attempts:
+                logger.error("[db] Falha ao conectar ao PostgreSQL após %d tentativas: %s", max_attempts, exc)
+                raise
+            wait = min(5 * attempt, 30)   # 5s, 10s, 15s … até 30s por tentativa
+            logger.warning("[db] Tentativa %d/%d falhou (%s). Aguardando %ds…", attempt, max_attempts, exc, wait)
+            await asyncio.sleep(wait)
 
     async with _pool.acquire() as conn:
 
