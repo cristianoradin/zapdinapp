@@ -40,11 +40,12 @@ Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortugue
 
 [Messages]
 WelcomeLabel1=Bem-vindo ao instalador do {#AppName}
-WelcomeLabel2=Este assistente irá instalar o {#AppName} no seu computador.%n%nO instalador irá configurar automaticamente:%n%n  • Python 3.12%n  • PostgreSQL 16%n  • Git%n  • ZapDin App%n%nClique em Avançar para continuar.
+WelcomeLabel2=Este assistente irá instalar o {#AppName} no seu computador.%n%nO instalador irá configurar automaticamente:%n%n  • ZapDin App (Python embutido)%n  • PostgreSQL 16%n  • Serviço Windows (auto-start)%n%nClique em Avançar para continuar.
 FinishedLabel=A instalação do {#AppName} foi concluída com sucesso.%n%nO sistema será iniciado automaticamente como serviço Windows.%n%nAcesse: http://localhost:4000
 
 [Files]
-; Nenhum arquivo local — tudo baixado durante a instalação
+; ZapDinApp compilado pelo PyInstaller (gerado pelo GitHub Actions antes do Inno Setup)
+Source: "..\dist\ZapDinApp\*"; DestDir: "{#InstallDir}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\ZapDin App"; Filename: "http://localhost:4000"
@@ -162,35 +163,7 @@ begin
   if CurStep = ssInstall then
   begin
 
-    // ── PASSO 1: Python ───────────────────────────────────────────────────────
-    WizardForm.StatusLabel.Caption := 'Verificando Python...';
-    if not PythonInstalled then
-    begin
-      WizardForm.StatusLabel.Caption := 'Baixando e instalando Python 3.12...';
-      Script :=
-        '$url = "https://www.python.org/ftp/python/3.12.9/python-3.12.9-amd64.exe"' + #13#10 +
-        '$out = "$env:TEMP\python_installer.exe"' + #13#10 +
-        'Invoke-WebRequest -Uri $url -OutFile $out' + #13#10 +
-        'Start-Process $out -ArgumentList "/quiet InstallAllUsers=1 PrependPath=1 Include_pip=1" -Wait' + #13#10 +
-        'Remove-Item $out -Force';
-      RunPS(Script);
-    end;
-
-    // ── PASSO 2: Git ──────────────────────────────────────────────────────────
-    WizardForm.StatusLabel.Caption := 'Verificando Git...';
-    if not GitInstalled then
-    begin
-      WizardForm.StatusLabel.Caption := 'Baixando e instalando Git...';
-      Script :=
-        '$url = "https://github.com/git-for-windows/git/releases/download/v2.47.0.windows.2/Git-2.47.0.2-64-bit.exe"' + #13#10 +
-        '$out = "$env:TEMP\git_installer.exe"' + #13#10 +
-        'Invoke-WebRequest -Uri $url -OutFile $out' + #13#10 +
-        'Start-Process $out -ArgumentList "/VERYSILENT /NORESTART /NOCANCEL /SP- /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS /COMPONENTS=icons,ext\reg\shellhere,assoc,assoc_sh" -Wait' + #13#10 +
-        'Remove-Item $out -Force';
-      RunPS(Script);
-    end;
-
-    // ── PASSO 3: PostgreSQL ───────────────────────────────────────────────────
+    // ── PASSO 1: PostgreSQL ───────────────────────────────────────────────────
     WizardForm.StatusLabel.Caption := 'Verificando PostgreSQL...';
     if not PostgreSQLInstalled then
     begin
@@ -215,37 +188,12 @@ begin
       '}';
     RunPS(Script);
 
-    // ── PASSO 5: Clona repositório ────────────────────────────────────────────
-    WizardForm.StatusLabel.Caption := 'Baixando ZapDin App...';
-    Script :=
-      'if (Test-Path "C:\ZapDinApp\.git") {' + #13#10 +
-      '  cd C:\ZapDinApp; git pull origin main' + #13#10 +
-      '} else {' + #13#10 +
-      '  git clone https://github.com/cristianoradin/zapdinapp.git C:\ZapDinApp' + #13#10 +
-      '}';
-    RunPS(Script);
-
-    // ── PASSO 6: Cria venv ────────────────────────────────────────────────────
-    WizardForm.StatusLabel.Caption := 'Criando ambiente Python...';
-    Script :=
-      'if (-not (Test-Path "C:\ZapDinApp\.venv")) {' + #13#10 +
-      '  python -m venv C:\ZapDinApp\.venv' + #13#10 +
-      '}';
-    RunPS(Script);
-
-    // ── PASSO 7: Instala dependências ─────────────────────────────────────────
-    WizardForm.StatusLabel.Caption := 'Instalando dependências Python...';
-    Script :=
-      'C:\ZapDinApp\.venv\Scripts\python -m pip install --upgrade pip -q' + #13#10 +
-      'C:\ZapDinApp\.venv\Scripts\python -m pip install -r C:\ZapDinApp\requirements.txt -q';
-    RunPS(Script);
-
-    // ── PASSO 8: Playwright ───────────────────────────────────────────────────
+    // ── PASSO 3: Playwright Chromium ─────────────────────────────────────────
     WizardForm.StatusLabel.Caption := 'Instalando navegador WhatsApp (Chromium)...';
-    Script := 'C:\ZapDinApp\.venv\Scripts\python -m playwright install chromium';
+    Script := '"C:\ZapDinApp\ZapDinApp.exe" -m playwright install chromium';
     RunPS(Script);
 
-    // ── PASSO 9: Pasta data ───────────────────────────────────────────────────
+    // ── PASSO 4: Pasta data ───────────────────────────────────────────────────
     ForceDirectories('C:\ZapDinApp\data');
 
     // ── PASSO 10: Busca nome + gera .env via PowerShell ──────────────────────
@@ -291,7 +239,7 @@ begin
       '& "C:\ZapDinApp\nssm.exe" remove ZapDinApp confirm 2>$null' + #13#10 +
       'Start-Sleep 2' + #13#10 +
       '# Instala servico' + #13#10 +
-      '& "C:\ZapDinApp\nssm.exe" install ZapDinApp "C:\ZapDinApp\.venv\Scripts\python.exe" "-m uvicorn main:app --host 0.0.0.0 --port 4000"' + #13#10 +
+      '& "C:\ZapDinApp\nssm.exe" install ZapDinApp "C:\ZapDinApp\ZapDinApp.exe"' + #13#10 +
       '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppDirectory "C:\ZapDinApp"' + #13#10 +
       '& "C:\ZapDinApp\nssm.exe" set ZapDinApp DisplayName "ZapDin App"' + #13#10 +
       '& "C:\ZapDinApp\nssm.exe" set ZapDinApp Start SERVICE_AUTO_START' + #13#10 +

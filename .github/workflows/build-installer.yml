@@ -3,7 +3,7 @@ name: Build ZapDin-Setup.exe
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:  # permite rodar manualmente pelo GitHub
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -16,12 +16,45 @@ jobs:
       - name: Checkout código
         uses: actions/checkout@v4
 
+      - name: Instalar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Instalar dependências Python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+        shell: powershell
+
+      - name: Instalar Playwright (para empacotar)
+        run: |
+          python -m playwright install chromium
+        shell: powershell
+
+      - name: Compilar ZapDinApp.exe com PyInstaller
+        run: |
+          pyinstaller zapdinapp.spec --noconfirm --clean
+        shell: powershell
+
+      - name: Verificar saída do PyInstaller
+        run: |
+          if (Test-Path "dist\ZapDinApp\ZapDinApp.exe") {
+            $size = (Get-Item "dist\ZapDinApp\ZapDinApp.exe").Length / 1MB
+            Write-Host "ZapDinApp.exe gerado: $([math]::Round($size, 1)) MB"
+          } else {
+            Write-Error "ZapDinApp.exe NÃO foi gerado!"
+            exit 1
+          }
+        shell: powershell
+
       - name: Instalar Inno Setup 6
         run: |
           choco install innosetup --yes --no-progress
         shell: powershell
 
-      - name: Compilar ZapDin-Setup.exe
+      - name: Compilar ZapDin-Setup.exe com Inno Setup
         run: |
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" instalador\setup.iss
         shell: powershell
@@ -33,7 +66,7 @@ jobs:
           path: instalador\ZapDin-Setup.exe
           retention-days: 30
 
-      - name: Criar Release automático
+      - name: Criar Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ github.run_number }}
@@ -41,15 +74,13 @@ jobs:
           body: |
             ### Instalador Windows — ZapDin App
 
-            **Baixe o `ZapDin-Setup.exe` abaixo e execute na máquina do cliente.**
+            **Baixe o `ZapDin-Setup.exe` e execute na máquina do cliente.**
 
-            O instalador instala automaticamente:
-            - Python 3.12
-            - PostgreSQL 16
-            - Git
-            - ZapDin App (serviço Windows)
+            ✅ Python já embutido — não precisa instalar Python
+            ✅ Instala PostgreSQL 16 automaticamente
+            ✅ Configura serviço Windows (auto-start)
+            ✅ Só pede o Token do cliente
 
-            > Requer conexão com a internet durante a instalação.
           files: instalador\ZapDin-Setup.exe
           draft: false
           prerelease: false
