@@ -373,7 +373,7 @@ begin
         '} catch {}' + #13#10 +
         '$key = -join ((65..90)+(97..122)+(48..57) | Get-Random -Count 64 | ForEach-Object {[char]$_})' + #13#10 +
         '$lines = @(' + #13#10 +
-        '  "APP_STATE=locked",' + #13#10 +
+        '  "APP_STATE=active",' + #13#10 +
         '  "PORT=4000",' + #13#10 +
         '  "DATABASE_URL=' + DatabaseURL + '",' + #13#10 +
         '  "SECRET_KEY=$key",' + #13#10 +
