@@ -28,7 +28,7 @@ jobs:
           pip install pyinstaller
         shell: powershell
 
-      - name: Instalar Playwright (para empacotar)
+      - name: Instalar Playwright Chromium
         run: |
           python -m playwright install chromium
         shell: powershell
@@ -45,6 +45,21 @@ jobs:
             Write-Host "ZapDinApp.exe gerado: $([math]::Round($size, 1)) MB"
           } else {
             Write-Error "ZapDinApp.exe NÃO foi gerado!"
+            exit 1
+          }
+        shell: powershell
+
+      - name: Empacotar Chromium junto com o app
+        run: |
+          $src = "$env:LOCALAPPDATA\ms-playwright"
+          $dst = "dist\ZapDinApp\ms-playwright"
+          if (Test-Path $src) {
+            Write-Host "Copiando Playwright browsers de $src para $dst ..."
+            Copy-Item -Path $src -Destination $dst -Recurse -Force
+            $sizeMB = (Get-ChildItem $dst -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
+            Write-Host "Browsers embutidos: $([math]::Round($sizeMB, 1)) MB"
+          } else {
+            Write-Error "Pasta ms-playwright não encontrada: $src"
             exit 1
           }
         shell: powershell
@@ -77,7 +92,8 @@ jobs:
             **Baixe o `ZapDin-Setup.exe` e execute na máquina do cliente.**
 
             ✅ Python já embutido — não precisa instalar Python
-            ✅ Instala PostgreSQL 16 automaticamente
+            ✅ Chromium já embutido — não baixa nada durante a instalação
+            ✅ Instala PostgreSQL 16 automaticamente (ou usa o existente)
             ✅ Configura serviço Windows (auto-start)
             ✅ Só pede o Token do cliente
 

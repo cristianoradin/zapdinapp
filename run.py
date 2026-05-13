@@ -11,7 +11,13 @@ multiprocessing.freeze_support()
 
 # Garante que o diretório do executável seja o cwd
 if getattr(sys, 'frozen', False):
-    os.chdir(os.path.dirname(sys.executable))
+    base_dir = os.path.dirname(sys.executable)
+    os.chdir(base_dir)
+    # Aponta Playwright para os browsers embutidos no pacote
+    os.environ.setdefault(
+        'PLAYWRIGHT_BROWSERS_PATH',
+        os.path.join(base_dir, 'ms-playwright')
+    )
 
 import uvicorn
 

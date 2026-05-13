@@ -286,12 +286,7 @@ begin
       RunPS(Script);
     end;
 
-    // ── PASSO 3: Playwright Chromium ─────────────────────────────────────────
-    WizardForm.StatusLabel.Caption := 'Instalando navegador WhatsApp (Chromium)...';
-    Script := '"C:\ZapDinApp\ZapDinApp.exe" -m playwright install chromium';
-    RunPS(Script);
-
-    // ── PASSO 4: Pasta data ───────────────────────────────────────────────────
+    // ── PASSO 3: Pasta data ───────────────────────────────────────────────────
     ForceDirectories('C:\ZapDinApp\data');
 
     // ── PASSO 5: Gera DATABASE_URL com as credenciais corretas ────────────────
