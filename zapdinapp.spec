@@ -22,13 +22,13 @@ for pkg in ['uvicorn', 'fastapi', 'starlette', 'pydantic', 'pydantic_settings',
     binaries_all += b
     hiddenimports_all += h
 
-# ── Arquivos estáticos do app ──────────────────────────────────────────────────
+# ── Arquivos estáticos do app (dentro do pacote app/) ─────────────────────────
 datas_app = [
-    ('static',   'static'),    # frontend HTML/JS/CSS
-    ('routers',  'routers'),   # módulos Python
-    ('services', 'services'),
-    ('core',     'core'),
-    ('versao.json', '.'),
+    ('app/static',   'app/static'),    # frontend HTML/JS/CSS
+    ('app/routers',  'app/routers'),   # módulos Python
+    ('app/services', 'app/services'),
+    ('app/core',     'app/core'),
+    ('app/versao.json', 'app/'),
 ]
 
 a = Analysis(
@@ -68,6 +68,10 @@ a = Analysis(
         'multipart',
         'app.main',
         'app.core',
+        'app.core.config',
+        'app.core.database',
+        'app.core.security',
+        'app.core.activation',
         'app.routers',
         'app.services',
     ],
