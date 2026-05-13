@@ -399,34 +399,32 @@ begin
     );
     PGPasswdEncoded := PGPasswd;
     StringChange(PGPasswdEncoded, '@', '%40');
-    DatabaseURL := 'postgresql://' + PGUser + ':' + PGPasswdEncoded + '@' + PGHost + ':' + PGPort + '/{#DBName}';
-    if not FileExists('C:\ZapDinApp\.env') then
-    begin
-      Script :=
-        '$clientName = "Posto ZapDin"' + #13#10 +
-        'try {' + #13#10 +
-        '  $r = Invoke-RestMethod -Uri "' + MonitorURL + 'api/activate/client-info?token=' + ClientToken + '" -Method GET -ErrorAction Stop' + #13#10 +
-        '  if ($r.nome) { $clientName = $r.nome }' + #13#10 +
-        '  Write-Host "Cliente identificado: $clientName"' + #13#10 +
-        '} catch { Write-Host "Monitor indisponivel, usando nome padrao." }' + #13#10 +
-        '$key = -join ((65..90)+(97..122)+(48..57) | Get-Random -Count 64 | ForEach-Object {[char]$_})' + #13#10 +
-        '$lines = @(' + #13#10 +
-        '  "APP_STATE=active",' + #13#10 +
-        '  "PORT=4000",' + #13#10 +
-        '  "DATABASE_URL=' + DatabaseURL + '",' + #13#10 +
-        '  "SECRET_KEY=$key",' + #13#10 +
-        '  "MONITOR_URL=' + MonitorURL + '",' + #13#10 +
-        '  "MONITOR_CLIENT_TOKEN=",' + #13#10 +
-        '  "CLIENT_NAME=$clientName",' + #13#10 +
-        '  "CLIENT_CNPJ=",' + #13#10 +
-        '  "ERP_TOKEN="' + #13#10 +
-        ')' + #13#10 +
-        '# Grava sem BOM (UTF8NoBOM) para Python/pydantic-settings ler corretamente' + #13#10 +
-        '$utf8NoBom = New-Object System.Text.UTF8Encoding $false' + #13#10 +
-        '[System.IO.File]::WriteAllLines("C:\ZapDinApp\.env", $lines, $utf8NoBom)' + #13#10 +
-        'Write-Host "Arquivo .env gravado em C:\ZapDinApp\.env (sem BOM)"';
-      RunPS(Script);
-    end;
+    DatabaseURL := 'postgresql://' + PGUser + ':' + PGPasswdEncoded + '@' + PGHost + ':' + PGPort + '/{#DBName}?sslmode=disable';
+    // Sempre reescreve o .env — garante DATABASE_URL correta mesmo em reinstalação
+    Script :=
+      '$clientName = "Posto ZapDin"' + #13#10 +
+      'try {' + #13#10 +
+      '  $r = Invoke-RestMethod -Uri "' + MonitorURL + 'api/activate/client-info?token=' + ClientToken + '" -Method GET -ErrorAction Stop' + #13#10 +
+      '  if ($r.nome) { $clientName = $r.nome }' + #13#10 +
+      '  Write-Host "Cliente identificado: $clientName"' + #13#10 +
+      '} catch { Write-Host "Monitor indisponivel, usando nome padrao." }' + #13#10 +
+      '$key = -join ((65..90)+(97..122)+(48..57) | Get-Random -Count 64 | ForEach-Object {[char]$_})' + #13#10 +
+      '$lines = @(' + #13#10 +
+      '  "APP_STATE=active",' + #13#10 +
+      '  "PORT=4000",' + #13#10 +
+      '  "DATABASE_URL=' + DatabaseURL + '",' + #13#10 +
+      '  "SECRET_KEY=$key",' + #13#10 +
+      '  "MONITOR_URL=' + MonitorURL + '",' + #13#10 +
+      '  "MONITOR_CLIENT_TOKEN=",' + #13#10 +
+      '  "CLIENT_NAME=$clientName",' + #13#10 +
+      '  "CLIENT_CNPJ=",' + #13#10 +
+      '  "ERP_TOKEN="' + #13#10 +
+      ')' + #13#10 +
+      '# Grava sem BOM (UTF8NoBOM) para Python/pydantic-settings ler corretamente' + #13#10 +
+      '$utf8NoBom = New-Object System.Text.UTF8Encoding $false' + #13#10 +
+      '[System.IO.File]::WriteAllLines("C:\ZapDinApp\.env", $lines, $utf8NoBom)' + #13#10 +
+      'Write-Host "Arquivo .env gravado em C:\ZapDinApp\.env (sem BOM)"';
+    RunPS(Script);
     ProgressPage.SetProgress(Ord(not PGAlreadyInstalled) + 3, TotalSteps);
 
     // ── PASSO 5: Agendador de Tarefas (auto-start sem dependência externa) ────────
@@ -453,17 +451,13 @@ begin
       '# Remove tarefa antiga se existir' + #13#10 +
       'Unregister-ScheduledTask -TaskName "ZapDinApp" -Confirm:$false -ErrorAction SilentlyContinue' + #13#10 +
       'Start-Sleep 1' + #13#10 +
-      '# Detecta nome do servico PostgreSQL para delay de dependencia' + #13#10 +
-      '$pgSvc = (Get-Service -Name "postgresql*" -EA SilentlyContinue | Select-Object -First 1).Name' + #13#10 +
-      'Write-Host "PostgreSQL detectado: $pgSvc"' + #13#10 +
-      '# Cria tarefa agendada — inicia no boot como SYSTEM via wrapper batch' + #13#10 +
-      'Write-Host "Registrando tarefa ZapDinApp..."' + #13#10 +
-      '$action   = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c \"C:\ZapDinApp\StartZapDin.bat\"" -WorkingDirectory "C:\ZapDinApp"' + #13#10 +
-      '$trigger  = New-ScheduledTaskTrigger -AtStartup' + #13#10 +
-      '$trigger.Delay = "PT60S"' + #13#10 +
-      '$settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 2)' + #13#10 +
-      '$principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest' + #13#10 +
-      'Register-ScheduledTask -TaskName "ZapDinApp" -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null' + #13#10 +
+      '# Cria tarefa agendada — AtLogon do usuario atual (rede ja esta pronta, sem problema de WinSock)' + #13#10 +
+      '$currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name' + #13#10 +
+      'Write-Host "Registrando tarefa ZapDinApp para usuario: $currentUser"' + #13#10 +
+      '$action   = New-ScheduledTaskAction -Execute "C:\Windows\System32\cmd.exe" -Argument ''/c "C:\ZapDinApp\StartZapDin.bat"'' -WorkingDirectory "C:\ZapDinApp"' + #13#10 +
+      '$trigger  = New-ScheduledTaskTrigger -AtLogOn -User $currentUser' + #13#10 +
+      '$settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)' + #13#10 +
+      'Register-ScheduledTask -TaskName "ZapDinApp" -Action $action -Trigger $trigger -Settings $settings -RunLevel Highest -Force | Out-Null' + #13#10 +
       'Write-Host "Iniciando ZapDin App..."' + #13#10 +
       'Start-ScheduledTask -TaskName "ZapDinApp"' + #13#10 +
       'Write-Host "Servico iniciado com sucesso."';
