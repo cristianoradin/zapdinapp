@@ -396,7 +396,7 @@ begin
       'Passo ' + IntToStr(Ord(not PGAlreadyInstalled) + 3) + '/' + IntToStr(TotalSteps) + ' — Gerando configuração do sistema...',
       'Validando token e gravando arquivo .env...'
     );
-    DatabaseURL := 'postgresql://' + PGUser + ':' + PGPasswd + '@' + PGHost + ':' + PGPort + '/{#DBName}';
+    DatabaseURL := 'postgresql://' + PGUser + ':' + StringReplace(PGPasswd, '@', '%40', [rfReplaceAll]) + '@' + PGHost + ':' + PGPort + '/{#DBName}';
     if not FileExists('C:\ZapDinApp\.env') then
     begin
       Script :=
@@ -413,7 +413,7 @@ begin
         '  "DATABASE_URL=' + DatabaseURL + '",' + #13#10 +
         '  "SECRET_KEY=$key",' + #13#10 +
         '  "MONITOR_URL=' + MonitorURL + '",' + #13#10 +
-        '  "MONITOR_CLIENT_TOKEN=' + ClientToken + '",' + #13#10 +
+        '  "MONITOR_CLIENT_TOKEN=",' + #13#10 +
         '  "CLIENT_NAME=$clientName",' + #13#10 +
         '  "CLIENT_CNPJ=",' + #13#10 +
         '  "ERP_TOKEN="' + #13#10 +
@@ -431,6 +431,14 @@ begin
       'Passo ' + IntToStr(TotalSteps) + '/' + IntToStr(TotalSteps) + ' — Configurando inicialização automática...',
       'Registrando ZapDin App no Agendador de Tarefas. Aguarde...'
     );
+    // Cria o wrapper batch que garante working dir correto e captura logs
+    Script :=
+      '$bat = "C:\ZapDinApp\StartZapDin.bat"' + #13#10 +
+      '$content = "@echo off" + [char]13 + [char]10 + "cd /d C:\ZapDinApp" + [char]13 + [char]10 + "ZapDinApp.exe >> C:\ZapDinApp\zapdin.log 2>&1"' + #13#10 +
+      '$utf8NoBom = New-Object System.Text.UTF8Encoding $false' + #13#10 +
+      '[System.IO.File]::WriteAllText($bat, $content, $utf8NoBom)' + #13#10 +
+      'Write-Host "StartZapDin.bat criado em C:\ZapDinApp\"';
+    RunPS(Script);
     Script :=
       '# Mata qualquer processo na porta 4000' + #13#10 +
       '$conn = Get-NetTCPConnection -LocalPort 4000 -State Listen -ErrorAction SilentlyContinue' + #13#10 +
@@ -445,9 +453,9 @@ begin
       '# Detecta nome do servico PostgreSQL para delay de dependencia' + #13#10 +
       '$pgSvc = (Get-Service -Name "postgresql*" -EA SilentlyContinue | Select-Object -First 1).Name' + #13#10 +
       'Write-Host "PostgreSQL detectado: $pgSvc"' + #13#10 +
-      '# Cria tarefa agendada — inicia no boot como SYSTEM' + #13#10 +
+      '# Cria tarefa agendada — inicia no boot como SYSTEM via wrapper batch' + #13#10 +
       'Write-Host "Registrando tarefa ZapDinApp..."' + #13#10 +
-      '$action   = New-ScheduledTaskAction -Execute "C:\ZapDinApp\ZapDinApp.exe" -WorkingDirectory "C:\ZapDinApp"' + #13#10 +
+      '$action   = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c \"C:\ZapDinApp\StartZapDin.bat\"" -WorkingDirectory "C:\ZapDinApp"' + #13#10 +
       '$trigger  = New-ScheduledTaskTrigger -AtStartup' + #13#10 +
       '$trigger.Delay = "PT30S"' + #13#10 +
       '$settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 2)' + #13#10 +
