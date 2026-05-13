@@ -396,8 +396,16 @@ begin
       '  Remove-Item "$env:TEMP\nssm_tmp" -Recurse -Force' + #13#10 +
       '  Remove-Item "$env:TEMP\nssm.zip" -Force' + #13#10 +
       '}' + #13#10 +
-      '# Remove servico antigo' + #13#10 +
+      '# Mata qualquer processo na porta 4000 antes de (re)instalar' + #13#10 +
+      '$conn = Get-NetTCPConnection -LocalPort 4000 -State Listen -ErrorAction SilentlyContinue' + #13#10 +
+      'if ($conn) {' + #13#10 +
+      '  $pids = $conn | Select-Object -ExpandProperty OwningProcess -Unique' + #13#10 +
+      '  foreach ($p in $pids) { try { Stop-Process -Id $p -Force -ErrorAction Stop; Write-Host "Matou PID $p na porta 4000" } catch {} }' + #13#10 +
+      '  Start-Sleep 2' + #13#10 +
+      '}' + #13#10 +
+      '# Para e remove servico antigo (ignora erros se nao existir)' + #13#10 +
       '& "C:\ZapDinApp\nssm.exe" stop ZapDinApp 2>$null' + #13#10 +
+      'Start-Sleep 3' + #13#10 +
       '& "C:\ZapDinApp\nssm.exe" remove ZapDinApp confirm 2>$null' + #13#10 +
       'Start-Sleep 2' + #13#10 +
       '# Instala servico' + #13#10 +
@@ -407,6 +415,20 @@ begin
       '& "C:\ZapDinApp\nssm.exe" set ZapDinApp Start SERVICE_AUTO_START' + #13#10 +
       '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppStdout "C:\ZapDinApp\data\zapdin.log"' + #13#10 +
       '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppStderr "C:\ZapDinApp\data\zapdin.log"' + #13#10 +
+      '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppStdoutCreationDisposition ROLLOVER' + #13#10 +
+      '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppRotateFiles 1' + #13#10 +
+      '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppRotateBytes 10485760' + #13#10 +
+      '# Throttle de restart: espera 5 s antes de reiniciar; para apos 3 falhas em 60 s' + #13#10 +
+      '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppRestartDelay 5000' + #13#10 +
+      '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppThrottle 60000' + #13#10 +
+      '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppExit Default Restart' + #13#10 +
+      '# Shutdown gracioso: tenta Ctrl+C primeiro, depois termina em 8 s' + #13#10 +
+      '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppStopMethodSkip 0' + #13#10 +
+      '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppKillProcessTree 1' + #13#10 +
+      '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppKillConsoleDelay 5000' + #13#10 +
+      '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppKillWindowDelay 5000' + #13#10 +
+      '# Mata processos na porta 4000 antes de cada restart via hook PreStart' + #13#10 +
+      '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppPreStart "powershell.exe -NoProfile -Command ""Get-NetTCPConnection -LocalPort 4000 -State Listen -EA SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Stop-Process -Id $_ -Force -EA SilentlyContinue }"""' + #13#10 +
       '& "C:\ZapDinApp\nssm.exe" start ZapDinApp';
     RunPS(Script);
 
