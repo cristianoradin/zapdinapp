@@ -71,21 +71,51 @@ var
   PGPasswd: String;
   PGAlreadyInstalled: Boolean;
 
-// ── Detecta PostgreSQL (qualquer versão 12-17) ────────────────────────────────
+// ── Detecta PostgreSQL por 3 métodos independentes ────────────────────────────
 function PostgreSQLInstalled: Boolean;
 var
   Versions: TArrayOfString;
   i: Integer;
 begin
   Result := False;
-  SetArrayLength(Versions, 7);
-  Versions[0] := '17';
-  Versions[1] := '16';
-  Versions[2] := '15';
-  Versions[3] := '14';
-  Versions[4] := '13';
-  Versions[5] := '12';
-  Versions[6] := '11';
+
+  // ── Método 1: Registro do Windows (EnterpriseDB / instalador oficial) ────────
+  // Qualquer versão instalada pelo instalador oficial registra aqui
+  if RegKeyExists(HKEY_LOCAL_MACHINE, 'SOFTWARE\PostgreSQL\Installations') then
+  begin
+    Result := True;
+    Exit;
+  end;
+  if RegKeyExists(HKEY_LOCAL_MACHINE, 'SOFTWARE\WOW6432Node\PostgreSQL\Installations') then
+  begin
+    Result := True;
+    Exit;
+  end;
+
+  // ── Método 2: Serviço Windows com prefixo "postgresql" ───────────────────────
+  // EnterpriseDB cria "postgresql-x64-16", "postgresql-x64-15", etc.
+  SetArrayLength(Versions, 9);
+  Versions[0] := '17'; Versions[1] := '16'; Versions[2] := '15';
+  Versions[3] := '14'; Versions[4] := '13'; Versions[5] := '12';
+  Versions[6] := '11'; Versions[7] := '10'; Versions[8] := '9.6';
+  for i := 0 to GetArrayLength(Versions) - 1 do
+  begin
+    if RegKeyExists(HKEY_LOCAL_MACHINE,
+      'SYSTEM\CurrentControlSet\Services\postgresql-x64-' + Versions[i]) then
+    begin
+      Result := True;
+      Exit;
+    end;
+  end;
+  // Serviço genérico "postgresql" (alguns instaladores usam esse nome)
+  if RegKeyExists(HKEY_LOCAL_MACHINE,
+    'SYSTEM\CurrentControlSet\Services\postgresql') then
+  begin
+    Result := True;
+    Exit;
+  end;
+
+  // ── Método 3: Arquivo psql.exe em caminhos padrão ────────────────────────────
   for i := 0 to GetArrayLength(Versions) - 1 do
   begin
     if FileExists('C:\Program Files\PostgreSQL\' + Versions[i] + '\bin\psql.exe') then
@@ -102,16 +132,31 @@ var
   Versions: TArrayOfString;
   i: Integer;
   Path: String;
+  RegBase: String;
 begin
   Result := '';
-  SetArrayLength(Versions, 7);
-  Versions[0] := '17';
-  Versions[1] := '16';
-  Versions[2] := '15';
-  Versions[3] := '14';
-  Versions[4] := '13';
-  Versions[5] := '12';
-  Versions[6] := '11';
+
+  // Primeiro tenta ler o caminho direto do registro (mais confiável)
+  SetArrayLength(Versions, 9);
+  Versions[0] := '17'; Versions[1] := '16'; Versions[2] := '15';
+  Versions[3] := '14'; Versions[4] := '13'; Versions[5] := '12';
+  Versions[6] := '11'; Versions[7] := '10'; Versions[8] := '9.6';
+
+  for i := 0 to GetArrayLength(Versions) - 1 do
+  begin
+    RegBase := 'SOFTWARE\PostgreSQL\Installations\postgresql-x64-' + Versions[i];
+    if RegQueryStringValue(HKEY_LOCAL_MACHINE, RegBase, 'Base Directory', Path) then
+    begin
+      Path := Path + '\bin\psql.exe';
+      if FileExists(Path) then
+      begin
+        Result := Path;
+        Exit;
+      end;
+    end;
+  end;
+
+  // Fallback: caminhos padrão
   for i := 0 to GetArrayLength(Versions) - 1 do
   begin
     Path := 'C:\Program Files\PostgreSQL\' + Versions[i] + '\bin\psql.exe';
