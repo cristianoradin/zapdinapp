@@ -473,6 +473,12 @@ begin
       '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppKillConsoleDelay 5000' + #13#10 +
       '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppKillWindowDelay 5000' + #13#10 +
       '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppPreStart "powershell.exe -NoProfile -Command ""Get-NetTCPConnection -LocalPort 4000 -State Listen -EA SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Stop-Process -Id $_ -Force -EA SilentlyContinue }"""' + #13#10 +
+      '# Dependencia: ZapDinApp so sobe depois que PostgreSQL estiver rodando' + #13#10 +
+      '$pgSvcName = (Get-Service -Name "postgresql*" -ErrorAction SilentlyContinue | Select-Object -First 1).Name' + #13#10 +
+      'if ($pgSvcName) {' + #13#10 +
+      '  & "C:\ZapDinApp\nssm.exe" set ZapDinApp DependOnService $pgSvcName' + #13#10 +
+      '  Write-Host "Dependencia configurada: ZapDinApp aguarda $pgSvcName"' + #13#10 +
+      '}' + #13#10 +
       'Write-Host "Iniciando servico ZapDinApp..."' + #13#10 +
       '& "C:\ZapDinApp\nssm.exe" start ZapDinApp' + #13#10 +
       'Write-Host "Servico iniciado com sucesso."';
