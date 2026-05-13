@@ -51,8 +51,7 @@ Name: "{group}\Desinstalar ZapDin App"; Filename: "{uninstallexe}"
 Name: "{commondesktop}\ZapDin App"; Filename: "{#InstallDir}\INICIAR.bat"; WorkingDir: "{#InstallDir}"
 
 [UninstallRun]
-Filename: "{#InstallDir}\nssm.exe"; Parameters: "stop ZapDinApp"; Flags: runhidden
-Filename: "{#InstallDir}\nssm.exe"; Parameters: "remove ZapDinApp confirm"; Flags: runhidden
+Filename: "powershell.exe"; Parameters: "-NoProfile -Command ""Stop-ScheduledTask -TaskName ZapDinApp -EA SilentlyContinue; Unregister-ScheduledTask -TaskName ZapDinApp -Confirm:$false -EA SilentlyContinue; Stop-Process -Name ZapDinApp -Force -EA SilentlyContinue"""; Flags: runhidden
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{#InstallDir}"
@@ -427,62 +426,35 @@ begin
     end;
     ProgressPage.SetProgress(Ord(not PGAlreadyInstalled) + 3, TotalSteps);
 
-    // ── PASSO 5: NSSM + Serviço Windows ───────────────────────────────────────
+    // ── PASSO 5: Agendador de Tarefas (auto-start sem dependência externa) ────────
     ProgressPage.SetText(
-      'Passo ' + IntToStr(TotalSteps) + '/' + IntToStr(TotalSteps) + ' — Instalando serviço Windows (auto-start)...',
-      'Registrando ZapDin App como serviço. Aguarde...'
+      'Passo ' + IntToStr(TotalSteps) + '/' + IntToStr(TotalSteps) + ' — Configurando inicialização automática...',
+      'Registrando ZapDin App no Agendador de Tarefas. Aguarde...'
     );
     Script :=
-      '# Baixa NSSM se necessario' + #13#10 +
-      'if (-not (Test-Path "C:\ZapDinApp\nssm.exe")) {' + #13#10 +
-      '  Write-Host "Baixando NSSM..."' + #13#10 +
-      '  Invoke-WebRequest -Uri "https://nssm.cc/release/nssm-2.24.zip" -OutFile "$env:TEMP\nssm.zip"' + #13#10 +
-      '  Expand-Archive "$env:TEMP\nssm.zip" -DestinationPath "$env:TEMP\nssm_tmp" -Force' + #13#10 +
-      '  Copy-Item "$env:TEMP\nssm_tmp\nssm-2.24\win64\nssm.exe" "C:\ZapDinApp\nssm.exe"' + #13#10 +
-      '  Remove-Item "$env:TEMP\nssm_tmp" -Recurse -Force' + #13#10 +
-      '  Remove-Item "$env:TEMP\nssm.zip" -Force' + #13#10 +
-      '  Write-Host "NSSM instalado."' + #13#10 +
-      '} else { Write-Host "NSSM ja existe, reutilizando." }' + #13#10 +
       '# Mata qualquer processo na porta 4000' + #13#10 +
       '$conn = Get-NetTCPConnection -LocalPort 4000 -State Listen -ErrorAction SilentlyContinue' + #13#10 +
       'if ($conn) {' + #13#10 +
       '  $pids = $conn | Select-Object -ExpandProperty OwningProcess -Unique' + #13#10 +
-      '  foreach ($p in $pids) { try { Stop-Process -Id $p -Force -EA Stop; Write-Host "Matou PID $p na porta 4000" } catch {} }' + #13#10 +
+      '  foreach ($p in $pids) { try { Stop-Process -Id $p -Force -EA Stop } catch {} }' + #13#10 +
       '  Start-Sleep 2' + #13#10 +
       '}' + #13#10 +
-      '# Para e remove servico antigo (ignora erros se nao existir)' + #13#10 +
-      'Write-Host "Parando servico anterior (se existir)..."' + #13#10 +
-      '& "C:\ZapDinApp\nssm.exe" stop ZapDinApp 2>$null' + #13#10 +
-      'Start-Sleep 3' + #13#10 +
-      '& "C:\ZapDinApp\nssm.exe" remove ZapDinApp confirm 2>$null' + #13#10 +
-      'Start-Sleep 2' + #13#10 +
-      '# Instala e configura servico' + #13#10 +
-      'Write-Host "Registrando servico ZapDinApp..."' + #13#10 +
-      '& "C:\ZapDinApp\nssm.exe" install ZapDinApp "C:\ZapDinApp\ZapDinApp.exe"' + #13#10 +
-      '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppDirectory "C:\ZapDinApp"' + #13#10 +
-      '& "C:\ZapDinApp\nssm.exe" set ZapDinApp DisplayName "ZapDin App"' + #13#10 +
-      '& "C:\ZapDinApp\nssm.exe" set ZapDinApp Start SERVICE_AUTO_START' + #13#10 +
-      '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppStdout "C:\ZapDinApp\data\zapdin.log"' + #13#10 +
-      '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppStderr "C:\ZapDinApp\data\zapdin.log"' + #13#10 +
-      '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppStdoutCreationDisposition ROLLOVER' + #13#10 +
-      '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppRotateFiles 1' + #13#10 +
-      '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppRotateBytes 10485760' + #13#10 +
-      '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppRestartDelay 5000' + #13#10 +
-      '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppThrottle 60000' + #13#10 +
-      '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppExit Default Restart' + #13#10 +
-      '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppStopMethodSkip 0' + #13#10 +
-      '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppKillProcessTree 1' + #13#10 +
-      '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppKillConsoleDelay 5000' + #13#10 +
-      '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppKillWindowDelay 5000' + #13#10 +
-      '& "C:\ZapDinApp\nssm.exe" set ZapDinApp AppPreStart "powershell.exe -NoProfile -Command ""Get-NetTCPConnection -LocalPort 4000 -State Listen -EA SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Stop-Process -Id $_ -Force -EA SilentlyContinue }"""' + #13#10 +
-      '# Dependencia: ZapDinApp so sobe depois que PostgreSQL estiver rodando' + #13#10 +
-      '$pgSvcName = (Get-Service -Name "postgresql*" -ErrorAction SilentlyContinue | Select-Object -First 1).Name' + #13#10 +
-      'if ($pgSvcName) {' + #13#10 +
-      '  & "C:\ZapDinApp\nssm.exe" set ZapDinApp DependOnService $pgSvcName' + #13#10 +
-      '  Write-Host "Dependencia configurada: ZapDinApp aguarda $pgSvcName"' + #13#10 +
-      '}' + #13#10 +
-      'Write-Host "Iniciando servico ZapDinApp..."' + #13#10 +
-      '& "C:\ZapDinApp\nssm.exe" start ZapDinApp' + #13#10 +
+      '# Remove tarefa antiga se existir' + #13#10 +
+      'Unregister-ScheduledTask -TaskName "ZapDinApp" -Confirm:$false -ErrorAction SilentlyContinue' + #13#10 +
+      'Start-Sleep 1' + #13#10 +
+      '# Detecta nome do servico PostgreSQL para delay de dependencia' + #13#10 +
+      '$pgSvc = (Get-Service -Name "postgresql*" -EA SilentlyContinue | Select-Object -First 1).Name' + #13#10 +
+      'Write-Host "PostgreSQL detectado: $pgSvc"' + #13#10 +
+      '# Cria tarefa agendada — inicia no boot como SYSTEM' + #13#10 +
+      'Write-Host "Registrando tarefa ZapDinApp..."' + #13#10 +
+      '$action   = New-ScheduledTaskAction -Execute "C:\ZapDinApp\ZapDinApp.exe" -WorkingDirectory "C:\ZapDinApp"' + #13#10 +
+      '$trigger  = New-ScheduledTaskTrigger -AtStartup' + #13#10 +
+      '$trigger.Delay = "PT30S"' + #13#10 +
+      '$settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 2)' + #13#10 +
+      '$principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest' + #13#10 +
+      'Register-ScheduledTask -TaskName "ZapDinApp" -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null' + #13#10 +
+      'Write-Host "Iniciando ZapDin App..."' + #13#10 +
+      'Start-ScheduledTask -TaskName "ZapDinApp"' + #13#10 +
       'Write-Host "Servico iniciado com sucesso."';
     RunPS(Script);
     ProgressPage.SetProgress(TotalSteps, TotalSteps);
