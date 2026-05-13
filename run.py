@@ -43,13 +43,23 @@ if getattr(sys, 'frozen', False):
 else:
     base_dir = os.path.dirname(os.path.abspath(__file__))
 
-# --- logging para arquivo (sempre) + console (quando disponível) -------------
+# --- redireciona stdout/stderr para arquivo ANTES de importar uvicorn --------
+# console=False faz sys.stdout = None no PyInstaller.
+# uvicorn.logging chama sys.stdout.isatty() → AttributeError se None.
+# Solução: substituir por um arquivo real antes de qualquer import de uvicorn.
 log_path = os.path.join(base_dir, 'zapdin.log')
+_log_file = open(log_path, 'a', encoding='utf-8', buffering=1)
 
+if sys.stdout is None:
+    sys.stdout = _log_file
+if sys.stderr is None:
+    sys.stderr = _log_file
+
+# --- logging Python para o mesmo arquivo ------------------------------------
 handlers = [logging.FileHandler(log_path, encoding='utf-8')]
-# Adiciona console apenas se houver um terminal real disponível
 try:
-    if sys.stdout and sys.stdout.fileno() >= 0:
+    # Adiciona console só se stdout for um terminal real (debug via CMD)
+    if sys.stdout.isatty():
         handlers.append(logging.StreamHandler(sys.stdout))
 except Exception:
     pass
