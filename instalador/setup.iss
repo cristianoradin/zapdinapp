@@ -158,7 +158,6 @@ procedure CurStepChanged(CurStep: TSetupStep);
 var
   ResultCode: Integer;
   Script: String;
-  SecretKey: String;
 begin
   if CurStep = ssInstall then
   begin
@@ -249,45 +248,31 @@ begin
     // ── PASSO 9: Pasta data ───────────────────────────────────────────────────
     ForceDirectories('C:\ZapDinApp\data');
 
-    // ── PASSO 10: Busca nome do cliente + gera .env ───────────────────────────
-    WizardForm.StatusLabel.Caption := 'Validando token e buscando dados do cliente...';
+    // ── PASSO 10: Busca nome + gera .env via PowerShell ──────────────────────
+    WizardForm.StatusLabel.Caption := 'Validando token e configurando sistema...';
     if not FileExists('C:\ZapDinApp\.env') then
     begin
-      // Busca nome do cliente pelo token no Monitor
+      // PowerShell busca o nome pelo token e grava o .env diretamente
       Script :=
+        '$clientName = "Posto ZapDin"' + #13#10 +
         'try {' + #13#10 +
-        '  $url = "' + MonitorURL + 'api/activate/client-info?token=' + ClientToken + '"' + #13#10 +
-        '  $r = Invoke-RestMethod -Uri $url -Method GET -ErrorAction Stop' + #13#10 +
-        '  $r.nome | Out-File "$env:TEMP\zapdin_nome.txt" -NoNewline' + #13#10 +
-        '} catch {' + #13#10 +
-        '  "" | Out-File "$env:TEMP\zapdin_nome.txt" -NoNewline' + #13#10 +
-        '}';
+        '  $r = Invoke-RestMethod -Uri "' + MonitorURL + 'api/activate/client-info?token=' + ClientToken + '" -Method GET -ErrorAction Stop' + #13#10 +
+        '  if ($r.nome) { $clientName = $r.nome }' + #13#10 +
+        '} catch {}' + #13#10 +
+        '$key = -join ((65..90)+(97..122)+(48..57) | Get-Random -Count 64 | ForEach-Object {[char]$_})' + #13#10 +
+        '$lines = @(' + #13#10 +
+        '  "APP_STATE=locked",' + #13#10 +
+        '  "PORT=4000",' + #13#10 +
+        '  "DATABASE_URL=postgresql://postgres:{#PGPass}@localhost/{#DBName}",' + #13#10 +
+        '  "SECRET_KEY=$key",' + #13#10 +
+        '  "MONITOR_URL=' + MonitorURL + '",' + #13#10 +
+        '  "MONITOR_CLIENT_TOKEN=' + ClientToken + '",' + #13#10 +
+        '  "CLIENT_NAME=$clientName",' + #13#10 +
+        '  "CLIENT_CNPJ=",' + #13#10 +
+        '  "ERP_TOKEN="' + #13#10 +
+        ')' + #13#10 +
+        '$lines | Out-File "C:\ZapDinApp\.env" -Encoding UTF8';
       RunPS(Script);
-      LoadStringFromFile(GetEnv('TEMP') + '\zapdin_nome.txt', ClientName);
-      if Trim(ClientName) = '' then ClientName := 'Posto ZapDin';
-
-      // Gera SECRET_KEY
-      Script :=
-        '$key = -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 64 | % {[char]$_})' + #13#10 +
-        '$key | Out-File "$env:TEMP\zapdin_key.txt" -NoNewline';
-      RunPS(Script);
-      LoadStringFromFile(GetEnv('TEMP') + '\zapdin_key.txt', SecretKey);
-      if Trim(SecretKey) = '' then SecretKey := 'zapdin-secret-key-change-in-production';
-
-      // Grava .env
-      SaveStringToFile(
-        'C:\ZapDinApp\.env',
-        'APP_STATE=locked' + #13#10 +
-        'PORT=4000' + #13#10 +
-        'DATABASE_URL=postgresql://postgres:{#PGPass}@localhost/{#DBName}' + #13#10 +
-        'SECRET_KEY=' + SecretKey + #13#10 +
-        'MONITOR_URL=' + MonitorURL + #13#10 +
-        'MONITOR_CLIENT_TOKEN=' + ClientToken + #13#10 +
-        'CLIENT_NAME=' + ClientName + #13#10 +
-        'CLIENT_CNPJ=' + #13#10 +
-        'ERP_TOKEN=' + #13#10,
-        False
-      );
     end;
 
     // ── PASSO 11: NSSM + Serviço ──────────────────────────────────────────────
