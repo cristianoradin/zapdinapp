@@ -20,10 +20,11 @@ if getattr(sys, 'frozen', False):
     )
 
 import uvicorn
+from main import app  # importa o objeto diretamente — funciona no PyInstaller
 
 if __name__ == '__main__':
     uvicorn.run(
-        "main:app",
+        app,           # objeto direto, não string "main:app"
         host="0.0.0.0",
         port=int(os.environ.get("PORT", "4000")),
         log_level="info",
