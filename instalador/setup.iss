@@ -9,8 +9,6 @@
 #define AppPublisher "ZapDin"
 #define AppURL       "https://github.com/cristianoradin/zapdinapp"
 #define InstallDir   "C:\ZapDinApp"
-#define PGVersion    "16"
-#define PGPass       "zapdin2024"
 #define DBName       "zapdin_app"
 
 [Setup]
@@ -40,7 +38,7 @@ Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortugue
 
 [Messages]
 WelcomeLabel1=Bem-vindo ao instalador do {#AppName}
-WelcomeLabel2=Este assistente irá instalar o {#AppName} no seu computador.%n%nO instalador irá configurar automaticamente:%n%n  • ZapDin App (Python embutido)%n  • PostgreSQL 16%n  • Serviço Windows (auto-start)%n%nClique em Avançar para continuar.
+WelcomeLabel2=Este assistente irá instalar o {#AppName} no seu computador.%n%nO instalador irá configurar automaticamente:%n%n  • ZapDin App (Python embutido)%n  • PostgreSQL (instalado ou existente)%n  • Serviço Windows (auto-start)%n%nClique em Avançar para continuar.
 FinishedLabel=A instalação do {#AppName} foi concluída com sucesso.%n%nO sistema será iniciado automaticamente como serviço Windows.%n%nAcesse: http://localhost:4000
 
 [Files]
@@ -64,15 +62,73 @@ Type: filesandordirs; Name: "{#InstallDir}"
 // ── Variáveis globais ──────────────────────────────────────────────────────────
 var
   PageConfig: TInputQueryWizardPage;
-  PageProgress: TOutputProgressWizardPage;
+  PagePG: TInputQueryWizardPage;
   MonitorURL: String;
   ClientToken: String;
-  ClientName: String;
+  PGHost: String;
+  PGPort: String;
+  PGUser: String;
+  PGPasswd: String;
+  PGAlreadyInstalled: Boolean;
+
+// ── Detecta PostgreSQL (qualquer versão 12-17) ────────────────────────────────
+function PostgreSQLInstalled: Boolean;
+var
+  Versions: TArrayOfString;
+  i: Integer;
+begin
+  Result := False;
+  SetArrayLength(Versions, 7);
+  Versions[0] := '17';
+  Versions[1] := '16';
+  Versions[2] := '15';
+  Versions[3] := '14';
+  Versions[4] := '13';
+  Versions[5] := '12';
+  Versions[6] := '11';
+  for i := 0 to GetArrayLength(Versions) - 1 do
+  begin
+    if FileExists('C:\Program Files\PostgreSQL\' + Versions[i] + '\bin\psql.exe') then
+    begin
+      Result := True;
+      Exit;
+    end;
+  end;
+end;
+
+// ── Encontra o psql.exe (qualquer versão instalada) ───────────────────────────
+function FindPsql: String;
+var
+  Versions: TArrayOfString;
+  i: Integer;
+  Path: String;
+begin
+  Result := '';
+  SetArrayLength(Versions, 7);
+  Versions[0] := '17';
+  Versions[1] := '16';
+  Versions[2] := '15';
+  Versions[3] := '14';
+  Versions[4] := '13';
+  Versions[5] := '12';
+  Versions[6] := '11';
+  for i := 0 to GetArrayLength(Versions) - 1 do
+  begin
+    Path := 'C:\Program Files\PostgreSQL\' + Versions[i] + '\bin\psql.exe';
+    if FileExists(Path) then
+    begin
+      Result := Path;
+      Exit;
+    end;
+  end;
+end;
 
 // ── Cria páginas customizadas ─────────────────────────────────────────────────
 procedure InitializeWizard;
 begin
-  // Página de configuração
+  PGAlreadyInstalled := PostgreSQLInstalled;
+
+  // ── Página 1: Monitor + Token ──────────────────────────────────────────────
   PageConfig := CreateInputQueryPage(
     wpWelcome,
     'Configuração do Sistema',
@@ -81,16 +137,45 @@ begin
   );
   PageConfig.Add('URL do Monitor:', False);
   PageConfig.Add('Token do cliente (gerado no painel Monitor):', False);
-
-  // Valores padrão
   PageConfig.Values[0] := 'http://zapdin.gruposgapetro.com.br:5000/';
   PageConfig.Values[1] := '';
+
+  // ── Página 2: PostgreSQL existente (mostrada apenas se já instalado) ───────
+  if PGAlreadyInstalled then
+  begin
+    PagePG := CreateInputQueryPage(
+      PageConfig.ID,
+      'Configuração do PostgreSQL',
+      'PostgreSQL já está instalado neste computador.' + #13#10 +
+      'Informe os dados de conexão para criar o banco de dados do ZapDin.',
+      ''
+    );
+    PagePG.Add('Host:', False);
+    PagePG.Add('Porta:', False);
+    PagePG.Add('Usuário:', False);
+    PagePG.Add('Senha:', True);   // True = campo senha (mascarado)
+    PagePG.Values[0] := 'localhost';
+    PagePG.Values[1] := '5432';
+    PagePG.Values[2] := 'postgres';
+    PagePG.Values[3] := '';
+  end;
+end;
+
+// ── Oculta página PG se PostgreSQL NÃO estiver instalado ─────────────────────
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := False;
+  if PGAlreadyInstalled and (PageID = PagePG.ID) then
+    Result := False   // mostra a página
+  else if (not PGAlreadyInstalled) and Assigned(PagePG) and (PageID = PagePG.ID) then
+    Result := True;   // nunca chega aqui pois PagePG não é criado
 end;
 
 // ── Valida campos obrigatórios ────────────────────────────────────────────────
 function NextButtonClick(CurPageID: Integer): Boolean;
 begin
   Result := True;
+
   if CurPageID = PageConfig.ID then
   begin
     if Trim(PageConfig.Values[0]) = '' then
@@ -107,6 +192,32 @@ begin
     end;
     MonitorURL  := Trim(PageConfig.Values[0]);
     ClientToken := Trim(PageConfig.Values[1]);
+  end;
+
+  if PGAlreadyInstalled and (CurPageID = PagePG.ID) then
+  begin
+    if Trim(PagePG.Values[0]) = '' then
+    begin
+      MsgBox('Por favor, informe o Host do PostgreSQL.', mbError, MB_OK);
+      Result := False;
+      Exit;
+    end;
+    if Trim(PagePG.Values[1]) = '' then
+    begin
+      MsgBox('Por favor, informe a Porta do PostgreSQL.', mbError, MB_OK);
+      Result := False;
+      Exit;
+    end;
+    if Trim(PagePG.Values[2]) = '' then
+    begin
+      MsgBox('Por favor, informe o Usuário do PostgreSQL.', mbError, MB_OK);
+      Result := False;
+      Exit;
+    end;
+    PGHost   := Trim(PagePG.Values[0]);
+    PGPort   := Trim(PagePG.Values[1]);
+    PGUser   := Trim(PagePG.Values[2]);
+    PGPasswd := Trim(PagePG.Values[3]);
   end;
 end;
 
@@ -130,63 +241,50 @@ begin
   DeleteFile(TmpFile);
 end;
 
-// ── Verifica se Python está instalado ────────────────────────────────────────
-function PythonInstalled: Boolean;
-var
-  ResultCode: Integer;
-begin
-  Exec('python', '--version', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Result := (ResultCode = 0);
-end;
-
-// ── Verifica se Git está instalado ───────────────────────────────────────────
-function GitInstalled: Boolean;
-var
-  ResultCode: Integer;
-begin
-  Exec('git', '--version', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Result := (ResultCode = 0);
-end;
-
-// ── Verifica se PostgreSQL está instalado ─────────────────────────────────────
-function PostgreSQLInstalled: Boolean;
-begin
-  Result := FileExists('C:\Program Files\PostgreSQL\' + '{#PGVersion}' + '\bin\psql.exe');
-end;
-
 // ── Instalação principal ──────────────────────────────────────────────────────
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   ResultCode: Integer;
   Script: String;
+  PsqlPath: String;
+  DatabaseURL: String;
 begin
   if CurStep = ssInstall then
   begin
 
     // ── PASSO 1: PostgreSQL ───────────────────────────────────────────────────
-    WizardForm.StatusLabel.Caption := 'Verificando PostgreSQL...';
-    if not PostgreSQLInstalled then
+    if not PGAlreadyInstalled then
     begin
+      // Instala PostgreSQL 16 com senha padrão zapdin2024
       WizardForm.StatusLabel.Caption := 'Baixando PostgreSQL 16 (aguarde, arquivo grande)...';
       Script :=
         '$url = "https://get.enterprisedb.com/postgresql/postgresql-16.4-1-windows-x64.exe"' + #13#10 +
         '$out = "$env:TEMP\pg_installer.exe"' + #13#10 +
         'Invoke-WebRequest -Uri $url -OutFile $out' + #13#10 +
-        'Start-Process $out -ArgumentList "--mode unattended --superpassword {#PGPass} --serverport 5432" -Wait' + #13#10 +
+        'Start-Process $out -ArgumentList "--mode unattended --superpassword zapdin2024 --serverport 5432" -Wait' + #13#10 +
         'Remove-Item $out -Force';
       RunPS(Script);
+      // Define credenciais padrão da instalação nova
+      PGHost   := 'localhost';
+      PGPort   := '5432';
+      PGUser   := 'postgres';
+      PGPasswd := 'zapdin2024';
     end;
 
-    // ── PASSO 4: Cria banco ───────────────────────────────────────────────────
+    // ── PASSO 2: Encontra psql e cria banco ───────────────────────────────────
     WizardForm.StatusLabel.Caption := 'Criando banco de dados...';
-    Script :=
-      '$env:PGPASSWORD = "{#PGPass}"' + #13#10 +
-      '$psql = "C:\Program Files\PostgreSQL\{#PGVersion}\bin\psql.exe"' + #13#10 +
-      '$exists = & $psql -U postgres -tc "SELECT 1 FROM pg_database WHERE datname=''{#DBName}''"' + #13#10 +
-      'if ($exists -notmatch "1") {' + #13#10 +
-      '  & $psql -U postgres -c "CREATE DATABASE {#DBName};"' + #13#10 +
-      '}';
-    RunPS(Script);
+    PsqlPath := FindPsql;
+    if PsqlPath <> '' then
+    begin
+      Script :=
+        '$env:PGPASSWORD = "' + PGPasswd + '"' + #13#10 +
+        '$psql = "' + PsqlPath + '"' + #13#10 +
+        '$exists = & $psql -h ' + PGHost + ' -p ' + PGPort + ' -U ' + PGUser + ' -tc "SELECT 1 FROM pg_database WHERE datname=''{#DBName}''" 2>$null' + #13#10 +
+        'if ($exists -notmatch "1") {' + #13#10 +
+        '  & $psql -h ' + PGHost + ' -p ' + PGPort + ' -U ' + PGUser + ' -c "CREATE DATABASE {#DBName};"' + #13#10 +
+        '}';
+      RunPS(Script);
+    end;
 
     // ── PASSO 3: Playwright Chromium ─────────────────────────────────────────
     WizardForm.StatusLabel.Caption := 'Instalando navegador WhatsApp (Chromium)...';
@@ -196,11 +294,16 @@ begin
     // ── PASSO 4: Pasta data ───────────────────────────────────────────────────
     ForceDirectories('C:\ZapDinApp\data');
 
-    // ── PASSO 10: Busca nome + gera .env via PowerShell ──────────────────────
+    // ── PASSO 5: Gera DATABASE_URL com as credenciais corretas ────────────────
+    if PGPort = '5432' then
+      DatabaseURL := 'postgresql://' + PGUser + ':' + PGPasswd + '@' + PGHost + '/{#DBName}'
+    else
+      DatabaseURL := 'postgresql://' + PGUser + ':' + PGPasswd + '@' + PGHost + ':' + PGPort + '/{#DBName}';
+
+    // ── PASSO 6: Busca nome + gera .env via PowerShell ────────────────────────
     WizardForm.StatusLabel.Caption := 'Validando token e configurando sistema...';
     if not FileExists('C:\ZapDinApp\.env') then
     begin
-      // PowerShell busca o nome pelo token e grava o .env diretamente
       Script :=
         '$clientName = "Posto ZapDin"' + #13#10 +
         'try {' + #13#10 +
@@ -211,7 +314,7 @@ begin
         '$lines = @(' + #13#10 +
         '  "APP_STATE=locked",' + #13#10 +
         '  "PORT=4000",' + #13#10 +
-        '  "DATABASE_URL=postgresql://postgres:{#PGPass}@localhost/{#DBName}",' + #13#10 +
+        '  "DATABASE_URL=' + DatabaseURL + '",' + #13#10 +
         '  "SECRET_KEY=$key",' + #13#10 +
         '  "MONITOR_URL=' + MonitorURL + '",' + #13#10 +
         '  "MONITOR_CLIENT_TOKEN=' + ClientToken + '",' + #13#10 +
@@ -223,7 +326,7 @@ begin
       RunPS(Script);
     end;
 
-    // ── PASSO 11: NSSM + Serviço ──────────────────────────────────────────────
+    // ── PASSO 7: NSSM + Serviço ───────────────────────────────────────────────
     WizardForm.StatusLabel.Caption := 'Instalando serviço Windows...';
     Script :=
       '# Baixa NSSM' + #13#10 +
