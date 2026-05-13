@@ -432,14 +432,9 @@ begin
       'Passo ' + IntToStr(TotalSteps) + '/' + IntToStr(TotalSteps) + ' — Configurando inicialização automática...',
       'Registrando ZapDin App no Agendador de Tarefas. Aguarde...'
     );
-    // Cria o wrapper batch que garante working dir correto e captura logs
-    Script :=
-      '$bat = "C:\ZapDinApp\StartZapDin.bat"' + #13#10 +
-      '$content = "@echo off" + [char]13 + [char]10 + "cd /d C:\ZapDinApp" + [char]13 + [char]10 + "ZapDinApp.exe >> C:\ZapDinApp\zapdin.log 2>&1"' + #13#10 +
-      '$utf8NoBom = New-Object System.Text.UTF8Encoding $false' + #13#10 +
-      '[System.IO.File]::WriteAllText($bat, $content, $utf8NoBom)' + #13#10 +
-      'Write-Host "StartZapDin.bat criado em C:\ZapDinApp\"';
-    RunPS(Script);
+    // ZapDinApp.exe compilado com console=False — sem janela preta, roda silencioso.
+    // Task Scheduler executa o .exe diretamente, sem bat wrapper.
+    // Logs vão para C:\ZapDinApp\zapdin.log
     Script :=
       '# Mata qualquer processo na porta 4000' + #13#10 +
       '$conn = Get-NetTCPConnection -LocalPort 4000 -State Listen -ErrorAction SilentlyContinue' + #13#10 +
@@ -451,16 +446,23 @@ begin
       '# Remove tarefa antiga se existir' + #13#10 +
       'Unregister-ScheduledTask -TaskName "ZapDinApp" -Confirm:$false -ErrorAction SilentlyContinue' + #13#10 +
       'Start-Sleep 1' + #13#10 +
-      '# Cria tarefa agendada — AtLogon do usuario atual (rede ja esta pronta, sem problema de WinSock)' + #13#10 +
+      '# Cria tarefa agendada: AtLogon do usuario atual' + #13#10 +
+      '# - ZapDinApp.exe roda sem janela (console=False no PyInstaller)' + #13#10 +
+      '# - Logs em C:\ZapDinApp\zapdin.log' + #13#10 +
+      '# - Guard de instancia unica no proprio exe (se porta ocupada, sai limpo)' + #13#10 +
       '$currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name' + #13#10 +
       'Write-Host "Registrando tarefa ZapDinApp para usuario: $currentUser"' + #13#10 +
-      '$action   = New-ScheduledTaskAction -Execute "C:\Windows\System32\cmd.exe" -Argument ''/c "C:\ZapDinApp\StartZapDin.bat"'' -WorkingDirectory "C:\ZapDinApp"' + #13#10 +
+      '$action   = New-ScheduledTaskAction -Execute "C:\ZapDinApp\ZapDinApp.exe" -WorkingDirectory "C:\ZapDinApp"' + #13#10 +
       '$trigger  = New-ScheduledTaskTrigger -AtLogOn -User $currentUser' + #13#10 +
-      '$settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)' + #13#10 +
-      'Register-ScheduledTask -TaskName "ZapDinApp" -Action $action -Trigger $trigger -Settings $settings -RunLevel Highest -Force | Out-Null' + #13#10 +
-      'Write-Host "Iniciando ZapDin App..."' + #13#10 +
+      '$settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1) -MultipleInstances IgnoreNew' + #13#10 +
+      '$principal = New-ScheduledTaskPrincipal -UserId $currentUser -LogonType Interactive -RunLevel Highest' + #13#10 +
+      'Register-ScheduledTask -TaskName "ZapDinApp" -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null' + #13#10 +
+      'Write-Host "Tarefa criada. Iniciando ZapDin App..."' + #13#10 +
       'Start-ScheduledTask -TaskName "ZapDinApp"' + #13#10 +
-      'Write-Host "Servico iniciado com sucesso."';
+      'Start-Sleep 3' + #13#10 +
+      '$proc = Get-Process ZapDinApp -ErrorAction SilentlyContinue' + #13#10 +
+      'if ($proc) { Write-Host "ZapDin App iniciado com sucesso (PID $($proc.Id))." }' + #13#10 +
+      'else { Write-Host "AVISO: processo nao encontrado. Verifique C:\ZapDinApp\zapdin.log" }';
     RunPS(Script);
     ProgressPage.SetProgress(TotalSteps, TotalSteps);
 
