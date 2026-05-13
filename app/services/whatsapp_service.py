@@ -162,11 +162,12 @@ class WhatsAppSession:
             stuck_since: Optional[datetime] = datetime.now()
             try:
                 # Adquire o lock antes de navegar — evita race com send_file/send_text
+                # Não aguarda se há um envio em andamento (lock ocupado); tenta mais tarde
                 try:
-                    await asyncio.wait_for(self._lock.acquire(), timeout=120)
+                    await asyncio.wait_for(self._lock.acquire(), timeout=5)
                 except asyncio.TimeoutError:
-                    logger.warning("Sessão %s — lock não liberado após 120s, retry", self.session_id)
-                    await asyncio.sleep(5)
+                    # Lock ocupado (envio em andamento) — aguarda e tenta novamente
+                    await asyncio.sleep(10)
                     continue
                 if not self._running:
                     self._lock.release()
@@ -351,7 +352,7 @@ class WhatsAppSession:
         if self.status != "connected":
             return False, "Sessão não conectada"
         try:
-            await asyncio.wait_for(self._lock.acquire(), timeout=45)
+            await asyncio.wait_for(self._lock.acquire(), timeout=90)
         except asyncio.TimeoutError:
             return False, "Sessão ocupada, tente novamente em instantes"
         try:
@@ -512,7 +513,7 @@ class WhatsAppSession:
         if self.status != "connected":
             return False, "Sessão não conectada"
         try:
-            await asyncio.wait_for(self._lock.acquire(), timeout=45)
+            await asyncio.wait_for(self._lock.acquire(), timeout=90)
         except asyncio.TimeoutError:
             return False, "Sessão ocupada, tente novamente em instantes"
         try:
