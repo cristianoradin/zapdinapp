@@ -69,6 +69,7 @@ var
   PGPort: String;
   PGUser: String;
   PGPasswd: String;
+  PGPasswdEncoded: String;
   PGAlreadyInstalled: Boolean;
 
 // ── Detecta PostgreSQL por 3 métodos independentes ────────────────────────────
@@ -396,7 +397,9 @@ begin
       'Passo ' + IntToStr(Ord(not PGAlreadyInstalled) + 3) + '/' + IntToStr(TotalSteps) + ' — Gerando configuração do sistema...',
       'Validando token e gravando arquivo .env...'
     );
-    DatabaseURL := 'postgresql://' + PGUser + ':' + StringReplace(PGPasswd, '@', '%40', [rfReplaceAll]) + '@' + PGHost + ':' + PGPort + '/{#DBName}';
+    PGPasswdEncoded := PGPasswd;
+    StringChange(PGPasswdEncoded, '@', '%40');
+    DatabaseURL := 'postgresql://' + PGUser + ':' + PGPasswdEncoded + '@' + PGHost + ':' + PGPort + '/{#DBName}';
     if not FileExists('C:\ZapDinApp\.env') then
     begin
       Script :=
