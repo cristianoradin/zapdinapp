@@ -356,10 +356,8 @@ begin
     ForceDirectories('C:\ZapDinApp\data');
 
     // ── PASSO 5: Gera DATABASE_URL com as credenciais corretas ────────────────
-    if PGPort = '5432' then
-      DatabaseURL := 'postgresql://' + PGUser + ':' + PGPasswd + '@' + PGHost + '/{#DBName}'
-    else
-      DatabaseURL := 'postgresql://' + PGUser + ':' + PGPasswd + '@' + PGHost + ':' + PGPort + '/{#DBName}';
+    // Sempre inclui a porta explicitamente para evitar problemas com asyncpg
+    DatabaseURL := 'postgresql://' + PGUser + ':' + PGPasswd + '@' + PGHost + ':' + PGPort + '/{#DBName}';
 
     // ── PASSO 6: Busca nome + gera .env via PowerShell ────────────────────────
     WizardForm.StatusLabel.Caption := 'Validando token e configurando sistema...';
