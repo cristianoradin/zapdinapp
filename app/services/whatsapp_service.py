@@ -204,6 +204,18 @@ class WhatsAppSession:
                                 stuck_since = None
                                 self.status = "connected"
                                 self.qr_data = None
+                                # Extrai número do WhatsApp conectado via window.Store
+                                try:
+                                    raw = await self._page.evaluate(
+                                        "() => { try { return window.Store && window.Store.Me ? window.Store.Me.wid._serialized || window.Store.Me.wid.user : null } catch(e) { return null } }"
+                                    )
+                                    if raw:
+                                        # serialized vem como "5511999999999@c.us" → fica só números
+                                        self.phone = raw.split("@")[0]
+                                    else:
+                                        self.phone = None
+                                except Exception:
+                                    self.phone = None
                                 asyncio.create_task(self._sync_db_status("connected"))
                             await asyncio.sleep(15)
                             continue
@@ -907,8 +919,8 @@ class WhatsAppSession:
             from ..core.database import get_db_direct
             async with get_db_direct() as db:
                 await db.execute(
-                    "UPDATE sessoes_wa SET status=?, last_seen=NOW() WHERE id=? AND empresa_id=?",
-                    (new_status, self.session_id, self.empresa_id),
+                    "UPDATE sessoes_wa SET status=?, phone=?, last_seen=NOW() WHERE id=? AND empresa_id=?",
+                    (new_status, self.phone, self.session_id, self.empresa_id),
                 )
                 await db.commit()
         except Exception as exc:
