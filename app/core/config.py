@@ -1,13 +1,9 @@
-import sys
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-if getattr(sys, 'frozen', False):
-    # Executável PyInstaller: .env está ao lado do ZapDinApp.exe
-    _ENV_FILE = str(Path(sys.executable).parent / ".env")
-else:
-    # Desenvolvimento: app/core/config.py → app/core/ → app/ → app/.env
-    _ENV_FILE = str(Path(__file__).parent.parent / ".env")
+# Caminho absoluto: app/core/config.py → app/core/ → app/ → app/.env
+# Garante leitura correta independente do cwd de onde o uvicorn é iniciado.
+_ENV_FILE = str(Path(__file__).parent.parent / ".env")
 
 
 class Settings(BaseSettings):

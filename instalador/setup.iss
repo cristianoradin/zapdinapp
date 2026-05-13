@@ -419,8 +419,10 @@ begin
         '  "CLIENT_CNPJ=",' + #13#10 +
         '  "ERP_TOKEN="' + #13#10 +
         ')' + #13#10 +
-        '$lines | Out-File "C:\ZapDinApp\.env" -Encoding UTF8' + #13#10 +
-        'Write-Host "Arquivo .env gravado em C:\ZapDinApp\.env"';
+        '# Grava sem BOM (UTF8NoBOM) para Python/pydantic-settings ler corretamente' + #13#10 +
+        '$utf8NoBom = New-Object System.Text.UTF8Encoding $false' + #13#10 +
+        '[System.IO.File]::WriteAllLines("C:\ZapDinApp\.env", $lines, $utf8NoBom)' + #13#10 +
+        'Write-Host "Arquivo .env gravado em C:\ZapDinApp\.env (sem BOM)"';
       RunPS(Script);
     end;
     ProgressPage.SetProgress(Ord(not PGAlreadyInstalled) + 3, TotalSteps);
