@@ -291,7 +291,6 @@ procedure CurStepChanged(CurStep: TSetupStep);
 var
   ResultCode: Integer;
   Script: String;
-  PsqlPath: String;
   DatabaseURL: String;
 begin
   if CurStep = ssInstall then
@@ -316,20 +315,42 @@ begin
       PGPasswd := 'zapdin2024';
     end;
 
-    // ── PASSO 2: Encontra psql e cria banco ───────────────────────────────────
+    // ── PASSO 2: Cria banco via PowerShell (busca psql automaticamente) ─────────
     WizardForm.StatusLabel.Caption := 'Criando banco de dados...';
-    PsqlPath := FindPsql;
-    if PsqlPath <> '' then
-    begin
-      Script :=
-        '$env:PGPASSWORD = "' + PGPasswd + '"' + #13#10 +
-        '$psql = "' + PsqlPath + '"' + #13#10 +
-        '$exists = & $psql -h ' + PGHost + ' -p ' + PGPort + ' -U ' + PGUser + ' -tc "SELECT 1 FROM pg_database WHERE datname=''{#DBName}''" 2>$null' + #13#10 +
-        'if ($exists -notmatch "1") {' + #13#10 +
-        '  & $psql -h ' + PGHost + ' -p ' + PGPort + ' -U ' + PGUser + ' -c "CREATE DATABASE {#DBName};"' + #13#10 +
-        '}';
-      RunPS(Script);
-    end;
+    Script :=
+      '$env:PGPASSWORD = "' + PGPasswd + '"' + #13#10 +
+      '$pgHost = "' + PGHost + '"' + #13#10 +
+      '$pgPort = "' + PGPort + '"' + #13#10 +
+      '$pgUser = "' + PGUser + '"' + #13#10 +
+      '$dbName = "{#DBName}"' + #13#10 +
+      '# 1) psql no PATH' + #13#10 +
+      '$psql = $null' + #13#10 +
+      'try { $psql = (Get-Command psql -ErrorAction Stop).Source } catch {}' + #13#10 +
+      '# 2) Caminhos padrao' + #13#10 +
+      'if (-not $psql) {' + #13#10 +
+      '  foreach ($v in @("17","16","15","14","13","12","11","10","9.6")) {' + #13#10 +
+      '    $p = "C:\Program Files\PostgreSQL\$v\bin\psql.exe"' + #13#10 +
+      '    if (Test-Path $p) { $psql = $p; break }' + #13#10 +
+      '  }' + #13#10 +
+      '}' + #13#10 +
+      '# 3) Registro do Windows' + #13#10 +
+      'if (-not $psql) {' + #13#10 +
+      '  foreach ($v in @("17","16","15","14","13","12","11","10")) {' + #13#10 +
+      '    try {' + #13#10 +
+      '      $base = (Get-ItemProperty "HKLM:\SOFTWARE\PostgreSQL\Installations\postgresql-x64-$v" -EA Stop)."Base Directory"' + #13#10 +
+      '      $p = "$base\bin\psql.exe"' + #13#10 +
+      '      if (Test-Path $p) { $psql = $p; break }' + #13#10 +
+      '    } catch {}' + #13#10 +
+      '  }' + #13#10 +
+      '}' + #13#10 +
+      'if (-not $psql) { Write-Error "psql.exe nao encontrado"; exit 1 }' + #13#10 +
+      'Write-Host "Usando psql: $psql"' + #13#10 +
+      '$exists = & $psql -h $pgHost -p $pgPort -U $pgUser -tc "SELECT 1 FROM pg_database WHERE datname=''$dbName''" 2>$null' + #13#10 +
+      'if ($exists -notmatch "1") {' + #13#10 +
+      '  Write-Host "Criando banco $dbName..."' + #13#10 +
+      '  & $psql -h $pgHost -p $pgPort -U $pgUser -c "CREATE DATABASE $dbName;"' + #13#10 +
+      '} else { Write-Host "Banco $dbName ja existe." }';
+    RunPS(Script);
 
     // ── PASSO 3: Pasta data ───────────────────────────────────────────────────
     ForceDirectories('C:\ZapDinApp\data');
