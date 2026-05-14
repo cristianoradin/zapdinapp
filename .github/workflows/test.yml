@@ -1,0 +1,61 @@
+name: Testes Automatizados
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Rodar testes (Python + PostgreSQL)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: zapdin_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Instalar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Instalar dependências
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-test.txt
+
+      - name: Instalar Playwright (necessário para import do app)
+        run: |
+          python -m playwright install chromium --with-deps
+
+      - name: Rodar testes
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/zapdin_test
+        run: |
+          pytest tests/ -v --tb=short --no-header
+
+      - name: Relatório de cobertura
+        if: always()
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/zapdin_test
+        run: |
+          coverage run -m pytest tests/ -q --no-header
+          coverage report --include="app/routers/*,app/core/*" --skip-empty

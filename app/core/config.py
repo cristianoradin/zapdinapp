@@ -14,7 +14,7 @@ else:
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=_ENV_FILE, env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(env_file=_ENV_FILE, env_file_encoding="utf-8-sig", extra="ignore")
 
     secret_key: str = "dev-secret-key-change-in-production"
     session_max_age: int = 86400

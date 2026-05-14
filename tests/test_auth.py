@@ -1,0 +1,237 @@
+"""
+test_auth.py — Testa os fluxos de autenticação: auto-setup e login.
+
+Fluxos críticos cobertos:
+  1. auto-setup: registra empresa automaticamente usando MONITOR_CLIENT_TOKEN do .env
+     (sem interação do usuário — corrige o bug de pedir token duas vezes)
+  2. login: bloqueia corretamente quando token vazio, libera quando configurado
+  3. empresa-info: retorna dados da empresa registrada
+
+Mocks:
+  - respx: simula respostas do Monitor para /api/auth/cliente/{token}
+            e /api/auth/verificar
+"""
+import pytest
+import respx
+import httpx
+
+from app.core.config import settings
+
+pytestmark = pytest.mark.asyncio(loop_scope="session")
+
+# ── Dados de teste ─────────────────────────────────────────────────────────────
+
+_MONITOR_CLIENTE = {
+    "nome":    "POSTO PARAISO 2",
+    "cnpj":    "12345678000195",
+    "token":   "client-token-permanente",
+    "usuarios": [
+        {"username": "ihan",  "password_hash": "$2b$12$fakehashfakehashfakehashfa"},
+        {"username": "admin", "password_hash": "$2b$12$fakehashfakehashfakehashfb"},
+    ],
+}
+
+
+# ── auto-setup ─────────────────────────────────────────────────────────────────
+
+@respx.mock
+async def test_auto_setup_cria_empresa_e_usuarios(client):
+    """
+    POST /api/auth/auto-setup deve registrar a empresa no banco e importar usuários,
+    usando apenas o MONITOR_CLIENT_TOKEN já configurado no .env (sem input do usuário).
+    """
+    settings.app_state = "active"
+    settings.monitor_client_token = "test-token-abc"
+
+    respx.get("http://monitor.test/api/auth/cliente/test-token-abc").mock(
+        return_value=httpx.Response(200, json=_MONITOR_CLIENTE)
+    )
+
+    resp = await client.post("/api/auth/auto-setup")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["ok"] is True
+    assert data["empresa"] == "POSTO PARAISO 2"
+    assert data["cnpj"] == "12345678000195"
+    assert data["usuarios_importados"] == 2
+
+
+@respx.mock
+async def test_auto_setup_idempotente(client):
+    """
+    Chamar auto-setup duas vezes não deve duplicar empresa nem falhar.
+    Segunda chamada retorna os dados da empresa já registrada.
+    """
+    settings.app_state = "active"
+    settings.monitor_client_token = "test-token-abc"
+
+    respx.get("http://monitor.test/api/auth/cliente/test-token-abc").mock(
+        return_value=httpx.Response(200, json=_MONITOR_CLIENTE)
+    )
+
+    resp1 = await client.post("/api/auth/auto-setup")
+    resp2 = await client.post("/api/auth/auto-setup")  # segunda chamada
+
+    assert resp1.status_code == 200
+    assert resp2.status_code == 200
+    assert resp2.json()["empresa"] == "POSTO PARAISO 2"
+
+
+async def test_auto_setup_sem_token_retorna_503(client):
+    """
+    Se MONITOR_CLIENT_TOKEN estiver vazio (instalação corrompida),
+    auto-setup deve retornar 503 com mensagem clara.
+    """
+    settings.app_state = "active"
+    settings.monitor_client_token = ""  # vazio
+
+    resp = await client.post("/api/auth/auto-setup")
+
+    assert resp.status_code == 503
+    assert "token" in resp.json()["detail"].lower()
+
+
+@respx.mock
+async def test_auto_setup_monitor_retorna_404(client):
+    """Token não encontrado no monitor → 404 com mensagem clara."""
+    settings.app_state = "active"
+    settings.monitor_client_token = "token-inexistente"
+
+    respx.get("http://monitor.test/api/auth/cliente/token-inexistente").mock(
+        return_value=httpx.Response(404)
+    )
+
+    resp = await client.post("/api/auth/auto-setup")
+
+    assert resp.status_code == 404
+
+
+# ── empresa-info ───────────────────────────────────────────────────────────────
+
+async def test_empresa_info_sem_empresa_retorna_cnpj_null(client):
+    """Sem empresa no banco, empresa-info retorna cnpj=null (banco limpo pelo fixture)."""
+    settings.app_state = "active"
+    resp = await client.get("/api/auth/empresa-info")
+
+    assert resp.status_code == 200
+    assert resp.json()["cnpj"] is None
+
+
+@respx.mock
+async def test_empresa_info_retorna_dados_apos_auto_setup(client):
+    """Após auto-setup, empresa-info retorna CNPJ e nome da empresa registrada."""
+    settings.app_state = "active"
+    settings.monitor_client_token = "test-token-abc"
+
+    respx.get("http://monitor.test/api/auth/cliente/test-token-abc").mock(
+        return_value=httpx.Response(200, json=_MONITOR_CLIENTE)
+    )
+
+    await client.post("/api/auth/auto-setup")
+
+    resp = await client.get("/api/auth/empresa-info")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["cnpj"] == "12345678000195"
+    assert data["nome"] == "POSTO PARAISO 2"
+
+
+# ── login ──────────────────────────────────────────────────────────────────────
+
+async def test_login_bloqueado_sem_monitor_token(client):
+    """
+    CRÍTICO: login com MONITOR_CLIENT_TOKEN vazio deve retornar 503.
+    Mensagem deve ser 'Sistema não ativado' — indica configuração incompleta.
+    """
+    settings.app_state = "active"
+    settings.monitor_client_token = ""  # simula instalação sem token
+
+    resp = await client.post(
+        "/api/auth/login",
+        json={"username": "ihan", "password": "senha"},
+    )
+
+    assert resp.status_code == 503
+    assert "não ativado" in resp.json()["detail"].lower()
+
+
+@respx.mock
+async def test_login_bloqueado_sem_empresa_no_banco(client):
+    """
+    Com token configurado mas sem empresa no banco,
+    login deve retornar 503 com mensagem sobre empresa.
+    """
+    settings.app_state = "active"
+    settings.monitor_client_token = "test-token"
+
+    # Monitor valida credenciais OK
+    respx.post("http://monitor.test/api/auth/verificar").mock(
+        return_value=httpx.Response(200, json={"ok": True})
+    )
+
+    resp = await client.post(
+        "/api/auth/login",
+        json={"username": "ihan", "password": "senha"},
+    )
+
+    # Não é bloqueio do middleware (403), é erro de configuração (503)
+    assert resp.status_code == 503
+    assert "empresa" in resp.json()["detail"].lower()
+
+
+@respx.mock
+async def test_login_credenciais_invalidas_retorna_401(client):
+    """Credenciais erradas devem retornar 401 (não 403 do middleware nem 503 de config)."""
+    settings.app_state = "active"
+    settings.monitor_client_token = "test-token"
+
+    respx.post("http://monitor.test/api/auth/verificar").mock(
+        return_value=httpx.Response(401)
+    )
+
+    resp = await client.post(
+        "/api/auth/login",
+        json={"username": "ihan", "password": "senha_errada"},
+    )
+
+    assert resp.status_code == 401
+
+
+@respx.mock
+async def test_login_completo_apos_auto_setup(client):
+    """
+    Fluxo completo: auto-setup → login com credenciais válidas → cookie de sessão.
+    Este é o fluxo da primeira abertura após instalação com v34+.
+    """
+    settings.app_state = "active"
+    settings.monitor_client_token = "test-token-abc"
+
+    # auto-setup
+    respx.get("http://monitor.test/api/auth/cliente/test-token-abc").mock(
+        return_value=httpx.Response(200, json=_MONITOR_CLIENTE)
+    )
+    await client.post("/api/auth/auto-setup")
+
+    # login
+    respx.post("http://monitor.test/api/auth/verificar").mock(
+        return_value=httpx.Response(200, json={"ok": True, "username": "ihan"})
+    )
+    respx.get(
+        "http://monitor.test/api/auth/usuario-menus/ihan",
+    ).mock(return_value=httpx.Response(200, json={"menus": None}))
+
+    resp = await client.post(
+        "/api/auth/login",
+        json={"username": "ihan", "password": "senha123"},
+    )
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["ok"] is True
+    assert data["username"] == "ihan"
+    # Cookie de sessão deve estar presente
+    assert "zapdin_session" in resp.cookies or any(
+        "zapdin" in k.lower() for k in resp.cookies
+    )

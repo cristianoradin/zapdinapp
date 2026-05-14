@@ -1,8 +1,13 @@
 name: Build ZapDin-Setup.exe
 
 on:
-  push:
+  # Dispara SOMENTE após o workflow de testes concluir com sucesso no main.
+  # Isso garante que nenhum instalador seja gerado com testes falhando.
+  workflow_run:
+    workflows: ["Testes Automatizados"]
+    types: [completed]
     branches: [ main ]
+  # Permite disparar manualmente (ex: hotfix urgente após aprovação manual)
   workflow_dispatch:
 
 permissions:
@@ -10,6 +15,10 @@ permissions:
 
 jobs:
   build:
+    # Aborta se os testes falharam (só executa quando conclusão = success)
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: windows-latest
 
     steps:
