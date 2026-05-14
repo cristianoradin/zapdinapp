@@ -167,6 +167,24 @@ async def apply_monitor_update(
             pass
 
         await asyncio.sleep(3)   # garante que o log foi escrito
+
+        # Tenta restart via NSSM (Windows) antes de os._exit para evitar
+        # que o processo termine sem o serviço ser reiniciado corretamente
+        if sys.platform == "win32":
+            try:
+                root_dir = _root_dir()
+                nssm = root_dir / "nssm.exe"
+                if nssm.exists():
+                    import subprocess
+                    logger.info("[updater] Reiniciando via NSSM...")
+                    subprocess.Popen(
+                        [str(nssm), "restart", "ZapDinApp"],
+                        creationflags=0x00000008,  # DETACHED_PROCESS
+                    )
+                    await asyncio.sleep(2)
+            except Exception as _nssm_err:
+                logger.warning("[updater] NSSM restart falhou: %s", _nssm_err)
+
         os._exit(1)              # NSSM/systemd reinicia automaticamente com exit code ≠ 0
 
     except Exception as exc:
