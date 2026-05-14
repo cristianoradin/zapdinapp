@@ -59,9 +59,12 @@ jobs:
           coverage run -m pytest tests/ -q --no-header
           coverage report --include="app/routers/*,app/core/*" --skip-empty
 
-  # ── Job 2: Windows — cobre problemas específicos do ambiente de produção ────
+  # ── Job 2: Windows — verifica o que o Linux não consegue testar ────────────
+  # O Linux cobre todos os 21 testes de lógica de negócio com PostgreSQL.
+  # O Windows verifica: imports corretos no Python Windows e encoding UTF-8 BOM
+  # (Bloco de Notas grava com BOM — causa silenciosa de token vazio em produção).
   test-windows:
-    name: Windows (ambiente de produção)
+    name: Windows (imports + encoding)
     runs-on: windows-latest
 
     steps:
@@ -74,74 +77,52 @@ jobs:
           python-version: '3.13'
           cache: pip
 
-      - name: Iniciar PostgreSQL e criar banco de teste
-        shell: pwsh
-        run: |
-          # Encontrar instalação do PostgreSQL (já vem no windows-latest)
-          $pgDir = Get-ChildItem "C:\Program Files\PostgreSQL\" -Directory |
-                   Sort-Object { [int]$_.Name } -Descending |
-                   Select-Object -First 1
-          $pgBin  = "$($pgDir.FullName)\bin"
-          $pgData = "$($pgDir.FullName)\data"
-          Write-Host "PostgreSQL $($pgDir.Name) em: $pgBin"
-
-          # Adicionar ao PATH para os próximos steps
-          "$pgBin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          $env:PATH = "$pgBin;$env:PATH"
-
-          # Iniciar serviço (pode já estar rodando)
-          $svc = Get-Service -Name "postgresql*" | Select-Object -First 1
-          Write-Host "Serviço: $($svc.Name) — Status: $($svc.Status)"
-          if ($svc.Status -ne 'Running') {
-            Start-Service $svc.Name
-            Start-Sleep -Seconds 5
-          }
-
-          # pg_hba.conf usa scram-sha-256 por padrão no windows-latest.
-          # Muda para trust para evitar senha em ambiente CI.
-          $hba = "$pgData\pg_hba.conf"
-          (Get-Content $hba) `
-            -replace 'scram-sha-256', 'trust' `
-            -replace '\bmd5\b', 'trust' |
-            Set-Content $hba
-          Write-Host "pg_hba.conf atualizado para trust."
-
-          # Recarregar configuração do PostgreSQL
-          & "$pgBin\pg_ctl" reload -D "$pgData"
-          Start-Sleep -Seconds 2
-
-          # Criar banco de teste
-          & "$pgBin\createdb" -U postgres zapdin_test
-          if ($LASTEXITCODE -ne 0) { throw "Falha ao criar banco zapdin_test" }
-          Write-Host "Banco zapdin_test criado com sucesso."
-
-      - name: Instalar dependências
-        run: |
-          pip install -r requirements.txt
-          pip install -r requirements-test.txt
+      - name: Instalar dependências Python
+        run: pip install -r requirements.txt
 
       - name: Instalar Playwright (necessário para import do app)
-        run: python -m playwright install chromium --with-deps
+        run: python -m playwright install chromium
 
-      - name: Rodar testes
-        env:
-          TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/zapdin_test
-        run: pytest tests/ -v --tb=short --no-header
-
-      - name: Verificar encoding UTF-8 do .env (regressão BOM Windows)
+      - name: Smoke test — app importa sem erros no Windows
         shell: pwsh
         run: |
-          # Simula o Bloco de Notas do Windows gravando o .env com BOM (UTF-8-BOM)
-          # O app deve ler corretamente mesmo assim (pydantic-settings com utf-8-sig)
-          $envContent = "APP_STATE=active`r`nMONITOR_CLIENT_TOKEN=test-token`r`n"
-          $utf8Bom = New-Object System.Text.UTF8Encoding $true
-          [System.IO.File]::WriteAllText("app\.env", $envContent, $utf8Bom)
-          Write-Host "Arquivo .env gravado com BOM. Verificando leitura pelo app..."
           python -c "
-          import os; os.environ['DATABASE_URL'] = 'postgresql://postgres:postgres@localhost/zapdin_test'
-          from app.core.config import Settings
-          s = Settings(_env_file='app/.env')
-          assert s.app_state == 'active', f'Esperado active, got {s.app_state!r}'
-          assert s.monitor_client_token == 'test-token', f'Token incorreto: {s.monitor_client_token!r}'
-          print('OK: .env com BOM lido corretamente')
+          import os
+          os.environ.update({
+              'APP_STATE':            'locked',
+              'DATABASE_URL':         'postgresql://postgres@localhost/zapdin_test',
+              'MONITOR_URL':          'http://monitor.test',
+              'MONITOR_CLIENT_TOKEN': '',
+              'SECRET_KEY':           'a' * 64,
+              'PORT':                 '4001',
+              'CLIENT_NAME':          'Teste',
+              'CLIENT_CNPJ':          '12345678000195',
+          })
+          from app.core.config import settings
+          from app.core import security, database
+          from app.routers import auth, activation
+          print('OK: todos os imports do app funcionaram no Windows')
           "
+
+      - name: Verificar encoding UTF-8 BOM do .env (regressão Bloco de Notas)
+        shell: pwsh
+        run: |
+          # O Bloco de Notas do Windows grava UTF-8 com BOM por padrão.
+          # pydantic-settings com utf-8-sig deve ler corretamente sem BOM no valor.
+          $utf8Bom = New-Object System.Text.UTF8Encoding $true
+          $conteudo = "APP_STATE=active`r`nMONITOR_CLIENT_TOKEN=test-token-windows`r`nSECRET_KEY=$('a' * 64)`r`nPORT=4001`r`n"
+          [System.IO.File]::WriteAllText("app\.env.test", $conteudo, $utf8Bom)
+          Write-Host "Arquivo .env gravado com BOM UTF-8."
+
+          python -c "
+          import os
+          os.environ['DATABASE_URL'] = 'postgresql://postgres@localhost/zapdin_test'
+          from app.core.config import Settings
+          s = Settings(_env_file='app/.env.test')
+          assert s.app_state == 'active', f'app_state errado: {s.app_state!r}'
+          assert s.monitor_client_token == 'test-token-windows', f'token errado: {s.monitor_client_token!r}'
+          print('OK: .env gravado com BOM pelo Bloco de Notas lido corretamente')
+          "
+
+          # Limpa o arquivo de teste
+          Remove-Item "app\.env.test" -ErrorAction SilentlyContinue
