@@ -8,8 +8,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
-    name: Rodar testes (Python + PostgreSQL)
+  # ── Job 1: Linux + PostgreSQL ───────────────────────────────────────────────
+  test-linux:
+    name: Linux (lógica de negócio)
     runs-on: ubuntu-latest
 
     services:
@@ -31,10 +32,10 @@ jobs:
       - name: Checkout código
         uses: actions/checkout@v4
 
-      - name: Instalar Python 3.12
+      - name: Instalar Python 3.13
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.13'
           cache: pip
 
       - name: Instalar dependências
@@ -43,14 +44,12 @@ jobs:
           pip install -r requirements-test.txt
 
       - name: Instalar Playwright (necessário para import do app)
-        run: |
-          python -m playwright install chromium --with-deps
+        run: python -m playwright install chromium --with-deps
 
       - name: Rodar testes
         env:
           TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/zapdin_test
-        run: |
-          pytest tests/ -v --tb=short --no-header
+        run: pytest tests/ -v --tb=short --no-header
 
       - name: Relatório de cobertura
         if: always()
@@ -59,3 +58,73 @@ jobs:
         run: |
           coverage run -m pytest tests/ -q --no-header
           coverage report --include="app/routers/*,app/core/*" --skip-empty
+
+  # ── Job 2: Windows — cobre problemas específicos do ambiente de produção ────
+  test-windows:
+    name: Windows (ambiente de produção)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Instalar Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Iniciar PostgreSQL e criar banco de teste
+        shell: pwsh
+        run: |
+          # Encontrar a instalação do PostgreSQL (já vem no windows-latest)
+          $pgPath = (Get-Item "C:\Program Files\PostgreSQL\*" |
+                     Sort-Object Name -Descending |
+                     Select-Object -First 1).FullName
+          $pgBin = "$pgPath\bin"
+          Write-Host "PostgreSQL encontrado em: $pgBin"
+
+          # Adicionar ao PATH para os próximos steps
+          "$pgBin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          $env:PATH = "$pgBin;$env:PATH"
+
+          # Iniciar serviço
+          $svc = Get-Service -Name "postgresql*" | Select-Object -First 1
+          Write-Host "Iniciando serviço: $($svc.Name)"
+          Start-Service $svc.Name
+          Start-Sleep -Seconds 5
+
+          # Criar banco de teste (pg_hba.conf = trust para localhost)
+          & "$pgBin\createdb" -U postgres zapdin_test
+          Write-Host "Banco zapdin_test criado."
+
+      - name: Instalar dependências
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-test.txt
+
+      - name: Instalar Playwright (necessário para import do app)
+        run: python -m playwright install chromium --with-deps
+
+      - name: Rodar testes
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/zapdin_test
+        run: pytest tests/ -v --tb=short --no-header
+
+      - name: Verificar encoding UTF-8 do .env (regressão BOM Windows)
+        shell: pwsh
+        run: |
+          # Simula o Bloco de Notas do Windows gravando o .env com BOM (UTF-8-BOM)
+          # O app deve ler corretamente mesmo assim (pydantic-settings com utf-8-sig)
+          $envContent = "APP_STATE=active`r`nMONITOR_CLIENT_TOKEN=test-token`r`n"
+          $utf8Bom = New-Object System.Text.UTF8Encoding $true
+          [System.IO.File]::WriteAllText("app\.env", $envContent, $utf8Bom)
+          Write-Host "Arquivo .env gravado com BOM. Verificando leitura pelo app..."
+          python -c "
+          import os; os.environ['DATABASE_URL'] = 'postgresql://postgres:postgres@localhost/zapdin_test'
+          from app.core.config import Settings
+          s = Settings(_env_file='app/.env')
+          assert s.app_state == 'active', f'Esperado active, got {s.app_state!r}'
+          assert s.monitor_client_token == 'test-token', f'Token incorreto: {s.monitor_client_token!r}'
+          print('OK: .env com BOM lido corretamente')
+          "

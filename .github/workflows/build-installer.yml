@@ -16,6 +16,7 @@ permissions:
 jobs:
   build:
     # Aborta se os testes falharam (só executa quando conclusão = success)
+    # "success" só ocorre quando AMBOS os jobs (linux + windows) passam.
     if: >
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'
