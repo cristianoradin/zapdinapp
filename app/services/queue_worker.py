@@ -219,7 +219,12 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
 
         sessao_id = wa_manager.pick_session(empresa_id)
         if not sessao_id:
-            # Nenhuma sessão disponível — alerta Telegram (throttled a cada 30min)
+            logger.warning(
+                "Queue: NENHUMA sessão WhatsApp conectada para empresa=%s — mensagem %s aguardando. "
+                "Verifique se o WhatsApp está conectado no painel.",
+                empresa_id, msg["id"],
+            )
+            # Alerta Telegram (throttled a cada 30min)
             try:
                 from . import telegram_service
                 asyncio.create_task(telegram_service.notify_queue_blocked(1))
@@ -233,7 +238,7 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
                 sent_today = await _daily_sent(db, sessao_id, empresa_id)
             if sent_today >= daily_limit:
                 logger.info(
-                    "Queue: sessão %s empresa %s atingiu limite diário (%d)",
+                    "Queue: sessão %s empresa %s atingiu limite diário (%d) — envios pausados até meia-noite",
                     sessao_id, empresa_id, daily_limit,
                 )
                 return False
@@ -248,6 +253,11 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
                 (st, sessao_id, now_dt() if ok else None, err, msg["id"], empresa_id),
             )
             await db.commit()
+        if not ok:
+            logger.error(
+                "Queue: FALHA ao enviar mensagem %s para %s via sessão %s: %s",
+                msg["id"], msg["destinatario"], sessao_id, err,
+            )
         logger.info("Queue: mensagem %s → %s", msg["id"], st)
         if ok:
             nome = msg["nome_destinatario"] if "nome_destinatario" in msg.keys() else ""
@@ -280,7 +290,12 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
 
         sessao_id = wa_manager.pick_session(empresa_id)
         if not sessao_id:
-            # Nenhuma sessão disponível — alerta Telegram (throttled a cada 30min)
+            logger.warning(
+                "Queue: NENHUMA sessão WhatsApp conectada para empresa=%s — arquivo %s aguardando. "
+                "Verifique se o WhatsApp está conectado no painel.",
+                empresa_id, arq["id"],
+            )
+            # Alerta Telegram (throttled a cada 30min)
             try:
                 from . import telegram_service
                 asyncio.create_task(telegram_service.notify_queue_blocked(1))
@@ -294,13 +309,18 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
                 sent_today = await _daily_sent(db, sessao_id, empresa_id)
             if sent_today >= daily_limit:
                 logger.info(
-                    "Queue: sessão %s empresa %s atingiu limite diário (%d)",
+                    "Queue: sessão %s empresa %s atingiu limite diário (%d) — envios pausados até meia-noite",
                     sessao_id, empresa_id, daily_limit,
                 )
                 return False
 
         file_path = os.path.join(UPLOAD_DIR, arq["nome_arquivo"])
         if not os.path.exists(file_path):
+            logger.error(
+                "Queue: arquivo %s NÃO ENCONTRADO em disco: %s — marcado como failed. "
+                "O arquivo pode ter sido excluído manualmente.",
+                arq["id"], file_path,
+            )
             async with get_db_direct() as db:
                 await db.execute(
                     "UPDATE arquivos SET status='failed', erro='Arquivo não encontrado no disco' WHERE id=? AND empresa_id=?",
@@ -322,6 +342,11 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
                 (st, sessao_id, now_dt() if ok else None, err, arq["id"], empresa_id),
             )
             await db.commit()
+        if not ok:
+            logger.error(
+                "Queue: FALHA ao enviar arquivo %s (%s) para %s via sessão %s: %s",
+                arq["id"], arq["nome_original"], arq["destinatario"], sessao_id, err,
+            )
         logger.info("Queue: arquivo %s → %s", arq["id"], st)
         if ok:
             nome = arq["nome_destinatario"] if "nome_destinatario" in arq.keys() else ""

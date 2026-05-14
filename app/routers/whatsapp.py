@@ -78,8 +78,13 @@ async def live_status(user: dict = Depends(get_current_user)):
 
 @router.get("/qr/{sessao_id}")
 async def get_qr(sessao_id: str, user: dict = Depends(get_current_user)):
-    qr = wa_manager.get_qr(sessao_id, user["empresa_id"])
+    empresa_id = user["empresa_id"]
+    qr = wa_manager.get_qr(sessao_id, empresa_id)
     if qr is None:
+        logger.warning(
+            "[whatsapp] QR não disponível: sessao=%s empresa=%s — sessão pode não estar conectando ou já conectada",
+            sessao_id, empresa_id,
+        )
         raise HTTPException(status_code=404, detail="QR não disponível")
     return {"qr": qr}
 
@@ -95,8 +100,13 @@ async def send_text(
     body: SendTextBody,
     user: dict = Depends(get_current_user),
 ):
-    ok, err = await wa_manager.send_text(sessao_id, user["empresa_id"], body.phone, body.message)
+    empresa_id = user["empresa_id"]
+    ok, err = await wa_manager.send_text(sessao_id, empresa_id, body.phone, body.message)
     if not ok:
+        logger.error(
+            "[whatsapp] Falha ao enviar texto: sessao=%s empresa=%s fone=%s erro=%s",
+            sessao_id, empresa_id, body.phone, err,
+        )
         raise HTTPException(status_code=400, detail=err or "Erro ao enviar mensagem")
     return {"ok": True}
 
@@ -121,5 +131,9 @@ async def send_file(
     finally:
         os.unlink(tmp_path)
     if not ok:
+        logger.error(
+            "[whatsapp] Falha ao enviar arquivo: sessao=%s empresa=%s fone=%s arquivo=%s erro=%s",
+            sessao_id, empresa_id, phone, file.filename, err,
+        )
         raise HTTPException(status_code=400, detail=err or "Erro ao enviar arquivo")
     return {"ok": True}

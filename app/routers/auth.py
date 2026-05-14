@@ -116,19 +116,23 @@ async def auto_setup(db=Depends(get_db)):
         return {"ok": True, "empresa": row["nome"], "cnpj": row["cnpj"], "usuarios_importados": 0}
 
     if not settings.monitor_client_token:
+        logger.error("[auto-setup] MONITOR_CLIENT_TOKEN não configurado no .env — sistema não pode registrar empresa")
         raise HTTPException(status_code=503, detail="Token de ativação não configurado. Reinstale o sistema.")
 
     monitor_url = settings.monitor_url.rstrip("/")
+    logger.info("[auto-setup] Registrando empresa via Monitor: %s", monitor_url)
     try:
         client = get_http_client()
         r = await client.get(f"{monitor_url}/api/auth/cliente/{settings.monitor_client_token}")
     except Exception as exc:
-        logger.error("[auto-setup] Erro ao chamar Monitor: %s", exc)
+        logger.error("[auto-setup] Erro ao conectar ao Monitor (%s): %s", monitor_url, exc)
         raise HTTPException(status_code=503, detail="Não foi possível conectar ao servidor de ativação.")
 
     if r.status_code == 404:
+        logger.error("[auto-setup] Token não encontrado no Monitor — MONITOR_CLIENT_TOKEN inválido ou cliente inativo")
         raise HTTPException(status_code=404, detail="Token não encontrado no servidor.")
     if r.status_code != 200:
+        logger.error("[auto-setup] Monitor retornou erro %s: %s", r.status_code, r.text[:200])
         raise HTTPException(status_code=502, detail=f"Monitor retornou erro {r.status_code}.")
 
     data = r.json()
@@ -138,6 +142,7 @@ async def auto_setup(db=Depends(get_db)):
     usuarios_monitor = data.get("usuarios", [])
 
     if not cnpj:
+        logger.error("[auto-setup] Monitor não retornou CNPJ válido para o cliente '%s'", nome)
         raise HTTPException(status_code=422, detail="Monitor não retornou CNPJ válido.")
 
     await db.execute(
@@ -239,6 +244,7 @@ async def login(body: LoginRequest, request: Request, response: Response, db=Dep
 
     ip = _client_ip(request)
     if not _login_limiter.is_allowed(ip):
+        logger.warning("[login] Rate limit atingido — IP=%s usuário='%s' bloqueado por 1 minuto", ip, username)
         raise HTTPException(status_code=429, detail="Muitas tentativas. Aguarde 1 minuto.")
 
     # Tenta obter token: primeiro de settings, depois do banco (fallback)
@@ -253,6 +259,7 @@ async def login(body: LoginRequest, request: Request, response: Response, db=Dep
             settings.monitor_client_token = client_token
 
     if not client_token:
+        logger.error("[login] MONITOR_CLIENT_TOKEN ausente e nenhuma empresa ativa no banco — sistema não ativado")
         raise HTTPException(status_code=503, detail="Sistema não ativado. Informe o token de ativação.")
 
     monitor_url = settings.monitor_url.rstrip("/")
@@ -274,6 +281,7 @@ async def login(body: LoginRequest, request: Request, response: Response, db=Dep
             emp = await cur.fetchone()
 
     if not emp:
+        logger.error("[login] Nenhuma empresa ativa no banco — auto-setup não foi executado ou falhou")
         raise HTTPException(status_code=503, detail="Nenhuma empresa ativa. Ative o sistema primeiro.")
 
     empresa_id  = emp["id"]

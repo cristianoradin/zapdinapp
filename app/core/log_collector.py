@@ -45,14 +45,32 @@ _CAT_MAP = {
 _SKIP_LEVELS = {"DEBUG"}
 
 # Mensagens que fazem pouco sentido no contexto do Monitor
+# ATENÇÃO: só filtramos logs de acesso HTTP do uvicorn (nível INFO do uvicorn.access)
+# Logs de ERRO que coincidentemente começam com GET/POST (ex: "[erp] POST inválido")
+# NÃO são filtrados porque usamos o nome do logger para diferenciar.
 _SKIP_PREFIXES = (
     "GET /",
     "POST /",
     "PUT /",
     "DELETE /",
+    "PATCH /",
+    "HEAD /",
+    "OPTIONS /",
     "HTTP Request: POST",   # httpx internals — heartbeat/report requests
     "HTTP Request: GET",
+    "HTTP Request: PUT",
+    "HTTP Request: DELETE",
 )
+
+# Nomes de loggers cujas mensagens são SEMPRE filtradas (logs internos do uvicorn/httpx)
+_SKIP_LOGGERS = {
+    "uvicorn.access",
+    "uvicorn.error",
+    "httpx",
+    "httpcore",
+    "asyncio",
+    "watchfiles",
+}
 
 _MAX_BUFFER = 500
 
@@ -79,10 +97,15 @@ class _LogCollectorHandler(logging.Handler):
         # Filtra níveis verbosos
         if record.levelname in _SKIP_LEVELS:
             return
-        # Filtra logs de acesso HTTP do uvicorn (muito ruidosos)
-        msg = self.format(record)
-        if any(msg.lstrip().startswith(p) for p in _SKIP_PREFIXES):
+        # Filtra loggers internos do uvicorn/httpx independente da mensagem
+        if record.name in _SKIP_LOGGERS or record.name.startswith("uvicorn."):
             return
+        # Filtra logs de acesso HTTP do uvicorn (muito ruidosos)
+        # Só filtra por prefixo de mensagem se vier de logger não identificado como nosso
+        if record.name not in _CAT_MAP and not any(record.name.startswith(k) for k in _CAT_MAP):
+            msg = self.format(record)
+            if any(msg.lstrip().startswith(p) for p in _SKIP_PREFIXES):
+                return
 
         entry = {
             "ts":    datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S"),

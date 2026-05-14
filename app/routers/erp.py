@@ -184,9 +184,24 @@ async def receber_arquivo(
     nome_salvo = f"{uuid.uuid4().hex}{ext}"
     caminho = os.path.join(UPLOAD_DIR, nome_salvo)
 
-    conteudo = base64.b64decode(body.conteudo_base64)
-    with open(caminho, "wb") as f:
-        f.write(conteudo)
+    try:
+        conteudo = base64.b64decode(body.conteudo_base64)
+    except Exception as exc:
+        logger.error(
+            "[erp] Erro ao decodificar base64: empresa=%s arquivo=%s erro=%s",
+            empresa_id, body.nome_arquivo, exc,
+        )
+        raise HTTPException(status_code=400, detail="Conteúdo base64 inválido.")
+
+    try:
+        with open(caminho, "wb") as f:
+            f.write(conteudo)
+    except Exception as exc:
+        logger.error(
+            "[erp] Erro ao gravar arquivo em disco: empresa=%s caminho=%s erro=%s",
+            empresa_id, caminho, exc,
+        )
+        raise HTTPException(status_code=500, detail="Erro ao salvar arquivo no servidor.")
 
     # Enfileira para disparo assíncrono — API retorna imediatamente
     await db.execute(

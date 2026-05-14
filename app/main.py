@@ -119,8 +119,34 @@ class LockMiddleware(BaseHTTPMiddleware):
 
 
 # ── Lifespan ───────────────────────────────────────────────────────────────────
+_startup_logger = logging.getLogger(__name__)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # ── Log de inicialização ──────────────────────────────────────────────────
+    try:
+        import json as _json
+        from pathlib import Path as _vpath
+        _vfile = _vpath(__file__).parent / "versao.json"
+        _versao = _json.loads(_vfile.read_text()).get("versao", "?") if _vfile.exists() else "?"
+    except Exception:
+        _versao = "?"
+
+    _backend = "Evolution API" if settings.use_evolution else "Playwright (WhatsApp Web)"
+    _startup_logger.info(
+        "[startup] ========== ZapDin v%s iniciando ==========", _versao
+    )
+    _startup_logger.info(
+        "[startup] Porta=%s | Backend WhatsApp=%s | Monitor=%s",
+        settings.port, _backend, settings.monitor_url,
+    )
+    _startup_logger.info(
+        "[startup] Estado=%s | Token Monitor=%s",
+        settings.app_state,
+        ("configurado" if settings.monitor_client_token else "NÃO CONFIGURADO — reinstale ou ative o sistema"),
+    )
+
     await init_db()
 
     # Protege o .env via DPAPI na primeira execução após instalação/update (Windows)
@@ -132,11 +158,7 @@ async def lifespan(app: FastAPI):
         if _env.exists() and not is_protected(_env):
             protected = protect_env_file(_env)
             if protected:
-                _log_collector  # já instalado acima
-                import logging as _logging
-                _logging.getLogger(__name__).info(
-                    "[startup] .env protegido via DPAPI automaticamente"
-                )
+                _startup_logger.info("[startup] .env protegido via DPAPI automaticamente")
     except Exception:
         pass  # Nunca bloqueia o startup
 
@@ -160,6 +182,12 @@ async def lifespan(app: FastAPI):
         updater.start()
         telegram_service.start()
         queue_worker.start()  # processa mensagens, arquivos e campanha_envios
+        _startup_logger.info("[startup] Todos os serviços iniciados — sistema pronto")
+    else:
+        _startup_logger.warning(
+            "[startup] Sistema BLOQUEADO (APP_STATE=%s) — aguardando ativação em /activate",
+            settings.app_state,
+        )
 
     yield
 

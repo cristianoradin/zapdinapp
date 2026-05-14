@@ -70,11 +70,14 @@ async def activate(body: ActivatePayload, request: Request):
       5. Agenda restart do processo (NSSM reinicia o serviço)
     """
     token = body.token.strip()
+    ip = _client_ip(request)
+
     if not token:
+        logger.warning("[activation] Tentativa de ativação com token vazio de ip=%s", ip)
         return JSONResponse({"ok": False, "error": "Token não pode ser vazio."}, status_code=400)
 
-    ip = _client_ip(request)
     if not _activate_limiter.is_allowed(ip):
+        logger.warning("[activation] Rate limit atingido para ip=%s — bloqueado por 1 hora", ip)
         return JSONResponse(
             {"ok": False, "error": "Muitas tentativas de ativação. Aguarde 1 hora."},
             status_code=429,
@@ -82,8 +85,8 @@ async def activate(body: ActivatePayload, request: Request):
 
     # Normaliza formato: remove hífens, maiúsculas (exibido como XXXX-XXXX mas armazenado sem)
     token = token.replace("-", "").upper()
-
     monitor_url = settings.monitor_url.rstrip("/")
+    logger.info("[activation] Iniciando ativação: ip=%s token=%s... monitor=%s", ip, token[:4], monitor_url)
 
     # ── 1. Valida token no Monitor ────────────────────────────────────────────
     try:
@@ -104,6 +107,7 @@ async def activate(body: ActivatePayload, request: Request):
         return JSONResponse({"ok": False, "error": "Erro interno ao validar token."}, status_code=500)
 
     if resp.status_code == 401:
+        logger.warning("[activation] Token inválido ou expirado: ip=%s token=%s...", ip, token[:4])
         return JSONResponse({"ok": False, "error": "Token inválido ou expirado."}, status_code=401)
 
     if resp.status_code != 200:

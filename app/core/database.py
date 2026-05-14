@@ -7,10 +7,13 @@ são isolados por empresa_id.
 """
 from __future__ import annotations
 
+import logging
 import asyncpg
 from contextlib import asynccontextmanager
 from functools import lru_cache
 from .config import settings
+
+logger = logging.getLogger(__name__)
 
 # ── Pool global ───────────────────────────────────────────────────────────────
 _pool: asyncpg.Pool | None = None
@@ -130,7 +133,15 @@ async def get_db_direct():
 
 async def init_db() -> None:
     global _pool
-    _pool = await asyncpg.create_pool(settings.database_url, min_size=2, max_size=10)
+    # Oculta senha na URL para o log
+    _db_url_log = settings.database_url.split("@")[-1] if "@" in settings.database_url else settings.database_url
+    logger.info("[db] Conectando ao PostgreSQL: %s", _db_url_log)
+    try:
+        _pool = await asyncpg.create_pool(settings.database_url, min_size=2, max_size=10)
+    except Exception as exc:
+        logger.error("[db] FALHA ao conectar ao PostgreSQL (%s): %s", _db_url_log, exc)
+        raise
+    logger.info("[db] Pool PostgreSQL criado (min=2 max=10)")
 
     async with _pool.acquire() as conn:
 
@@ -395,6 +406,7 @@ async def init_db() -> None:
             )
         """)
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_campanha_envios_status ON campanha_envios(campanha_id, status)")
+        logger.info("[db] Schema inicializado com sucesso")
 
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS grupos_contatos (
