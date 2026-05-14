@@ -114,6 +114,7 @@ class EvoSession:
 
         if state == "open":
             # ── Conectado ────────────────────────────────────────────────────
+            was_reconnecting = self._reconnecting or prev not in ("connected", "connecting")
             self.status      = "connected"
             self.qr_data     = None        # QR não é mais necessário
             self._logged_out = False
@@ -121,6 +122,13 @@ class EvoSession:
             self._stop_reconnect()
             if phone:
                 self.phone = phone
+            # Notifica reconexão automática (só quando voltou de um estado não-conectado)
+            if was_reconnecting and prev != "connected":
+                try:
+                    from . import telegram_service
+                    asyncio.create_task(telegram_service.notify_reconnected(self.nome))
+                except Exception:
+                    pass
 
         elif state in ("connecting", "pairingCode"):
             # ── Conectando (usuário acabou de escanear o QR) ─────────────────
@@ -154,6 +162,12 @@ class EvoSession:
         logger.warning("[evo] [%s] LOGOUT REAL — dispositivo removido pelo usuário. Novo QR necessário.", self.session_id)
         if prev != self.status:
             logger.info("[evo] [%s] %s → disconnected (logout)", self.session_id, prev)
+        # Notifica via Telegram — sessão foi desconectada por logout real
+        try:
+            from . import telegram_service
+            asyncio.create_task(telegram_service.notify_disconnected(self.nome))
+        except Exception:
+            pass
 
     # ─────────────────────────────────────────────────────────────────────────
     #  Reconexão automática com backoff exponencial
@@ -647,10 +661,30 @@ class EvoManager:
                     headers=_h(),
                 )
             if r.status_code in (200, 201):
+                try:
+                    from . import telegram_service
+                    telegram_service.record_sent("text")
+                except Exception:
+                    pass
                 return True, None
-            return False, f"HTTP {r.status_code}: {r.text[:200]}"
+            err = f"HTTP {r.status_code}: {r.text[:200]}"
+            try:
+                from . import telegram_service
+                telegram_service.record_error()
+                sess = self._sessions.get(self._key(empresa_id, session_id))
+                nome = sess.nome if sess else session_id
+                asyncio.create_task(telegram_service.notify_send_failure(nome, phone, err))
+            except Exception:
+                pass
+            return False, err
         except Exception as exc:
-            return False, str(exc)
+            err = str(exc)
+            try:
+                from . import telegram_service
+                telegram_service.record_error()
+            except Exception:
+                pass
+            return False, err
 
     async def send_file(
         self,
@@ -676,7 +710,8 @@ class EvoManager:
         try:
             with open(file_path, "rb") as f:
                 raw = f.read()
-            data_uri = f"data:{mime};base64,{base64.b64encode(raw).decode()}"
+            # Evolution API aceita base64 puro — data URI (data:mime;base64,...) não é suportado
+            b64 = base64.b64encode(raw).decode()
             async with httpx.AsyncClient(timeout=90.0) as client:
                 r = await client.post(
                     _url(f"message/sendMedia/{inst}"),
@@ -685,17 +720,37 @@ class EvoManager:
                         "mediatype": mtype,
                         "mimetype":  mime,
                         "caption":   caption or "",
-                        "media":     data_uri,
+                        "media":     b64,
                         "fileName":  filename,
                     },
                     headers=_h(),
                 )
             if r.status_code in (200, 201):
                 logger.info("[evo] send_file OK: %s → %s", filename, number)
+                try:
+                    from . import telegram_service
+                    telegram_service.record_sent("file")
+                except Exception:
+                    pass
                 return True, None
-            return False, f"HTTP {r.status_code}: {r.text[:200]}"
+            err = f"HTTP {r.status_code}: {r.text[:200]}"
+            try:
+                from . import telegram_service
+                telegram_service.record_error()
+                sess = self._inst_index.get(inst)
+                nome = sess.nome if sess else inst
+                asyncio.create_task(telegram_service.notify_send_failure(nome, number, err))
+            except Exception:
+                pass
+            return False, err
         except Exception as exc:
-            return False, str(exc)
+            err = str(exc)
+            try:
+                from . import telegram_service
+                telegram_service.record_error()
+            except Exception:
+                pass
+            return False, err
 
     def schedule_status_check(self, arquivo_id, session_id, empresa_id, phone):
         pass   # reservado para uso futuro

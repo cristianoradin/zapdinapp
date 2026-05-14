@@ -56,6 +56,13 @@ async def _verify_token(x_token: Optional[str], db, request: Request = None) -> 
         if verify_erp_token(x_token, row["value"]):
             return row["empresa_id"]
     logger.warning("[erp] Token inválido recebido de ip=%s token=%s...", ip, x_token[:8] if x_token else "")
+    # Alerta Telegram — possível tentativa de acesso indevido (best-effort)
+    try:
+        import asyncio
+        from ..services import telegram_service
+        asyncio.create_task(telegram_service.notify_erp_invalid_token(ip))
+    except Exception:
+        pass
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Token ERP inválido",

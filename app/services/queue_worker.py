@@ -219,6 +219,12 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
 
         sessao_id = wa_manager.pick_session(empresa_id)
         if not sessao_id:
+            # Nenhuma sessão disponível — alerta Telegram (throttled a cada 30min)
+            try:
+                from . import telegram_service
+                asyncio.create_task(telegram_service.notify_queue_blocked(1))
+            except Exception:
+                pass
             return False
 
         # Checa limite diário
@@ -274,6 +280,12 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
 
         sessao_id = wa_manager.pick_session(empresa_id)
         if not sessao_id:
+            # Nenhuma sessão disponível — alerta Telegram (throttled a cada 30min)
+            try:
+                from . import telegram_service
+                asyncio.create_task(telegram_service.notify_queue_blocked(1))
+            except Exception:
+                pass
             return False
 
         # Checa limite diário
@@ -347,6 +359,11 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
 
         sessao_id = wa_manager.pick_session(empresa_id)
         if not sessao_id:
+            try:
+                from . import telegram_service
+                asyncio.create_task(telegram_service.notify_queue_blocked(1))
+            except Exception:
+                pass
             return False
 
         tipo = env["tipo"]

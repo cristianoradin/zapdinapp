@@ -158,6 +158,14 @@ async def apply_monitor_update(
         shutil.rmtree(extract_dir, ignore_errors=True)
 
         logger.info("[updater] ═══ Atualização v%s aplicada com sucesso! Reiniciando... ═══", versao)
+
+        # Notifica o Telegram antes de reiniciar (best-effort)
+        try:
+            from . import telegram_service
+            await telegram_service.notify_update_applied(versao)
+        except Exception:
+            pass
+
         await asyncio.sleep(3)   # garante que o log foi escrito
         os._exit(1)              # NSSM/systemd reinicia automaticamente com exit code ≠ 0
 
