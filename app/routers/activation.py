@@ -124,11 +124,17 @@ async def activate(body: ActivatePayload, request: Request):
         logger.error("[activation] Erro ao gravar .env: %s", exc)
         return JSONResponse({"ok": False, "error": "Erro ao salvar configurações."}, status_code=500)
 
-    # ── 4. Atualiza estado em memória imediatamente ───────────────────────────
-    # LockMiddleware usa settings.is_locked (RAM). Sem isso, o app bloqueia o
-    # login até reiniciar mesmo com .env já gravado corretamente.
+    # ── 4. Atualiza settings em memória imediatamente ────────────────────────
+    # LockMiddleware e auth.py consultam settings.* (RAM), não o .env em disco.
+    # Sem isso, o login falha com "Sistema não ativado" mesmo após gravar o .env.
     settings.app_state = "active"
-    logger.info("[activation] Ativação bem-sucedida. APP_STATE=active em memória. Reiniciando em 3s…")
+    if config.get("monitor_client_token"):
+        settings.monitor_client_token = config["monitor_client_token"]
+    if config.get("MONITOR_URL"):
+        settings.monitor_url = config["MONITOR_URL"]
+    if config.get("CLIENT_NAME"):
+        settings.client_name = config["CLIENT_NAME"]
+    logger.info("[activation] Ativação bem-sucedida. Settings em memória atualizados. Reiniciando em 3s…")
 
     # ── 5. Agenda restart para recarregar config completa (DB URL, secret…) ──
     asyncio.create_task(_delayed_restart())
