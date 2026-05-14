@@ -1,3 +1,6 @@
+import json
+import os
+import sys
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException
@@ -12,6 +15,27 @@ else:
     from ..services.whatsapp_service import wa_manager
 
 router = APIRouter(prefix="/api/stats", tags=["stats"])
+
+
+def _read_version() -> str:
+    try:
+        if getattr(sys, "frozen", False):
+            base = os.path.dirname(sys.executable)
+        else:
+            base = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        return json.loads(open(os.path.join(base, "versao.json")).read())["versao"]
+    except Exception:
+        try:
+            base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            return json.loads(open(os.path.join(base, "versao.json")).read())["versao"]
+        except Exception:
+            return "?"
+
+
+@router.get("/version")
+async def get_version(_: dict = Depends(get_current_user)):
+    """Retorna a versão atual do app (lida do versao.json)."""
+    return {"versao": _read_version()}
 
 
 @router.get("")

@@ -1441,7 +1441,7 @@
       <span style="font-size:.9rem">🚪</span> Sair
     </button>
     <div style="padding:.5rem 1.25rem 1.25rem;font-size:.68rem;color:var(--text-light);letter-spacing:.04em">
-      ZapDin v1.0 &nbsp;·&nbsp; Python/FastAPI
+      ZapDin <span id="app-version">...</span> &nbsp;·&nbsp; Python/FastAPI
     </div>
   </div>
 </nav>
@@ -4889,6 +4889,18 @@
       }
     }, 3000);
   }
+
+  // ── Versão do app no rodapé da sidebar ───────────────────────────────────────
+  (async () => {
+    try {
+      const r = await fetch('/api/stats/version');
+      if (r.ok) {
+        const d = await r.json();
+        const el = document.getElementById('app-version');
+        if (el) el.textContent = 'v' + d.versao;
+      }
+    } catch (_) {}
+  })();
 
   // Helper showPage (para navegação programática)
   function showPage(p) {
