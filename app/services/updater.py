@@ -168,24 +168,42 @@ async def apply_monitor_update(
 
         await asyncio.sleep(3)   # garante que o log foi escrito
 
-        # Tenta restart via NSSM (Windows) antes de os._exit para evitar
-        # que o processo termine sem o serviço ser reiniciado corretamente
+        # Reinicia o processo no Windows via NSSM ou Task Scheduler
         if sys.platform == "win32":
+            import subprocess
+            restarted = False
+
+            # Tentativa 1 — NSSM (instalações antigas)
             try:
-                root_dir = _root_dir()
-                nssm = root_dir / "nssm.exe"
+                nssm = _root_dir() / "nssm.exe"
                 if nssm.exists():
-                    import subprocess
                     logger.info("[updater] Reiniciando via NSSM...")
                     subprocess.Popen(
                         [str(nssm), "restart", "ZapDinApp"],
                         creationflags=0x00000008,  # DETACHED_PROCESS
                     )
                     await asyncio.sleep(2)
-            except Exception as _nssm_err:
-                logger.warning("[updater] NSSM restart falhou: %s", _nssm_err)
+                    restarted = True
+            except Exception as _err:
+                logger.warning("[updater] NSSM restart falhou: %s", _err)
 
-        os._exit(1)              # NSSM/systemd reinicia automaticamente com exit code ≠ 0
+            # Tentativa 2 — Task Scheduler (instalações novas via AtLogon)
+            if not restarted:
+                try:
+                    logger.info("[updater] Reiniciando via Task Scheduler...")
+                    subprocess.Popen(
+                        ["schtasks", "/run", "/tn", "ZapDinApp"],
+                        creationflags=0x00000008,  # DETACHED_PROCESS
+                    )
+                    await asyncio.sleep(3)
+                    restarted = True
+                except Exception as _err:
+                    logger.warning("[updater] Task Scheduler restart falhou: %s", _err)
+
+            if not restarted:
+                logger.warning("[updater] Nenhum método de restart funcionou — o processo vai encerrar. Reinicie manualmente.")
+
+        os._exit(1)              # systemd/NSSM reinicia automaticamente com exit code ≠ 0
 
     except Exception as exc:
         logger.error("[updater] ✗ Falha na atualização v%s: %s", versao, exc)
