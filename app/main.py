@@ -123,6 +123,23 @@ class LockMiddleware(BaseHTTPMiddleware):
 async def lifespan(app: FastAPI):
     await init_db()
 
+    # Protege o .env via DPAPI na primeira execução após instalação/update (Windows)
+    # Máquinas já instaladas com .env em texto puro são protegidas automaticamente
+    try:
+        from .core.env_protector import protect_env_file, is_protected
+        from pathlib import Path as _Path
+        _env = _Path(settings.model_config.get("env_file") or "")
+        if _env.exists() and not is_protected(_env):
+            protected = protect_env_file(_env)
+            if protected:
+                _log_collector  # já instalado acima
+                import logging as _logging
+                _logging.getLogger(__name__).info(
+                    "[startup] .env protegido via DPAPI automaticamente"
+                )
+    except Exception:
+        pass  # Nunca bloqueia o startup
+
     if not settings.is_locked:
         # Carrega sessões WA de todas as empresas
         async with get_db_direct() as db:
