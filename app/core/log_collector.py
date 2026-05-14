@@ -50,6 +50,8 @@ _SKIP_PREFIXES = (
     "POST /",
     "PUT /",
     "DELETE /",
+    "HTTP Request: POST",   # httpx internals — heartbeat/report requests
+    "HTTP Request: GET",
 )
 
 _MAX_BUFFER = 500
