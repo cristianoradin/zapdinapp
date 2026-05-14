@@ -58,6 +58,78 @@ async def empresa_info(db=Depends(get_db)):
     return {"cnpj": row["cnpj"], "nome": row["nome"]}
 
 
+@router.post("/auto-setup")
+async def auto_setup(db=Depends(get_db)):
+    """
+    Auto-registra a empresa usando MONITOR_CLIENT_TOKEN do .env, sem interação do usuário.
+    Chamado pela tela de login na primeira abertura após instalação.
+    """
+    # Empresa já existe — retorna sem fazer nada
+    async with db.execute(
+        "SELECT cnpj, nome FROM empresas WHERE ativo = TRUE ORDER BY id LIMIT 1"
+    ) as cur:
+        row = await cur.fetchone()
+    if row:
+        return {"ok": True, "empresa": row["nome"], "cnpj": row["cnpj"], "usuarios_importados": 0}
+
+    if not settings.monitor_client_token:
+        raise HTTPException(status_code=503, detail="Token de ativação não configurado. Reinstale o sistema.")
+
+    monitor_url = settings.monitor_url.rstrip("/")
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(f"{monitor_url}/api/auth/cliente/{settings.monitor_client_token}")
+    except Exception as exc:
+        logger.error("[auto-setup] Erro ao chamar Monitor: %s", exc)
+        raise HTTPException(status_code=503, detail="Não foi possível conectar ao servidor de ativação.")
+
+    if r.status_code == 404:
+        raise HTTPException(status_code=404, detail="Token não encontrado no servidor.")
+    if r.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"Monitor retornou erro {r.status_code}.")
+
+    data = r.json()
+    cnpj = normalize_cnpj(data.get("cnpj", ""))
+    nome = data.get("nome", "Empresa")
+    client_token = data.get("token", settings.monitor_client_token)
+    usuarios_monitor = data.get("usuarios", [])
+
+    if not cnpj:
+        raise HTTPException(status_code=422, detail="Monitor não retornou CNPJ válido.")
+
+    await db.execute(
+        """INSERT INTO empresas (cnpj, nome, token, ativo)
+           VALUES (?, ?, ?, TRUE)
+           ON CONFLICT (cnpj) DO UPDATE
+           SET nome = EXCLUDED.nome, token = EXCLUDED.token, ativo = TRUE""",
+        (cnpj, nome, client_token),
+    )
+    await db.commit()
+
+    async with db.execute("SELECT id FROM empresas WHERE cnpj = ?", (cnpj,)) as c:
+        emp_row = await c.fetchone()
+    empresa_id = emp_row["id"]
+
+    usuarios_importados = 0
+    for u in usuarios_monitor:
+        username = u.get("username", "").strip().lower()
+        password_hash = u.get("password_hash", "")
+        if not username or not password_hash:
+            continue
+        await db.execute(
+            """INSERT INTO usuarios (empresa_id, username, password_hash)
+               VALUES (?, ?, ?)
+               ON CONFLICT (empresa_id, username) DO UPDATE
+               SET password_hash = EXCLUDED.password_hash""",
+            (empresa_id, username, password_hash),
+        )
+        usuarios_importados += 1
+    await db.commit()
+
+    logger.info("[auto-setup] Empresa registrada: %s (%s) — %d usuário(s)", nome, cnpj, usuarios_importados)
+    return {"ok": True, "empresa": nome, "cnpj": cnpj, "usuarios_importados": usuarios_importados}
+
+
 # ── Passo 1: Verifica CNPJ ────────────────────────────────────────────────────
 
 @router.post("/check-cnpj")

@@ -415,7 +415,7 @@ begin
       '  "DATABASE_URL=' + DatabaseURL + '",' + #13#10 +
       '  "SECRET_KEY=$key",' + #13#10 +
       '  "MONITOR_URL=' + MonitorURL + '",' + #13#10 +
-      '  "MONITOR_CLIENT_TOKEN=",' + #13#10 +
+      '  "MONITOR_CLIENT_TOKEN=' + ClientToken + '",' + #13#10 +
       '  "CLIENT_NAME=$clientName",' + #13#10 +
       '  "CLIENT_CNPJ=",' + #13#10 +
       '  "ERP_TOKEN="' + #13#10 +
