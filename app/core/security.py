@@ -1,3 +1,5 @@
+import hmac
+import time
 from typing import Optional
 
 import bcrypt
@@ -9,6 +11,20 @@ from .config import settings
 _serializer = URLSafeTimedSerializer(settings.secret_key)
 
 SESSION_COOKIE = "zapdin_session"
+
+# ── Blacklist de tokens invalidados (logout) ──────────────────────────────────
+# Chave: token string — Valor: timestamp de quando foi invalidado
+# Entradas são removidas automaticamente após session_max_age expirar
+_invalidated_tokens: dict[str, float] = {}
+
+
+def invalidate_token(token: str) -> None:
+    """Adiciona token à blacklist. Limpa entradas expiradas automaticamente."""
+    _invalidated_tokens[token] = time.time()
+    cutoff = time.time() - settings.session_max_age
+    expired = [k for k, v in _invalidated_tokens.items() if v < cutoff]
+    for k in expired:
+        del _invalidated_tokens[k]
 
 
 def hash_password(plain: str) -> str:
@@ -27,6 +43,9 @@ def create_session_token(user_id: int, username: str, empresa_id: int) -> str:
 
 
 def decode_session_token(token: str) -> Optional[dict]:
+    # Rejeita tokens explicitamente invalidados (logout)
+    if token in _invalidated_tokens:
+        return None
     try:
         return _serializer.loads(token, salt="session", max_age=settings.session_max_age)
     except (BadSignature, SignatureExpired):
@@ -50,4 +69,5 @@ def normalize_cnpj(cnpj: str) -> str:
 
 
 def verify_erp_token(token: str, stored_token: str) -> bool:
-    return token == stored_token
+    """Comparação segura contra timing attacks."""
+    return hmac.compare_digest(token.encode(), stored_token.encode())

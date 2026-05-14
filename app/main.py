@@ -11,6 +11,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from .core.config import settings
 from .core.database import init_db, get_db, get_db_direct
+from .core.http_client import close_http_client
 from .routers import auth, whatsapp, erp, config_router, arquivos, stats, telegram_router
 from .routers.activation import router as activation_router
 from .routers.internal import router as internal_router
@@ -26,7 +27,15 @@ from .services.evolution_service import evo_manager as _evo_manager
 wa_manager = _evo_manager if settings.use_evolution else _playwright_manager
 
 # ── Socket.IO ──────────────────────────────────────────────────────────────────
-sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
+# Restringe CORS ao próprio host em vez de aceitar qualquer origem.
+# O frontend é servido pelo mesmo processo (porta 4000), então localhost é suficiente.
+_WS_ORIGINS = [
+    "http://localhost:4000",
+    "http://127.0.0.1:4000",
+    f"http://localhost:{settings.port}",
+    f"http://127.0.0.1:{settings.port}",
+]
+sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins=_WS_ORIGINS)
 
 
 @sio.event
@@ -114,6 +123,7 @@ async def lifespan(app: FastAPI):
     updater.stop()
     telegram_service.stop()
     queue_worker.stop()
+    await close_http_client()
 
 
 # ── App ────────────────────────────────────────────────────────────────────────
@@ -140,15 +150,13 @@ fastapi_app.include_router(pdv_router)              # /api/pdv/* (ZapDin PDV loc
 
 @fastapi_app.post("/api/logout")
 async def logout_alias(request: Request):
-    from .core.security import SESSION_COOKIE
+    from .core.security import SESSION_COOKIE, invalidate_token
+    token = request.cookies.get(SESSION_COOKIE)
+    if token:
+        invalidate_token(token)
     resp = JSONResponse({"ok": True})
     resp.delete_cookie(SESSION_COOKIE)
     return resp
-
-
-@fastapi_app.post("/api/report")
-async def report_endpoint(request: Request):
-    return {"ok": True}
 
 
 @fastapi_app.get("/api/evo-file/{token}")

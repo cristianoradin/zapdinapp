@@ -36,10 +36,23 @@ UPLOAD_DIR = "data/arquivos"
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _require_localhost(request: Request) -> None:
+    """Garante que a requisição vem do loopback (127.0.0.1 / ::1).
+
+    request.client.host é o IP da conexão TCP real — não pode ser forjado via
+    headers como X-Forwarded-For (sem ProxyHeadersMiddleware ativo).
+    Rejeita também X-Forwarded-For suspeito como defesa em profundidade.
+    """
     client_ip = request.client.host if request.client else ""
     if client_ip not in ("127.0.0.1", "::1", "localhost"):
         logger.warning("[internal] Acesso negado de %s", client_ip)
         raise HTTPException(status_code=403, detail="Acesso restrito ao host local.")
+    # Rejeita X-Forwarded-For com IP externo (defesa em profundidade)
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    if forwarded:
+        first_ip = forwarded.split(",")[0].strip()
+        if first_ip not in ("127.0.0.1", "::1", "localhost"):
+            logger.warning("[internal] X-Forwarded-For suspeito: %s", forwarded)
+            raise HTTPException(status_code=403, detail="Acesso restrito ao host local.")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

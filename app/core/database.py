@@ -9,14 +9,17 @@ from __future__ import annotations
 
 import asyncpg
 from contextlib import asynccontextmanager
+from functools import lru_cache
 from .config import settings
 
 # ── Pool global ───────────────────────────────────────────────────────────────
 _pool: asyncpg.Pool | None = None
 
 
+@lru_cache(maxsize=512)
 def _to_pg(sql: str) -> str:
-    """Converte placeholders SQLite '?' → '$1', '$2', ... do PostgreSQL."""
+    """Converte placeholders SQLite '?' → '$1', '$2', ... do PostgreSQL.
+    Resultado cacheado — a maioria das queries são strings literais repetidas."""
     n, out = 0, []
     for ch in sql:
         if ch == '?':
@@ -321,6 +324,11 @@ async def init_db() -> None:
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_mensagens_status ON mensagens(empresa_id, status)")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_arquivos_empresa ON arquivos(empresa_id)")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_arquivos_status ON arquivos(empresa_id, status)")
+        # Índice isolado para o worker (busca por status sem filtrar empresa_id)
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_mensagens_status_worker ON mensagens(status, id)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_arquivos_status_worker ON arquivos(status, id)")
+        # Índice de empresa em sessoes_wa (busca frequente do worker)
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_sessoes_wa_empresa ON sessoes_wa(empresa_id)")
 
         # Migração: adiciona nome_destinatario em mensagens e arquivos
         for _tbl2 in ('mensagens', 'arquivos'):

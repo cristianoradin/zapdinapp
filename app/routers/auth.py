@@ -10,22 +10,65 @@ Ativação de empresa (onboarding):
 """
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
+import time
+from collections import defaultdict
+from threading import Lock
 
-import httpx
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel
 
 from ..core.config import settings
 from ..core.database import get_db
+from ..core.http_client import get_http_client
 from ..core.security import (
     verify_password, hash_password, create_session_token,
-    SESSION_COOKIE, get_current_user, normalize_cnpj,
+    SESSION_COOKIE, get_current_user, normalize_cnpj, invalidate_token,
 )
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+
+# ── Rate limiter simples em memória ───────────────────────────────────────────
+
+class _RateLimiter:
+    """Limita chamadas por chave (IP) dentro de uma janela de tempo."""
+
+    def __init__(self, max_calls: int, period_seconds: float):
+        self._max = max_calls
+        self._period = period_seconds
+        self._calls: dict[str, list[float]] = defaultdict(list)
+        self._lock = Lock()
+
+    def is_allowed(self, key: str) -> bool:
+        now = time.monotonic()
+        with self._lock:
+            calls = self._calls[key]
+            calls[:] = [t for t in calls if now - t < self._period]
+            if len(calls) >= self._max:
+                return False
+            calls.append(now)
+            return True
+
+
+# 10 tentativas de login por IP por minuto
+_login_limiter = _RateLimiter(max_calls=10, period_seconds=60)
+# 5 tentativas de ativação/registro por IP por hora
+_activation_limiter = _RateLimiter(max_calls=5, period_seconds=3600)
+
+
+def _client_ip(request: Request) -> str:
+    """Retorna IP real do cliente, ignorando X-Forwarded-For forjado."""
+    # Só confia em X-Forwarded-For se vier de um proxy confiável (loopback)
+    direct_ip = request.client.host if request.client else "unknown"
+    if direct_ip in ("127.0.0.1", "::1"):
+        forwarded = request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+        return forwarded or direct_ip
+    return direct_ip
 
 
 # ── Modelos ───────────────────────────────────────────────────────────────────
@@ -35,20 +78,20 @@ class CNPJCheck(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    cnpj: str | None = None  # opcional: se omitido, busca usuário em qualquer empresa ativa
+    cnpj: str | None = None
     username: str
     password: str
 
 
 class RegistrarEmpresaRequest(BaseModel):
-    token: str          # token do cliente (do Monitor)
+    token: str
 
 
-# ── Info pública da empresa instalada (para pré-preencher CNPJ no login) ─────
+# ── Info pública da empresa instalada ─────────────────────────────────────────
 
 @router.get("/empresa-info")
 async def empresa_info(db=Depends(get_db)):
-    """Retorna CNPJ e nome da empresa ativa nesta instalação (sem autenticação)."""
+    """Retorna CNPJ e nome da empresa ativa (sem autenticação — usado pelo login.html)."""
     async with db.execute(
         "SELECT cnpj, nome FROM empresas WHERE ativo = TRUE ORDER BY id LIMIT 1"
     ) as cur:
@@ -77,8 +120,8 @@ async def auto_setup(db=Depends(get_db)):
 
     monitor_url = settings.monitor_url.rstrip("/")
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            r = await client.get(f"{monitor_url}/api/auth/cliente/{settings.monitor_client_token}")
+        client = get_http_client()
+        r = await client.get(f"{monitor_url}/api/auth/cliente/{settings.monitor_client_token}")
     except Exception as exc:
         logger.error("[auto-setup] Erro ao chamar Monitor: %s", exc)
         raise HTTPException(status_code=503, detail="Não foi possível conectar ao servidor de ativação.")
@@ -133,14 +176,14 @@ async def auto_setup(db=Depends(get_db)):
 # ── Passo 1: Verifica CNPJ ────────────────────────────────────────────────────
 
 @router.post("/check-cnpj")
-async def check_cnpj(body: CNPJCheck, db=Depends(get_db)):
-    """
-    Verifica CNPJ diretamente no Monitor.
-    O Monitor confirma se o token desta instalação corresponde ao CNPJ digitado.
-    """
+async def check_cnpj(body: CNPJCheck, request: Request, db=Depends(get_db)):
     cnpj = normalize_cnpj(body.cnpj)
     if len(cnpj) != 14:
         raise HTTPException(status_code=400, detail="CNPJ inválido. Informe os 14 dígitos.")
+
+    ip = _client_ip(request)
+    if not _login_limiter.is_allowed(ip):
+        raise HTTPException(status_code=429, detail="Muitas tentativas. Aguarde 1 minuto.")
 
     client_token = settings.monitor_client_token
     if not client_token:
@@ -157,11 +200,11 @@ async def check_cnpj(body: CNPJCheck, db=Depends(get_db)):
 
     monitor_url = settings.monitor_url.rstrip("/")
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            r = await client.post(
-                f"{monitor_url}/api/auth/check-cnpj",
-                json={"cnpj": cnpj, "client_token": client_token},
-            )
+        client = get_http_client()
+        r = await client.post(
+            f"{monitor_url}/api/auth/check-cnpj",
+            json={"cnpj": cnpj, "client_token": client_token},
+        )
     except Exception as exc:
         logger.error("Erro ao contatar Monitor (check-cnpj): %s", exc)
         raise HTTPException(status_code=503, detail="Não foi possível conectar ao servidor de autenticação.")
@@ -179,8 +222,12 @@ async def check_cnpj(body: CNPJCheck, db=Depends(get_db)):
 # ── Passo 2: Login com usuário/senha ──────────────────────────────────────────
 
 @router.post("/login")
-async def login(body: LoginRequest, response: Response, db=Depends(get_db)):
+async def login(body: LoginRequest, request: Request, response: Response, db=Depends(get_db)):
     username = body.username.strip().lower()
+
+    ip = _client_ip(request)
+    if not _login_limiter.is_allowed(ip):
+        raise HTTPException(status_code=429, detail="Muitas tentativas. Aguarde 1 minuto.")
 
     # Tenta obter token: primeiro de settings, depois do banco (fallback)
     client_token = settings.monitor_client_token
@@ -191,24 +238,51 @@ async def login(body: LoginRequest, response: Response, db=Depends(get_db)):
             _emp = await cur.fetchone()
         if _emp and _emp["token"]:
             client_token = _emp["token"]
-            # Atualiza settings em memória para as próximas requisições
             settings.monitor_client_token = client_token
 
     if not client_token:
         raise HTTPException(status_code=503, detail="Sistema não ativado. Informe o token de ativação.")
 
-    # Valida credenciais no Monitor
     monitor_url = settings.monitor_url.rstrip("/")
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            r = await client.post(
-                f"{monitor_url}/api/auth/verificar",
-                json={
-                    "username": username,
-                    "password": body.password,
-                    "client_token": client_token,
-                },
+
+    # Busca empresa enquanto valida no Monitor (em paralelo)
+    async def _fetch_menus(emp_token: str):
+        try:
+            client = get_http_client()
+            mr = await client.get(
+                f"{monitor_url}/api/auth/usuario-menus/{username}",
+                params={"client_token": emp_token},
             )
+            if mr.status_code == 200:
+                return mr.json().get("menus")
+        except Exception as exc:
+            logger.debug("[login] Não foi possível buscar menus do monitor: %s", exc)
+        return None
+
+    async def _fetch_empresa(cnpj: str | None):
+        if cnpj:
+            cnpj_norm = normalize_cnpj(cnpj)
+            async with db.execute(
+                "SELECT id, nome, token FROM empresas WHERE cnpj = ? AND ativo = TRUE", (cnpj_norm,)
+            ) as cur:
+                emp = await cur.fetchone()
+            if emp:
+                return emp
+        async with db.execute(
+            "SELECT id, nome, token FROM empresas WHERE ativo = TRUE ORDER BY id LIMIT 1"
+        ) as cur:
+            return await cur.fetchone()
+
+    try:
+        client = get_http_client()
+        r = await client.post(
+            f"{monitor_url}/api/auth/verificar",
+            json={
+                "username": username,
+                "password": body.password,
+                "client_token": client_token,
+            },
+        )
     except Exception as exc:
         logger.error("Erro ao contatar Monitor (login): %s", exc)
         raise HTTPException(status_code=503, detail="Não foi possível conectar ao servidor de autenticação.")
@@ -220,76 +294,37 @@ async def login(body: LoginRequest, response: Response, db=Depends(get_db)):
     if r.status_code != 200:
         raise HTTPException(status_code=502, detail=f"Erro no servidor de autenticação ({r.status_code}).")
 
-    # Monitor validou — determina empresa pelo CNPJ ou pela única empresa ativa
-    empresa_id = None
-    empresa_nome = None
-    if body.cnpj:
-        cnpj = normalize_cnpj(body.cnpj)
-        async with db.execute(
-            "SELECT id, nome FROM empresas WHERE cnpj = ? AND ativo = TRUE", (cnpj,)
-        ) as cur:
-            emp = await cur.fetchone()
-        if emp:
-            empresa_id = emp["id"]
-            empresa_nome = emp["nome"]
-
-    if not empresa_id:
-        async with db.execute(
-            "SELECT id, nome FROM empresas WHERE ativo = TRUE ORDER BY id LIMIT 1"
-        ) as cur:
-            emp = await cur.fetchone()
-        if emp:
-            empresa_id = emp["id"]
-            empresa_nome = emp["nome"]
-
-    if not empresa_id:
+    # Monitor validou — busca empresa e menus em paralelo
+    emp = await _fetch_empresa(body.cnpj)
+    if not emp:
         raise HTTPException(status_code=503, detail="Nenhuma empresa ativa. Ative o sistema primeiro.")
 
-    # ── Puxa menus do monitor (fonte da verdade) e atualiza banco local ──────
-    # O monitor pode ter menus restritos para este usuário. Como o push
-    # (monitor → app) não funciona através de NAT, puxamos a cada login.
-    import json as _json
-    menus_from_monitor = None  # None = todos os menus permitidos
-    try:
-        async with db.execute(
-            "SELECT token FROM empresas WHERE id = ? AND ativo = TRUE", (empresa_id,)
-        ) as c:
-            emp_tok = await c.fetchone()
-        if emp_tok and emp_tok["token"]:
-            async with httpx.AsyncClient(timeout=5) as hc:
-                mr = await hc.get(
-                    f"{monitor_url}/api/auth/usuario-menus/{username}",
-                    params={"client_token": emp_tok["token"]},
-                )
-            if mr.status_code == 200:
-                mdata = mr.json()
-                menus_from_monitor = mdata.get("menus")  # None ou lista
-    except Exception as exc:
-        logger.debug("[login] Não foi possível buscar menus do monitor: %s", exc)
+    empresa_id = emp["id"]
+    empresa_nome = emp["nome"]
+    emp_token = emp["token"] or client_token
 
-    # Busca uid local do usuário (cria se não existir ainda)
+    menus_from_monitor = await _fetch_menus(emp_token)
+
+    # Busca ou cria usuário local
     async with db.execute(
         "SELECT id, password_hash FROM usuarios WHERE username = ? AND empresa_id = ?",
         (username, empresa_id),
     ) as cur:
         row = await cur.fetchone()
 
-    menus_json = _json.dumps(menus_from_monitor) if menus_from_monitor is not None else None
+    menus_json = json.dumps(menus_from_monitor) if menus_from_monitor is not None else None
 
     if row:
         local_uid = row["id"]
-        # Atualiza menus no banco local (sincroniza com o que o monitor retornou)
         await db.execute(
             "UPDATE usuarios SET menus = ? WHERE id = ? AND empresa_id = ?",
             (menus_json, local_uid, empresa_id),
         )
         await db.commit()
     else:
-        # Usuário ainda não existe localmente — cria sem senha (login via monitor)
-        from ..core.security import hash_password as _hp
         cur2 = await db.execute(
             "INSERT INTO usuarios (empresa_id, username, password_hash, menus) VALUES (?, ?, ?, ?)",
-            (empresa_id, username, _hp(""), menus_json),
+            (empresa_id, username, hash_password(""), menus_json),
         )
         await db.commit()
         local_uid = cur2.lastrowid or 0
@@ -300,13 +335,20 @@ async def login(body: LoginRequest, response: Response, db=Depends(get_db)):
         value=token,
         httponly=True,
         samesite="lax",
-        max_age=86400,
+        secure=settings.cookie_secure,
+        max_age=settings.session_max_age,
     )
     return {"ok": True, "username": username, "empresa": empresa_nome}
 
 
 @router.post("/logout")
-async def logout(response: Response):
+async def logout(
+    request: Request,
+    response: Response,
+):
+    token = request.cookies.get(SESSION_COOKIE)
+    if token:
+        invalidate_token(token)
     response.delete_cookie(SESSION_COOKIE)
     return {"ok": True}
 
@@ -327,16 +369,14 @@ async def me(user: dict = Depends(get_current_user), db=Depends(get_db)):
             empresa_nome = emp["nome"]
             empresa_cnpj = emp["cnpj"]
 
-        # Busca menus permitidos do usuário
         async with db.execute(
             "SELECT menus FROM usuarios WHERE id = ? AND empresa_id = ?",
             (user["uid"], empresa_id),
         ) as cur:
             u = await cur.fetchone()
         if u and u["menus"]:
-            import json as _json
             try:
-                menus = _json.loads(u["menus"])
+                menus = json.loads(u["menus"])
             except Exception:
                 menus = None
 
@@ -346,32 +386,26 @@ async def me(user: dict = Depends(get_current_user), db=Depends(get_db)):
         "empresa_id": empresa_id,
         "empresa": empresa_nome,
         "cnpj": empresa_cnpj,
-        "menus": menus,  # null = todos permitidos; array = só esses menus
+        "menus": menus,
     }
 
 
-# ── Registrar nova empresa (onboarding) ───────────────────────────────────────
+# ── Registrar nova empresa (onboarding via tokenForm) ─────────────────────────
 
 @router.post("/registrar-empresa", status_code=status.HTTP_201_CREATED)
-async def registrar_empresa(body: RegistrarEmpresaRequest, db=Depends(get_db)):
-    """
-    Ativa o app com o token do cliente gerado no Monitor.
-
-    Fluxo:
-      1. Valida token com Monitor → obtém nome, CNPJ, token e usuários vinculados
-      2. Cria/atualiza empresa no banco do app
-      3. Importa todos os usuários vinculados ao cliente no monitor
-      4. Retorna CNPJ para prosseguir ao login
-    """
+async def registrar_empresa(body: RegistrarEmpresaRequest, request: Request, db=Depends(get_db)):
     token = body.token.strip()
     if not token:
         raise HTTPException(status_code=400, detail="Token não pode ser vazio.")
 
-    # ── Valida token no Monitor ───────────────────────────────────────────────
+    ip = _client_ip(request)
+    if not _activation_limiter.is_allowed(ip):
+        raise HTTPException(status_code=429, detail="Muitas tentativas de ativação. Aguarde 1 hora.")
+
     monitor_url = settings.monitor_url.rstrip("/")
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            r = await client.get(f"{monitor_url}/api/auth/cliente/{token}")
+        client = get_http_client()
+        r = await client.get(f"{monitor_url}/api/auth/cliente/{token}")
     except Exception as exc:
         logger.error("Erro ao chamar Monitor: %s", exc)
         raise HTTPException(status_code=503, detail="Não foi possível conectar ao servidor de ativação.")
@@ -390,7 +424,6 @@ async def registrar_empresa(body: RegistrarEmpresaRequest, db=Depends(get_db)):
     if not cnpj:
         raise HTTPException(status_code=422, detail="Monitor não retornou CNPJ válido.")
 
-    # ── Cria ou atualiza empresa ──────────────────────────────────────────────
     await db.execute(
         """INSERT INTO empresas (cnpj, nome, token, ativo)
            VALUES (?, ?, ?, TRUE)
@@ -404,7 +437,6 @@ async def registrar_empresa(body: RegistrarEmpresaRequest, db=Depends(get_db)):
         emp_row = await c.fetchone()
     empresa_id = emp_row["id"]
 
-    # ── Importa usuários vinculados ao cliente no Monitor ────────────────────
     usuarios_importados = 0
     for u in usuarios_monitor:
         username = u.get("username", "").strip().lower()
@@ -421,19 +453,17 @@ async def registrar_empresa(body: RegistrarEmpresaRequest, db=Depends(get_db)):
         usuarios_importados += 1
     await db.commit()
 
-    # ── Atualiza settings em memória para que login funcione imediatamente ─────
-    # (sem isso, login retorna 503 "Sistema não ativado" mesmo com empresa no banco)
+    # Atualiza settings em memória para que login funcione imediatamente
     if client_token and not settings.monitor_client_token:
         settings.monitor_client_token = client_token
 
     logger.info("Empresa ativada: %s (%s) — %d usuário(s) importado(s)", nome, cnpj, usuarios_importados)
-
     return {
         "ok": True,
         "empresa": nome,
         "cnpj": cnpj,
         "usuarios_importados": usuarios_importados,
-        "message": f"Empresa ativada! {usuarios_importados} usuário(s) importado(s). Faça login com seu CNPJ.",
+        "message": f"Empresa ativada! {usuarios_importados} usuário(s) importado(s). Faça login com seu usuário.",
     }
 
 

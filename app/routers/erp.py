@@ -6,10 +6,13 @@ from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from ..core.database import get_db
-from ..core.security import get_current_user
+from ..core.security import get_current_user, verify_erp_token
+
+# Limite máximo de arquivo via ERP: 50 MB decoded (~67 MB em base64)
+_MAX_B64_LEN = 67 * 1024 * 1024
 
 router = APIRouter(prefix="/api/erp", tags=["erp"])
 
@@ -32,23 +35,25 @@ def _record_call(empresa_id: int, request: Request, endpoint: str, ok: bool) -> 
 async def _verify_token(x_token: Optional[str], db) -> int:
     """
     Verifica o token ERP e retorna o empresa_id correspondente.
-    Cada empresa tem seu próprio token na tabela config.
+    Usa hmac.compare_digest para evitar timing attacks.
     """
     if not x_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token ERP não informado",
         )
+    # Busca todos os tokens ERP ativos e compara com compare_digest
     async with db.execute(
-        "SELECT empresa_id FROM config WHERE key='erp_token' AND value=?", (x_token,)
+        "SELECT empresa_id, value FROM config WHERE key='erp_token'"
     ) as cur:
-        row = await cur.fetchone()
-    if not row:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token ERP inválido",
-        )
-    return row["empresa_id"]
+        rows = await cur.fetchall()
+    for row in rows:
+        if verify_erp_token(x_token, row["value"]):
+            return row["empresa_id"]
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Token ERP inválido",
+    )
 
 
 class Produto(BaseModel):
@@ -76,6 +81,13 @@ class ArquivoPayload(BaseModel):
     nome_arquivo: str
     conteudo_base64: str
     mensagem: Optional[str] = None
+
+    @field_validator("conteudo_base64")
+    @classmethod
+    def check_tamanho(cls, v: str) -> str:
+        if len(v) > _MAX_B64_LEN:
+            raise ValueError("Arquivo muito grande. Limite: 50 MB.")
+        return v
 
 
 def _montar_lista_produtos(produtos: List[Produto]) -> str:

@@ -20,6 +20,11 @@ from pydantic import BaseModel
 
 from ..core.activation import decrypt_config, apply_config_to_env, env_path as get_env_path
 from ..core.config import settings
+from ..core.http_client import get_http_client
+from ..routers.auth import _RateLimiter, _client_ip
+
+# 5 tentativas de ativação por IP por hora
+_activate_limiter = _RateLimiter(max_calls=5, period_seconds=3600)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["activation"])
@@ -68,6 +73,13 @@ async def activate(body: ActivatePayload, request: Request):
     if not token:
         return JSONResponse({"ok": False, "error": "Token não pode ser vazio."}, status_code=400)
 
+    ip = _client_ip(request)
+    if not _activate_limiter.is_allowed(ip):
+        return JSONResponse(
+            {"ok": False, "error": "Muitas tentativas de ativação. Aguarde 1 hora."},
+            status_code=429,
+        )
+
     # Normaliza formato: remove hífens, maiúsculas (exibido como XXXX-XXXX mas armazenado sem)
     token = token.replace("-", "").upper()
 
@@ -75,12 +87,12 @@ async def activate(body: ActivatePayload, request: Request):
 
     # ── 1. Valida token no Monitor ────────────────────────────────────────────
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.post(
-                f"{monitor_url}/api/activate/validate",
-                json={"activation_token": token},
-                headers={"x-client-token": settings.monitor_client_token or ""},
-            )
+        client = get_http_client()
+        resp = await client.post(
+            f"{monitor_url}/api/activate/validate",
+            json={"activation_token": token},
+            headers={"x-client-token": settings.monitor_client_token or ""},
+        )
     except httpx.ConnectError:
         logger.warning("[activation] Monitor inalcançável em %s", monitor_url)
         return JSONResponse(

@@ -1,6 +1,9 @@
+import logging
 import sys
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_logger = logging.getLogger(__name__)
 
 # Quando frozen pelo PyInstaller, os módulos ficam em _internal/ e __file__ aponta
 # para dentro dessa pasta. O .env real está na pasta do executável (pai de _internal).
@@ -20,6 +23,11 @@ class Settings(BaseSettings):
     session_max_age: int = 86400
     database_url: str = "postgresql://postgres@localhost/zapdin_app"
     port: int = 4000
+
+    # True apenas quando o app roda com HTTPS (produção cloud).
+    # Manter False para instalações locais (HTTP) — caso contrário o browser
+    # não envia o cookie e o login quebra.
+    cookie_secure: bool = False
 
     # Estado de ativação: "locked" bloqueia todas as rotas exceto /activate
     app_state: str = "locked"
@@ -59,3 +67,11 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+_DEFAULT_SECRET = "dev-secret-key-change-in-production"
+if settings.secret_key == _DEFAULT_SECRET:
+    _logger.warning(
+        "[config] ATENÇÃO: SECRET_KEY está com o valor padrão de desenvolvimento. "
+        "Defina SECRET_KEY no .env antes de usar em produção — "
+        "qualquer pessoa pode forjar cookies de sessão com este valor."
+    )
