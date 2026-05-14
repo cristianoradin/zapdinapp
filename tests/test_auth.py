@@ -21,13 +21,18 @@ pytestmark = pytest.mark.asyncio(loop_scope="session")
 
 # ── Dados de teste ─────────────────────────────────────────────────────────────
 
+# Hashes bcrypt válidos (rounds=4, rápido para testes) para a senha "senha123"
+# Geradas com: bcrypt.hashpw(b"senha123", bcrypt.gensalt(4)).decode()
+_HASH_IHAN  = "$2b$04$b3CCvn1u7H.xT9sy2Fp8je3N07rqe6nnHz1z2mkjw6s2PtNR7xH6K"
+_HASH_ADMIN = "$2b$04$s.AllDDEYm3ItPnFGhI8/.ysl0YoWjASxwz40YmUQURkW47z8rKVy"
+
 _MONITOR_CLIENTE = {
     "nome":    "POSTO PARAISO 2",
     "cnpj":    "12345678000195",
     "token":   "client-token-permanente",
     "usuarios": [
-        {"username": "ihan",  "password_hash": "$2b$12$fakehashfakehashfakehashfa"},
-        {"username": "admin", "password_hash": "$2b$12$fakehashfakehashfakehashfb"},
+        {"username": "ihan",  "password_hash": _HASH_IHAN},
+        {"username": "admin", "password_hash": _HASH_ADMIN},
     ],
 }
 
@@ -185,17 +190,17 @@ async def test_login_usa_token_do_banco_quando_settings_vazio(client):
     # (token salvo no banco, mas settings vazio — o fallback deve resolver)
     settings.monitor_client_token = ""
 
-    # Login deve funcionar usando o token salvo no banco
-    respx.post("http://monitor.test/api/auth/verificar").mock(
-        return_value=httpx.Response(200, json={"ok": True, "username": "ihan"})
-    )
+    # Login deve funcionar usando o token salvo no banco.
+    # SEC-04: usuário "ihan" foi importado com hash real (_HASH_IHAN) via registrar-empresa.
+    # A verificação é LOCAL — o monitor não é chamado para /verificar.
+    # Apenas usuario-menus é consultado pós-auth.
     respx.get("http://monitor.test/api/auth/usuario-menus/ihan").mock(
         return_value=httpx.Response(200, json={"menus": None})
     )
 
     resp = await client.post(
         "/api/auth/login",
-        json={"username": "ihan", "password": "senha123"},
+        json={"username": "ihan", "password": "senha123"},  # senha que gerou _HASH_IHAN
     )
 
     assert resp.status_code == 200, f"Esperado 200, got {resp.status_code}: {resp.json()}"
@@ -228,14 +233,21 @@ async def test_login_bloqueado_sem_empresa_no_banco(client):
 
 @respx.mock
 async def test_login_credenciais_invalidas_retorna_401(client):
-    """Credenciais erradas devem retornar 401 (não 403 do middleware nem 503 de config)."""
+    """
+    Credenciais erradas retornam 401.
+    SEC-04: com hash local válido (importado via auto-setup), a verificação é
+    feita localmente — o monitor NÃO é chamado para /api/auth/verificar.
+    """
     settings.app_state = "active"
-    settings.monitor_client_token = "test-token"
+    settings.monitor_client_token = "client-token-permanente"
 
-    respx.post("http://monitor.test/api/auth/verificar").mock(
-        return_value=httpx.Response(401)
+    # Registra empresa (banco limpo pelo clean_db)
+    respx.get("http://monitor.test/api/auth/cliente/client-token-permanente").mock(
+        return_value=httpx.Response(200, json=_MONITOR_CLIENTE)
     )
+    await client.post("/api/auth/auto-setup")
 
+    # Senha errada — verificação local → 401
     resp = await client.post(
         "/api/auth/login",
         json={"username": "ihan", "password": "senha_errada"},
@@ -259,17 +271,16 @@ async def test_login_completo_apos_auto_setup(client):
     )
     await client.post("/api/auth/auto-setup")
 
-    # login
-    respx.post("http://monitor.test/api/auth/verificar").mock(
-        return_value=httpx.Response(200, json={"ok": True, "username": "ihan"})
-    )
+    # login — SEC-04: verificação LOCAL (hash importado do monitor, senha bate)
+    # O monitor NÃO é chamado para /api/auth/verificar neste caminho.
+    # Mocamos usuario-menus apenas (ainda consultado após auth local bem-sucedida).
     respx.get(
         "http://monitor.test/api/auth/usuario-menus/ihan",
     ).mock(return_value=httpx.Response(200, json={"menus": None}))
 
     resp = await client.post(
         "/api/auth/login",
-        json={"username": "ihan", "password": "senha123"},
+        json={"username": "ihan", "password": "senha123"},  # senha que gerou _HASH_IHAN
     )
 
     assert resp.status_code == 200

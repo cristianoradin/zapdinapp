@@ -32,7 +32,12 @@ def hash_password(plain: str) -> str:
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return bcrypt.checkpw(plain.encode(), hashed.encode())
+    """Verifica senha contra hash bcrypt. Retorna False para hashes inválidos/corrompidos."""
+    try:
+        return bcrypt.checkpw(plain.encode(), hashed.encode())
+    except ValueError:
+        # Hash inválido ou corrompido — trata como verificação negativa
+        return False
 
 
 def create_session_token(user_id: int, username: str, empresa_id: int) -> str:
