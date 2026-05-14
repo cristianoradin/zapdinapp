@@ -124,22 +124,31 @@ async def activate(body: ActivatePayload, request: Request):
         logger.error("[activation] Erro ao gravar .env: %s", exc)
         return JSONResponse({"ok": False, "error": "Erro ao salvar configurações."}, status_code=500)
 
-    logger.info("[activation] Ativação bem-sucedida. Reiniciando em 2s…")
+    # ── 4. Atualiza estado em memória imediatamente ───────────────────────────
+    # LockMiddleware usa settings.is_locked (RAM). Sem isso, o app bloqueia o
+    # login até reiniciar mesmo com .env já gravado corretamente.
+    settings.app_state = "active"
+    logger.info("[activation] Ativação bem-sucedida. APP_STATE=active em memória. Reiniciando em 3s…")
 
-    # ── 4. Agenda restart (NSSM vai reiniciar o serviço automaticamente) ──────
+    # ── 5. Agenda restart para recarregar config completa (DB URL, secret…) ──
     asyncio.create_task(_delayed_restart())
 
     return JSONResponse({
         "ok": True,
-        "message": "Sistema ativado! Reiniciando em instantes…",
+        "message": "Sistema ativado! Redirecionando para o login…",
     })
 
 
 async def _delayed_restart() -> None:
-    """Aguarda 2s para que o cliente receba a resposta e então encerra o processo.
-    Em produção: NSSM detecta a saída e reinicia (AppExit Default Restart).
-    Em dev: o .command faz loop e reinicia automaticamente.
+    """Aguarda 3s para que o cliente receba a resposta e então encerra o processo.
+
+    Task Scheduler (Windows):
+      - exit code 1 → tratado como falha → RestartCount=3 reinicia o processo.
+      - exit code 0 → sucesso → Task Scheduler NÃO reinicia automaticamente.
+    Por isso usamos sys.exit(1) para garantir o restart via Task Scheduler.
+
+    Em dev (Mac): o .command faz loop e reinicia automaticamente de qualquer forma.
     """
-    await asyncio.sleep(2)
-    logger.info("[activation] Encerrando para reiniciar com nova configuração…")
-    sys.exit(0)
+    await asyncio.sleep(3)
+    logger.info("[activation] Encerrando com código 1 para Task Scheduler reiniciar…")
+    sys.exit(1)
