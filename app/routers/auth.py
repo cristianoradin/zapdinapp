@@ -142,7 +142,17 @@ async def check_cnpj(body: CNPJCheck, db=Depends(get_db)):
     if len(cnpj) != 14:
         raise HTTPException(status_code=400, detail="CNPJ inválido. Informe os 14 dígitos.")
 
-    if not settings.monitor_client_token:
+    client_token = settings.monitor_client_token
+    if not client_token:
+        async with db.execute(
+            "SELECT token FROM empresas WHERE ativo = TRUE ORDER BY id LIMIT 1"
+        ) as cur:
+            _emp = await cur.fetchone()
+        if _emp and _emp["token"]:
+            client_token = _emp["token"]
+            settings.monitor_client_token = client_token
+
+    if not client_token:
         raise HTTPException(status_code=503, detail="Sistema não ativado. Informe o token de ativação.")
 
     monitor_url = settings.monitor_url.rstrip("/")
@@ -150,7 +160,7 @@ async def check_cnpj(body: CNPJCheck, db=Depends(get_db)):
         async with httpx.AsyncClient(timeout=10) as client:
             r = await client.post(
                 f"{monitor_url}/api/auth/check-cnpj",
-                json={"cnpj": cnpj, "client_token": settings.monitor_client_token},
+                json={"cnpj": cnpj, "client_token": client_token},
             )
     except Exception as exc:
         logger.error("Erro ao contatar Monitor (check-cnpj): %s", exc)
@@ -172,7 +182,19 @@ async def check_cnpj(body: CNPJCheck, db=Depends(get_db)):
 async def login(body: LoginRequest, response: Response, db=Depends(get_db)):
     username = body.username.strip().lower()
 
-    if not settings.monitor_client_token:
+    # Tenta obter token: primeiro de settings, depois do banco (fallback)
+    client_token = settings.monitor_client_token
+    if not client_token:
+        async with db.execute(
+            "SELECT token FROM empresas WHERE ativo = TRUE ORDER BY id LIMIT 1"
+        ) as cur:
+            _emp = await cur.fetchone()
+        if _emp and _emp["token"]:
+            client_token = _emp["token"]
+            # Atualiza settings em memória para as próximas requisições
+            settings.monitor_client_token = client_token
+
+    if not client_token:
         raise HTTPException(status_code=503, detail="Sistema não ativado. Informe o token de ativação.")
 
     # Valida credenciais no Monitor
@@ -184,7 +206,7 @@ async def login(body: LoginRequest, response: Response, db=Depends(get_db)):
                 json={
                     "username": username,
                     "password": body.password,
-                    "client_token": settings.monitor_client_token,
+                    "client_token": client_token,
                 },
             )
     except Exception as exc:
@@ -398,6 +420,11 @@ async def registrar_empresa(body: RegistrarEmpresaRequest, db=Depends(get_db)):
         )
         usuarios_importados += 1
     await db.commit()
+
+    # ── Atualiza settings em memória para que login funcione imediatamente ─────
+    # (sem isso, login retorna 503 "Sistema não ativado" mesmo com empresa no banco)
+    if client_token and not settings.monitor_client_token:
+        settings.monitor_client_token = client_token
 
     logger.info("Empresa ativada: %s (%s) — %d usuário(s) importado(s)", nome, cnpj, usuarios_importados)
 

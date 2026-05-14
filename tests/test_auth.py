@@ -142,7 +142,7 @@ async def test_empresa_info_retorna_dados_apos_auto_setup(client):
 
 async def test_login_bloqueado_sem_monitor_token(client):
     """
-    CRÍTICO: login com MONITOR_CLIENT_TOKEN vazio deve retornar 503.
+    CRÍTICO: login com MONITOR_CLIENT_TOKEN vazio E sem empresa no banco deve retornar 503.
     Mensagem deve ser 'Sistema não ativado' — indica configuração incompleta.
     """
     settings.app_state = "active"
@@ -155,6 +155,51 @@ async def test_login_bloqueado_sem_monitor_token(client):
 
     assert resp.status_code == 503
     assert "não ativado" in resp.json()["detail"].lower()
+
+
+@respx.mock
+async def test_login_usa_token_do_banco_quando_settings_vazio(client):
+    """
+    REGRESSÃO v34: usuário entrou o token via tokenForm → registrar-empresa salvou no
+    banco mas settings.monitor_client_token ficou vazio → login retornava 503.
+
+    Com o fix, login lê o token da empresa no banco como fallback e funciona.
+    """
+    settings.app_state = "active"
+    settings.monitor_client_token = ""  # simula .env sem token (bug do instalador antigo)
+
+    # Primeiro: registra empresa via tokenForm (registrar-empresa)
+    respx.get("http://monitor.test/api/auth/cliente/token-via-form").mock(
+        return_value=httpx.Response(200, json=_MONITOR_CLIENTE)
+    )
+    r_reg = await client.post(
+        "/api/auth/registrar-empresa",
+        json={"token": "token-via-form"},
+    )
+    assert r_reg.status_code == 201
+
+    # Após registrar-empresa, settings deve ter sido atualizado em memória
+    assert settings.monitor_client_token == "client-token-permanente"
+
+    # Agora zera settings novamente para simular reinício do processo
+    # (token salvo no banco, mas settings vazio — o fallback deve resolver)
+    settings.monitor_client_token = ""
+
+    # Login deve funcionar usando o token salvo no banco
+    respx.post("http://monitor.test/api/auth/verificar").mock(
+        return_value=httpx.Response(200, json={"ok": True, "username": "ihan"})
+    )
+    respx.get("http://monitor.test/api/auth/usuario-menus/ihan").mock(
+        return_value=httpx.Response(200, json={"menus": None})
+    )
+
+    resp = await client.post(
+        "/api/auth/login",
+        json={"username": "ihan", "password": "senha123"},
+    )
+
+    assert resp.status_code == 200, f"Esperado 200, got {resp.status_code}: {resp.json()}"
+    assert resp.json()["ok"] is True
 
 
 @respx.mock
