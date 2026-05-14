@@ -15,6 +15,15 @@ else:
     # Dev: app/core/config.py → app/core/ → app/ → app/.env
     _ENV_FILE = str(Path(__file__).parent.parent / ".env")
 
+# Tenta descriptografar .env.enc via DPAPI (Windows) antes do pydantic-settings
+# ler o env_file. Se o .enc existir, os valores são injetados em os.environ,
+# que tem prioridade sobre o env_file no pydantic-settings.
+try:
+    from .env_protector import load_env_to_environ as _load_enc
+    _load_enc(Path(_ENV_FILE))
+except Exception:
+    pass  # Nunca impede o startup — fallback para o .env normal
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=_ENV_FILE, env_file_encoding="utf-8-sig", extra="ignore")

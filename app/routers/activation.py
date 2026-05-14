@@ -132,7 +132,16 @@ async def activate(body: ActivatePayload, request: Request):
 
     # ── 3. Grava .env e ativa ──────────────────────────────────────────────────
     try:
-        apply_config_to_env(config, get_env_path())
+        env_path = get_env_path()
+        apply_config_to_env(config, env_path)
+        # Após gravar o .env, criptografa via DPAPI (Windows) e apaga o texto puro
+        try:
+            from ..core.env_protector import protect_env_file
+            protected = protect_env_file(env_path)
+            if protected:
+                logger.info("[activation] .env protegido via DPAPI — arquivo criptografado em disco")
+        except Exception as _pe:
+            logger.warning("[activation] DPAPI indisponível, .env mantido em texto puro: %s", _pe)
     except Exception as exc:
         logger.error("[activation] Erro ao gravar .env: %s", exc)
         return JSONResponse({"ok": False, "error": "Erro ao salvar configurações."}, status_code=500)
