@@ -491,7 +491,15 @@ class WhatsAppSession:
                     return False, "Tempo esgotado ao abrir conversa"
 
                 await compose.click()
-                await self._page.keyboard.type(message)
+                # Digita linha a linha usando Shift+Enter para quebras de linha.
+                # keyboard.type(\n) seria interpretado como Enter = enviar mensagem parcial.
+                lines = message.split("\n")
+                for i, line in enumerate(lines):
+                    if line:
+                        await self._page.keyboard.type(line)
+                    if i < len(lines) - 1:
+                        await self._page.keyboard.press("Shift+Enter")
+                await asyncio.sleep(0.3)
                 await self._page.keyboard.press("Enter")
                 await asyncio.sleep(2)
                 asyncio.create_task(self._return_home())

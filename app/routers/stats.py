@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Header, HTTPException
 
 from ..core.config import settings
 from ..core.database import get_db
-from ..core.security import get_current_user
+from ..core.security import get_current_user, verify_erp_token
 
 if settings.use_evolution:
     from ..services.evolution_service import evo_manager as wa_manager
@@ -61,4 +63,65 @@ async def get_stats(
         "hoje": hoje,
         "sessoes_ativas": sessoes_ativas,
         "recentes": recentes,
+    }
+
+
+@router.get("/queue")
+async def get_queue_stats(
+    db=Depends(get_db),
+    x_token: Optional[str] = Header(default=None),
+):
+    """
+    Retorna estatísticas da fila de envio autenticado por token ERP.
+    Usado pelo PDV local para exibir o status da fila sem login de sessão.
+    """
+    # Autentica pelo token ERP (mesmo mecanismo do /api/erp/*)
+    if not x_token:
+        raise HTTPException(status_code=401, detail="Token obrigatório")
+    async with db.execute(
+        "SELECT empresa_id, value FROM config WHERE key='erp_token'"
+    ) as cur:
+        rows = await cur.fetchall()
+    empresa_id = None
+    for row in rows:
+        if verify_erp_token(x_token, row["value"]):
+            empresa_id = row["empresa_id"]
+            break
+    if not empresa_id:
+        raise HTTPException(status_code=401, detail="Token inválido")
+
+    async with db.execute(
+        "SELECT COUNT(*) as c FROM mensagens WHERE empresa_id=? AND status='queued'",
+        (empresa_id,),
+    ) as cur:
+        msg_queued = (await cur.fetchone())["c"]
+
+    async with db.execute(
+        "SELECT COUNT(*) as c FROM arquivos WHERE empresa_id=? AND status='queued'",
+        (empresa_id,),
+    ) as cur:
+        arq_queued = (await cur.fetchone())["c"]
+
+    async with db.execute(
+        "SELECT COUNT(*) as c FROM mensagens WHERE empresa_id=? AND status='sent' AND sent_at::date = CURRENT_DATE",
+        (empresa_id,),
+    ) as cur:
+        msg_sent = (await cur.fetchone())["c"]
+
+    async with db.execute(
+        "SELECT COUNT(*) as c FROM mensagens WHERE empresa_id=? AND status='failed'",
+        (empresa_id,),
+    ) as cur:
+        msg_failed = (await cur.fetchone())["c"]
+
+    sessoes = wa_manager.get_status(empresa_id)
+    conectadas = [s for s in sessoes if s["status"] == "connected"]
+
+    return {
+        "mensagens_queued": msg_queued,
+        "arquivos_queued":  arq_queued,
+        "mensagens_sent":   msg_sent,
+        "mensagens_failed": msg_failed,
+        "sessoes_conectadas": len(conectadas),
+        "sessoes": sessoes,
     }

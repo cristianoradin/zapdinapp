@@ -1,9 +1,20 @@
 from fastapi import APIRouter, Depends
 
+from ..core.config import settings
 from ..core.database import get_db
 from ..core.security import get_current_user
 
 router = APIRouter(prefix="/api/config", tags=["config"])
+
+# Template padrão usado na primeira vez (sem mensagem_padrao salva no banco)
+_DEFAULT_TEMPLATE = (
+    "✅ *Venda Confirmada!*\n\n"
+    "👤 Cliente: {nome}\n"
+    "💰 Valor Total: R$ {valor_total}\n"
+    "📅 Data: {data}\n\n"
+    "🛒 *Itens:*\n{produtos}\n\n"
+    "Obrigado pela preferência! 🙏"
+)
 
 
 @router.get("")
@@ -16,7 +27,16 @@ async def get_config(
         "SELECT key, value FROM config WHERE empresa_id=?", (empresa_id,)
     ) as cur:
         rows = await cur.fetchall()
-    return {r["key"]: r["value"] for r in rows}
+    data = {r["key"]: r["value"] for r in rows}
+
+    # Garante template padrão se ainda não foi salvo
+    if "mensagem_padrao" not in data:
+        data["mensagem_padrao"] = _DEFAULT_TEMPLATE
+
+    # Expõe o nome da empresa da licença (somente leitura — não editável)
+    data["client_name"] = settings.client_name or ""
+
+    return data
 
 
 @router.post("")

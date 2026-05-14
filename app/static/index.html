@@ -1560,6 +1560,21 @@
           </div>
           <div class="alert" id="alertMensagem"></div>
 
+          <!-- Nome da empresa bloqueado -->
+          <div style="margin-bottom:1rem">
+            <div style="font-size:.72rem;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.4rem">
+              🔒 Cabeçalho fixo (não editável — vem da licença)
+            </div>
+            <div id="nomeEmpresaFixo" style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;
+                 padding:.55rem .85rem;font-family:'JetBrains Mono','Fira Code',monospace;
+                 font-size:.88rem;font-weight:700;color:#15803d;letter-spacing:.01em">
+              🏪 <span id="clientNameDisplay">…</span>
+            </div>
+            <div style="font-size:.7rem;color:var(--text-mid);margin-top:.3rem">
+              Este nome é adicionado automaticamente no topo de todas as mensagens.
+            </div>
+          </div>
+
           <!-- Variable chips -->
           <div style="margin-bottom:1rem">
             <div style="font-size:.72rem;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem">Clique para inserir</div>
@@ -1574,7 +1589,7 @@
           </div>
 
           <div class="form-group">
-            <label>Template da mensagem</label>
+            <label>Corpo da mensagem (editável)</label>
             <textarea id="inputMensagem" rows="10" style="font-family:'JetBrains Mono','Fira Code',monospace;font-size:.85rem"></textarea>
           </div>
           <button class="btn btn-primary" id="btnSalvarMensagem" style="width:100%;display:inline-flex;align-items:center;justify-content:center;gap:.45rem">
@@ -1594,7 +1609,7 @@
             </div>
             <div class="wa-preview-wrap">
               <div class="wa-bubble">
-                <div id="previewMensagem" style="font-size:.875rem"></div>
+                <div id="previewMensagem" style="font-size:.875rem;white-space:pre-wrap"></div>
                 <div class="wa-bubble-time">agora ✓✓</div>
               </div>
             </div>
@@ -3270,21 +3285,35 @@
   }
 
   // ── Mensagem ─────────────────────────────────────────────────────────────────
+  let _clientName = '';
+
   async function loadMensagem() {
     const res = await fetch('/api/config');
     if (!res.ok) return;
     const cfg = await res.json();
-    const tmpl = cfg.mensagem_padrao || '';
+
+    // Nome da empresa da licença (bloqueado)
+    _clientName = cfg.client_name || '';
+    document.getElementById('clientNameDisplay').textContent = _clientName || '(não configurado)';
+
+    // Template salvo — remove cabeçalho fixo se estava embutido (retrocompatibilidade)
+    let tmpl = cfg.mensagem_padrao || '';
+    const prefixo = '🏪 *' + _clientName + '*\n\n';
+    if (_clientName && tmpl.startsWith(prefixo)) {
+      tmpl = tmpl.slice(prefixo.length);
+    }
     document.getElementById('inputMensagem').value = tmpl;
     updatePreview(tmpl);
   }
 
   function updatePreview(tmpl) {
     const produtosEx = '• Gasolina Comum (x30) — R$ 5,99\n• Óleo Motor 5W30 (x1) — R$ 42,00';
-    const preview = tmpl
+    const header = _clientName ? '🏪 *' + _clientName + '*\n\n' : '';
+    const full = header + tmpl;
+    const preview = full
       .replace(/{nome}/g, 'João Silva')
       .replace(/{telefone}/g, '5511999990000')
-      .replace(/{data}/g, '21/04/2026')
+      .replace(/{data}/g, '14/05/2026')
       .replace(/{produtos}/g, produtosEx)
       .replace(/{valor_total_itens}/g, 'R$ 221,70')
       .replace(/{valor_total}/g, 'R$ 221,70')
@@ -3309,7 +3338,10 @@
   });
 
   document.getElementById('btnSalvarMensagem').addEventListener('click', async () => {
-    const val = document.getElementById('inputMensagem').value;
+    const corpo = document.getElementById('inputMensagem').value;
+    // Sempre salva com o cabeçalho fixo embutido no início
+    const header = _clientName ? '🏪 *' + _clientName + '*\n\n' : '';
+    const val = header + corpo;
     const res = await api('POST', '/api/config', { mensagem_padrao: val });
     if (res.ok) showAlert('alertMensagem', 'Mensagem salva com sucesso!');
     else showAlert('alertMensagem', 'Erro ao salvar', 'error');
