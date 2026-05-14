@@ -1,4 +1,6 @@
 import asyncio
+import logging
+import logging.handlers
 import os
 from contextlib import asynccontextmanager
 
@@ -10,6 +12,42 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from .core.config import settings
+from .core import log_collector as _log_collector
+
+# ── Logging com arquivo rotacionado + coletor para Monitor ───────────────────
+def _setup_logging() -> None:
+    """
+    Configura o sistema de logging do app:
+      - Console: nível INFO, formato legível
+      - Arquivo: data/zapdin.log, rotação 10 MB, mantém 5 arquivos
+      - Monitor: handler que coleta logs para enviar via heartbeat
+    """
+    os.makedirs("data", exist_ok=True)
+    fmt = logging.Formatter(
+        "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+
+    # Console
+    if not any(isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler)
+               for h in root.handlers):
+        sh = logging.StreamHandler()
+        sh.setFormatter(fmt)
+        root.addHandler(sh)
+
+    # Arquivo rotacionado (10 MB × 5 arquivos = até 50 MB de histórico)
+    fh = logging.handlers.RotatingFileHandler(
+        "data/zapdin.log", maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"
+    )
+    fh.setFormatter(fmt)
+    root.addHandler(fh)
+
+    # Coletor para Monitor (instala handler no root logger)
+    _log_collector.install()
+
+_setup_logging()
 from .core.database import init_db, get_db, get_db_direct
 from .core.http_client import close_http_client
 from .routers import auth, whatsapp, erp, config_router, arquivos, stats, telegram_router

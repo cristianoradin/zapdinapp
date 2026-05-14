@@ -1,4 +1,5 @@
 import base64
+import logging
 import os
 import secrets
 import uuid
@@ -10,6 +11,8 @@ from pydantic import BaseModel, field_validator
 
 from ..core.database import get_db
 from ..core.security import get_current_user, verify_erp_token
+
+logger = logging.getLogger(__name__)
 
 # Limite máximo de arquivo via ERP: 50 MB decoded (~67 MB em base64)
 _MAX_B64_LEN = 67 * 1024 * 1024
@@ -32,12 +35,14 @@ def _record_call(empresa_id: int, request: Request, endpoint: str, ok: bool) -> 
     }
 
 
-async def _verify_token(x_token: Optional[str], db) -> int:
+async def _verify_token(x_token: Optional[str], db, request: Request = None) -> int:
     """
     Verifica o token ERP e retorna o empresa_id correspondente.
     Usa hmac.compare_digest para evitar timing attacks.
     """
+    ip = request.client.host if request and request.client else "?"
     if not x_token:
+        logger.warning("[erp] Requisição sem token de ip=%s", ip)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token ERP não informado",
@@ -50,6 +55,7 @@ async def _verify_token(x_token: Optional[str], db) -> int:
     for row in rows:
         if verify_erp_token(x_token, row["value"]):
             return row["empresa_id"]
+    logger.warning("[erp] Token inválido recebido de ip=%s token=%s...", ip, x_token[:8] if x_token else "")
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Token ERP inválido",
@@ -133,7 +139,7 @@ async def receber_venda(
     x_token: Optional[str] = Header(default=None),
     db=Depends(get_db),
 ):
-    empresa_id = await _verify_token(x_token, db)
+    empresa_id = await _verify_token(x_token, db, request)
     telefone = _normalizar_telefone(body.telefone)
 
     async with db.execute(
@@ -151,6 +157,8 @@ async def receber_venda(
     )
     await db.commit()
     _record_call(empresa_id, request, "/api/erp/venda", True)
+    logger.info("[erp] venda enfileirada → empresa=%s fone=%s nome=%s ip=%s",
+                empresa_id, telefone, body.nome or "?", request.client.host if request.client else "?")
     return {"ok": True, "queued": True}
 
 
@@ -161,7 +169,7 @@ async def receber_arquivo(
     x_token: Optional[str] = Header(default=None),
     db=Depends(get_db),
 ):
-    empresa_id = await _verify_token(x_token, db)
+    empresa_id = await _verify_token(x_token, db, request)
     telefone = _normalizar_telefone(body.telefone)
 
     os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -182,6 +190,9 @@ async def receber_arquivo(
     )
     await db.commit()
     _record_call(empresa_id, request, "/api/erp/arquivo", True)
+    logger.info("[erp] arquivo enfileirado → empresa=%s fone=%s arquivo=%s tamanho=%dKB ip=%s",
+                empresa_id, telefone, body.nome_arquivo, len(conteudo) // 1024,
+                request.client.host if request.client else "?")
     return {"ok": True, "queued": True}
 
 

@@ -1,6 +1,22 @@
 """
-Heartbeat service: sends status to the central monitor every 30 seconds.
-Envia heartbeat para TODAS as empresas ativas no banco, não apenas a do .env.
+reporter.py — Serviço de Heartbeat (batimento cardíaco)
+========================================================
+A cada 30 segundos, envia um "sinal de vida" para o Monitor central informando:
+  - Nome e CNPJ da empresa
+  - Versão do app instalada
+  - Porta em que o app está rodando
+  - Status do WhatsApp (connected / qr_code / disconnected) e número conectado
+
+Comportamento multi-empresa:
+  O banco local pode ter múltiplas empresas cadastradas (tabela `empresas`).
+  O heartbeat é enviado individualmente para cada empresa ativa, usando o
+  token exclusivo de cada uma. Se o banco não estiver disponível, usa o
+  token do .env como fallback.
+
+Fluxo de auto-atualização (integrado):
+  Se o Monitor responder com um campo "update" no JSON, significa que o
+  admin disparou um deploy. O reporter cria uma background task que chama
+  updater.apply_monitor_update() para baixar e aplicar a nova versão.
 """
 import asyncio
 import json
@@ -13,11 +29,21 @@ from ..core.config import settings
 
 logger = logging.getLogger(__name__)
 
+# Task do loop de heartbeat, guardada para poder cancelar no shutdown
 _task: asyncio.Task | None = None
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+#  Utilitários internos
+# ─────────────────────────────────────────────────────────────────────────────
+
 async def _read_version() -> str:
+    """
+    Lê a versão instalada do arquivo versao.json na raiz do projeto.
+    Retorna '1.0.0' como fallback se o arquivo não existir ou estiver corrompido.
+    """
     try:
+        # Sobe dois níveis a partir de services/ para chegar na raiz do projeto (app/)
         base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         with open(os.path.join(base, "versao.json")) as f:
             return json.load(f).get("versao", "1.0.0")
@@ -26,78 +52,133 @@ async def _read_version() -> str:
 
 
 def _wa_info_for_empresa(empresa_id: int) -> dict:
-    """Retorna status e phone WA das sessões desta empresa."""
+    """
+    Retorna o status atual do WhatsApp para uma empresa específica.
+
+    O sistema suporta dois backends de WhatsApp:
+      - whatsapp_service (Playwright): gerenciado por WAManager
+      - evolution_service (Evolution API): gerenciado por EvoManager
+
+    As sessões são identificadas pelo prefixo "empresa_id:" (ex: "3:principal").
+    A prioridade de status é: connected > qr_code > disconnected.
+
+    Retorna dict com:
+      wa_status: 'connected' | 'qr_code' | 'disconnected'
+      wa_phone:  número conectado (ex: '5511999999999') ou None
+    """
     try:
+        # Import tardio para evitar importação circular no startup;
+        # o manager correto é escolhido com base na configuração use_evolution
         from ..core.config import settings as _settings
         if _settings.use_evolution:
             from .evolution_service import evo_manager as wa_manager
         else:
             from .whatsapp_service import wa_manager
+
+        # Filtra apenas as sessões pertencentes a esta empresa pelo prefixo
         prefix = f"{empresa_id}:"
         sessions = {k: s for k, s in wa_manager._sessions.items() if k.startswith(prefix)}
+
+        # Coleta os status únicos de todas as sessões da empresa
         statuses = {s.status for s in sessions.values()}
         logger.debug("[reporter] empresa=%s sessões=%s", empresa_id, statuses or "nenhuma")
+
+        # Prioridade: connected > qr_code > disconnected
         if "connected" in statuses:
-            # Pega phone da primeira sessão conectada
+            # Pega o número da primeira sessão conectada que tenha phone preenchido
             phone = next(
                 (s.phone for s in sessions.values() if s.status == "connected" and s.phone),
                 None,
             )
             return {"wa_status": "connected", "wa_phone": phone}
+
         if "qr_code" in statuses:
+            # Aguardando leitura do QR code pelo usuário
             return {"wa_status": "qr_code", "wa_phone": None}
+
         if statuses:
+            # Há sessões mas nenhuma conectada nem em QR
             return {"wa_status": "disconnected", "wa_phone": None}
+
     except Exception as exc:
         logger.warning("[reporter] _wa_info_for_empresa(%s) erro: %s", empresa_id, exc)
+
+    # Padrão seguro: sem sessões ou erro inesperado → desconectado
     return {"wa_status": "disconnected", "wa_phone": None}
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+#  Lógica principal do heartbeat
+# ─────────────────────────────────────────────────────────────────────────────
+
 async def _send_heartbeat() -> None:
+    """
+    Envia o heartbeat para cada empresa ativa cadastrada no banco.
+    Se o banco não estiver disponível, usa os dados do .env como fallback.
+
+    Após o envio bem-sucedido, verifica na resposta se o Monitor incluiu
+    um comando de atualização (campo 'update'). Se sim, inicia o processo
+    de auto-atualização em background (sem bloquear os próximos heartbeats).
+    """
     version = await _read_version()
     monitor_url = settings.monitor_url.rstrip("/")
 
-    # Busca todas as empresas ativas no banco para enviar heartbeat a cada uma
+    # Tenta buscar lista de empresas do banco; se falhar usa fallback do .env
     try:
         empresas = await _get_empresas_ativas()
     except Exception as exc:
         logger.debug("Não foi possível buscar empresas para heartbeat: %s", exc)
-        # Fallback: usa token do .env
+        # Fallback: monta uma empresa fictícia com os dados do .env
         empresas = [{"token": settings.monitor_client_token,
                      "nome": settings.client_name,
                      "cnpj": settings.client_cnpj,
                      "id": 0}]
 
+    # Reutiliza o mesmo cliente HTTP para todas as empresas desta rodada
     async with httpx.AsyncClient(timeout=10) as client:
         for emp in empresas:
+            # Cada empresa tem seu próprio token de autenticação no Monitor
             token = emp.get("token") or settings.monitor_client_token
             if not token:
-                continue
+                continue  # empresa sem token não pode se identificar — pula
+
             wa_info = _wa_info_for_empresa(emp.get("id", 0))
+
+            # Coleta logs acumulados desde o último heartbeat para enviar ao Monitor
+            from ..core import log_collector as _lc
+            logs_batch = _lc.flush()
+
             payload = {
-                "nome": emp.get("nome", settings.client_name),
-                "cnpj": emp.get("cnpj", settings.client_cnpj),
-                "versao": version,
-                "porta": settings.port,
+                "nome":      emp.get("nome", settings.client_name),
+                "cnpj":      emp.get("cnpj", settings.client_cnpj),
+                "versao":    version,
+                "porta":     settings.port,
                 "wa_status": wa_info["wa_status"],
-                "wa_phone": wa_info["wa_phone"],
+                "wa_phone":  wa_info["wa_phone"],
+                "logs":      logs_batch,  # lista de {ts, nivel, cat, msg}
             }
+
             try:
                 resp = await client.post(
                     f"{monitor_url}/api/report",
                     json=payload,
                     headers={"x-client-token": token},
                 )
+
                 if resp.status_code not in (200, 201):
                     logger.warning("Monitor respondeu %s para empresa %s", resp.status_code, emp.get("nome"))
                     continue
 
-                # ── Verifica se o Monitor enviou um comando de atualização ──
+                # ── Verifica se o Monitor enviou um comando de atualização ──────
+                # O campo "update" é incluído na resposta quando o admin disparou
+                # um deploy para este cliente. Criamos uma background task para
+                # não bloquear o heartbeat das outras empresas nem o loop principal.
                 try:
                     resp_data = resp.json()
                     update_cmd = resp_data.get("update")
                     if update_cmd:
                         logger.info("[reporter] Comando de update recebido: v%s", update_cmd.get("versao"))
+                        # Import tardio para evitar importação circular
                         from . import updater as _updater
                         import asyncio as _asyncio
                         _asyncio.create_task(_updater.apply_monitor_update(
@@ -116,7 +197,14 @@ async def _send_heartbeat() -> None:
 
 
 async def _get_empresas_ativas() -> list:
-    """Lê todas as empresas ativas direto do pool do banco."""
+    """
+    Busca todas as empresas ativas que possuem token cadastrado no banco local.
+
+    Import tardio de _pool para evitar importação circular durante o startup
+    (database.py inicializa depois que reporter.py é importado).
+
+    Retorna lista de dicts com: id, nome, cnpj, token
+    """
     from ..core.database import _pool  # import tardio para evitar circular
     if _pool is None:
         return []
@@ -127,18 +215,25 @@ async def _get_empresas_ativas() -> list:
     return [dict(r) for r in rows]
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+#  Controle do loop (iniciado/parado pelo lifespan do FastAPI em main.py)
+# ─────────────────────────────────────────────────────────────────────────────
+
 async def _loop() -> None:
+    """Loop infinito: envia heartbeat e aguarda 30 segundos antes do próximo."""
     while True:
         await _send_heartbeat()
         await asyncio.sleep(30)
 
 
 def start() -> None:
+    """Inicia o serviço de heartbeat como task assíncrona em background."""
     global _task
     _task = asyncio.create_task(_loop())
 
 
 def stop() -> None:
+    """Cancela o loop de heartbeat (chamado no shutdown do app)."""
     global _task
     if _task:
         _task.cancel()

@@ -1,12 +1,15 @@
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
-from pydantic import BaseModel
-
+import logging
 import os
 import tempfile
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from pydantic import BaseModel
 
 from ..core.database import get_db
 from ..core.security import get_current_user
 from ..core.config import settings
+
+logger = logging.getLogger(__name__)
 
 if settings.use_evolution:
     from ..services.evolution_service import evo_manager as wa_manager
@@ -49,6 +52,7 @@ async def create_sessao(
     )
     await db.commit()
     await wa_manager.add_session(sessao_id, body.nome, empresa_id)
+    logger.info("[whatsapp] Sessão criada: id=%s nome=%s empresa=%s", sessao_id, body.nome, empresa_id)
     return {"id": sessao_id, "nome": body.nome, "status": "disconnected"}
 
 
@@ -64,6 +68,7 @@ async def delete_sessao(
         "DELETE FROM sessoes_wa WHERE id=? AND empresa_id=?", (sessao_id, empresa_id)
     )
     await db.commit()
+    logger.info("[whatsapp] Sessão removida: id=%s empresa=%s", sessao_id, empresa_id)
 
 
 @router.get("/live-status")
