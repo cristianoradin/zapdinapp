@@ -11,7 +11,6 @@ from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel
 
 from ..core.database import get_db
-from ..core.security import hash_password
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/monitor-sync", tags=["monitor-sync"])
@@ -39,12 +38,12 @@ async def _get_empresa_id(
 
 class UserSyncPayload(BaseModel):
     username: str
-    password: str
+    password_hash: str  # SEC-09: bcrypt hash — nunca plaintext em trânsito
     menus: list | None = None  # None = todos os menus; lista = só esses menus
 
 
 class SenhaPayload(BaseModel):
-    password: str
+    password_hash: str  # SEC-09: bcrypt hash — nunca plaintext em trânsito
 
 
 class UsernamePayload(BaseModel):
@@ -72,13 +71,14 @@ async def sync_usuario(
 ):
     username = body.username.strip().lower()
     menus_json = json.dumps(body.menus) if body.menus is not None else None
+    # SEC-09: recebe hash pronto — não re-hasheia, não expõe plaintext em trânsito
     await db.execute(
         """INSERT INTO usuarios (empresa_id, username, password_hash, menus)
            VALUES (?, ?, ?, ?)
            ON CONFLICT (empresa_id, username) DO UPDATE
            SET password_hash = EXCLUDED.password_hash,
                menus = EXCLUDED.menus""",
-        (empresa_id, username, hash_password(body.password), menus_json),
+        (empresa_id, username, body.password_hash, menus_json),
     )
     await db.commit()
     logger.info("[monitor-sync] Usuário '%s' sincronizado na empresa %s (menus=%s).", username, empresa_id, body.menus)
@@ -107,9 +107,10 @@ async def change_senha(
     empresa_id: int = Depends(_get_empresa_id),
     db=Depends(get_db),
 ):
+    # SEC-09: recebe hash pronto — não re-hasheia, não expõe plaintext em trânsito
     await db.execute(
         "UPDATE usuarios SET password_hash = ? WHERE username = ? AND empresa_id = ?",
-        (hash_password(body.password), username.lower(), empresa_id),
+        (body.password_hash, username.lower(), empresa_id),
     )
     await db.commit()
     return {"ok": True}

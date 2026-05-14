@@ -121,6 +121,7 @@ async def activate(body: ActivatePayload, request: Request):
             token=token,
             encrypted_b64=data["encrypted"],
             nonce_b64=data["nonce"],
+            salt_b64=data.get("salt"),  # SEC-12: salt aleatório (None = Monitor legado)
         )
     except ValueError as exc:
         logger.error("[activation] Falha na descriptografia: %s", exc)

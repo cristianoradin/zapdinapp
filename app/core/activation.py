@@ -42,13 +42,18 @@ _PBKDF2_ITERATIONS = 200_000
 #  Derivação de chave
 # ─────────────────────────────────────────────────────────────────────────────
 
-def derive_key(token: str) -> bytes:
-    """Deriva 256 bits de chave AES a partir do token via PBKDF2-SHA256."""
+def derive_key(token: str, salt: bytes | None = None) -> bytes:
+    """Deriva 256 bits de chave AES a partir do token via PBKDF2-SHA256.
+
+    Args:
+        token: token de ativação (normalizado: sem hífens, maiúsculas).
+        salt: salt aleatório de 16 bytes. Se None, usa _PBKDF2_SALT (legado).
+    """
     _, hashes, _, PBKDF2HMAC = _crypto_imports()
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
-        salt=_PBKDF2_SALT,
+        salt=salt if salt is not None else _PBKDF2_SALT,
         iterations=_PBKDF2_ITERATIONS,
     )
     return kdf.derive(token.strip().encode("utf-8"))
@@ -61,17 +66,22 @@ def derive_key(token: str) -> bytes:
 def encrypt_config(token: str, config: dict[str, Any]) -> dict[str, str]:
     """
     Criptografa um dicionário de config com AES-256-GCM.
-    Retorna {"encrypted": "<b64>", "nonce": "<b64>"}.
+    Retorna {"encrypted": "<b64>", "nonce": "<b64>", "salt": "<b64>"}.
     Chamado pelo Monitor ao gerar a resposta de ativação.
+
+    SEC-12: salt aleatório por ativação — elimina ataque de rainbow table
+    baseado no salt fixo anterior.
     """
     _, _, AESGCM, _ = _crypto_imports()
-    key = derive_key(token)
+    salt = secrets.token_bytes(16)           # 128 bits — salt único por ativação
+    key = derive_key(token, salt)
     nonce = secrets.token_bytes(12)          # 96 bits — tamanho padrão GCM
     plaintext = json.dumps(config, ensure_ascii=False).encode("utf-8")
     ciphertext = AESGCM(key).encrypt(nonce, plaintext, None)
     return {
         "encrypted": base64.b64encode(ciphertext).decode(),
         "nonce": base64.b64encode(nonce).decode(),
+        "salt": base64.b64encode(salt).decode(),
     }
 
 
@@ -83,13 +93,20 @@ def decrypt_config(
     token: str,
     encrypted_b64: str,
     nonce_b64: str,
+    salt_b64: str | None = None,
 ) -> dict[str, Any]:
     """
     Descriptografa o blob recebido do Monitor.
     Levanta ValueError se o token estiver errado ou o blob corrompido.
+
+    Args:
+        salt_b64: salt aleatório em base64 enviado pelo Monitor (SEC-12).
+                  Se None ou vazio, usa o salt fixo legado (_PBKDF2_SALT)
+                  para manter compatibilidade com Monitors antigos.
     """
     InvalidTag, _, AESGCM, _ = _crypto_imports()
-    key = derive_key(token)
+    salt = base64.b64decode(salt_b64) if salt_b64 else None
+    key = derive_key(token, salt)
     try:
         nonce      = base64.b64decode(nonce_b64)
         ciphertext = base64.b64decode(encrypted_b64)

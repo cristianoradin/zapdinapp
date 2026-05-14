@@ -219,10 +219,22 @@ async def check_cnpj(body: CNPJCheck, request: Request, db=Depends(get_db)):
     return {"ok": True, "nome": data["nome"], "cnpj": cnpj}
 
 
+# Sentinel: usuário criado localmente sem hash real (autenticado via monitor)
+_MONITOR_AUTH = "__MONITOR_AUTH__"
+
+
 # ── Passo 2: Login com usuário/senha ──────────────────────────────────────────
 
 @router.post("/login")
 async def login(body: LoginRequest, request: Request, response: Response, db=Depends(get_db)):
+    """
+    Fluxo de autenticação (SEC-04):
+      1. Busca empresa e usuário local no banco
+      2. Se o usuário tem hash real (importado do monitor) → verifica localmente.
+         A senha NUNCA é enviada ao monitor neste caminho.
+      3. Se não tem hash real (primeiro login) → fallback ao monitor para verificar.
+         Após sucesso, cria usuário local com sentinel _MONITOR_AUTH para próximos logins.
+    """
     username = body.username.strip().lower()
 
     ip = _client_ip(request)
@@ -245,86 +257,98 @@ async def login(body: LoginRequest, request: Request, response: Response, db=Dep
 
     monitor_url = settings.monitor_url.rstrip("/")
 
-    # Busca empresa enquanto valida no Monitor (em paralelo)
-    async def _fetch_menus(emp_token: str):
-        try:
-            client = get_http_client()
-            mr = await client.get(
-                f"{monitor_url}/api/auth/usuario-menus/{username}",
-                params={"client_token": emp_token},
-            )
-            if mr.status_code == 200:
-                return mr.json().get("menus")
-        except Exception as exc:
-            logger.debug("[login] Não foi possível buscar menus do monitor: %s", exc)
-        return None
+    # ── Busca empresa ─────────────────────────────────────────────────────────
+    if body.cnpj:
+        cnpj_norm = normalize_cnpj(body.cnpj)
+        async with db.execute(
+            "SELECT id, nome, token FROM empresas WHERE cnpj = ? AND ativo = TRUE", (cnpj_norm,)
+        ) as cur:
+            emp = await cur.fetchone()
+    else:
+        emp = None
 
-    async def _fetch_empresa(cnpj: str | None):
-        if cnpj:
-            cnpj_norm = normalize_cnpj(cnpj)
-            async with db.execute(
-                "SELECT id, nome, token FROM empresas WHERE cnpj = ? AND ativo = TRUE", (cnpj_norm,)
-            ) as cur:
-                emp = await cur.fetchone()
-            if emp:
-                return emp
+    if not emp:
         async with db.execute(
             "SELECT id, nome, token FROM empresas WHERE ativo = TRUE ORDER BY id LIMIT 1"
         ) as cur:
-            return await cur.fetchone()
+            emp = await cur.fetchone()
 
-    try:
-        client = get_http_client()
-        r = await client.post(
-            f"{monitor_url}/api/auth/verificar",
-            json={
-                "username": username,
-                "password": body.password,
-                "client_token": client_token,
-            },
-        )
-    except Exception as exc:
-        logger.error("Erro ao contatar Monitor (login): %s", exc)
-        raise HTTPException(status_code=503, detail="Não foi possível conectar ao servidor de autenticação.")
-
-    if r.status_code == 401:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciais inválidas.")
-    if r.status_code == 403:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Acesso não autorizado para este posto.")
-    if r.status_code != 200:
-        raise HTTPException(status_code=502, detail=f"Erro no servidor de autenticação ({r.status_code}).")
-
-    # Monitor validou — busca empresa e menus em paralelo
-    emp = await _fetch_empresa(body.cnpj)
     if not emp:
         raise HTTPException(status_code=503, detail="Nenhuma empresa ativa. Ative o sistema primeiro.")
 
-    empresa_id = emp["id"]
+    empresa_id  = emp["id"]
     empresa_nome = emp["nome"]
-    emp_token = emp["token"] or client_token
+    emp_token   = emp["token"] or client_token
 
-    menus_from_monitor = await _fetch_menus(emp_token)
-
-    # Busca ou cria usuário local
+    # ── Busca usuário local ───────────────────────────────────────────────────
     async with db.execute(
         "SELECT id, password_hash FROM usuarios WHERE username = ? AND empresa_id = ?",
         (username, empresa_id),
     ) as cur:
-        row = await cur.fetchone()
+        local_user = await cur.fetchone()
+
+    # Tem hash real importado do monitor → verifica localmente (senha não sai do app)
+    has_real_hash = (
+        local_user is not None
+        and local_user["password_hash"]
+        and local_user["password_hash"] != _MONITOR_AUTH
+    )
+
+    if has_real_hash:
+        if not verify_password(body.password, local_user["password_hash"]):
+            logger.warning("[login] Falha de autenticação local para '%s'", username)
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciais inválidas.")
+        logger.debug("[login] Autenticação local para '%s' — senha não enviada ao monitor", username)
+
+    else:
+        # Sem hash local → chama monitor (primeiro login ou usuário criado manualmente)
+        logger.debug("[login] Sem hash local para '%s', verificando no Monitor", username)
+        try:
+            http = get_http_client()
+            r = await http.post(
+                f"{monitor_url}/api/auth/verificar",
+                json={"username": username, "password": body.password, "client_token": client_token},
+            )
+        except Exception as exc:
+            logger.error("Erro ao contatar Monitor (login): %s", exc)
+            raise HTTPException(status_code=503, detail="Não foi possível conectar ao servidor de autenticação.")
+
+        if r.status_code == 401:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciais inválidas.")
+        if r.status_code == 403:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Acesso não autorizado para este posto.")
+        if r.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"Erro no servidor de autenticação ({r.status_code}).")
+
+    # ── Busca menus do monitor (sem senha) ────────────────────────────────────
+    menus_from_monitor = None
+    try:
+        http = get_http_client()
+        mr = await http.get(
+            f"{monitor_url}/api/auth/usuario-menus/{username}",
+            params={"client_token": emp_token},
+        )
+        if mr.status_code == 200:
+            menus_from_monitor = mr.json().get("menus")
+    except Exception as exc:
+        logger.debug("[login] Não foi possível buscar menus do monitor: %s", exc)
 
     menus_json = json.dumps(menus_from_monitor) if menus_from_monitor is not None else None
 
-    if row:
-        local_uid = row["id"]
+    # ── Cria ou atualiza usuário local ────────────────────────────────────────
+    if local_user:
+        local_uid = local_user["id"]
         await db.execute(
             "UPDATE usuarios SET menus = ? WHERE id = ? AND empresa_id = ?",
             (menus_json, local_uid, empresa_id),
         )
         await db.commit()
     else:
+        # Cria com sentinel — na próxima vez, fallback ao monitor novamente
+        # até que o hash seja sincronizado via auto-setup/registrar-empresa
         cur2 = await db.execute(
             "INSERT INTO usuarios (empresa_id, username, password_hash, menus) VALUES (?, ?, ?, ?)",
-            (empresa_id, username, hash_password(""), menus_json),
+            (empresa_id, username, _MONITOR_AUTH, menus_json),
         )
         await db.commit()
         local_uid = cur2.lastrowid or 0
