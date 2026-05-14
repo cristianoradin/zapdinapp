@@ -90,6 +90,27 @@ async def _send_heartbeat() -> None:
                 )
                 if resp.status_code not in (200, 201):
                     logger.warning("Monitor respondeu %s para empresa %s", resp.status_code, emp.get("nome"))
+                    continue
+
+                # ── Verifica se o Monitor enviou um comando de atualização ──
+                try:
+                    resp_data = resp.json()
+                    update_cmd = resp_data.get("update")
+                    if update_cmd:
+                        logger.info("[reporter] Comando de update recebido: v%s", update_cmd.get("versao"))
+                        from . import updater as _updater
+                        import asyncio as _asyncio
+                        _asyncio.create_task(_updater.apply_monitor_update(
+                            job_id=update_cmd["job_id"],
+                            pacote_id=update_cmd["pacote_id"],
+                            versao=update_cmd["versao"],
+                            checksum=update_cmd["checksum"],
+                            monitor_url=monitor_url,
+                            client_token=token,
+                        ))
+                except Exception as exc:
+                    logger.debug("[reporter] Erro ao processar resposta do heartbeat: %s", exc)
+
             except Exception as exc:
                 logger.debug("Heartbeat falhou para %s: %s", emp.get("nome"), exc)
 
