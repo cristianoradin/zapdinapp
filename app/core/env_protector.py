@@ -127,6 +127,18 @@ def load_env_to_environ(env_path: Path) -> bool:
     if not enc_path.exists():
         return False
 
+    # Se .env existe junto com .env.enc, o .env é mais recente (escrito pela
+    # ativação após falha do DPAPI). O .env.enc está desatualizado — apaga
+    # para evitar que valores antigos (ex.: SQLite do instalador) tenham
+    # prioridade sobre o .env correto (PostgreSQL da ativação).
+    if env_path.exists():
+        try:
+            enc_path.unlink()
+            logger.info("[env_protector] .env.enc desatualizado removido (coexistia com .env)")
+        except Exception as _e:
+            logger.warning("[env_protector] Não foi possível remover .env.enc antigo: %s", _e)
+        return False
+
     try:
         encrypted = enc_path.read_bytes()
         plain = _unprotect(encrypted).decode("utf-8-sig")
