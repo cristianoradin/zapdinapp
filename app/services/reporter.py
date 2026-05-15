@@ -175,6 +175,8 @@ async def _send_heartbeat() -> None:
                 # não bloquear o heartbeat das outras empresas nem o loop principal.
                 try:
                     resp_data = resp.json()
+
+                    # ── Verifica comando de atualização ────────────────────────
                     update_cmd = resp_data.get("update")
                     if update_cmd:
                         logger.info("[reporter] Comando de update recebido: v%s", update_cmd.get("versao"))
@@ -189,6 +191,35 @@ async def _send_heartbeat() -> None:
                             monitor_url=monitor_url,
                             client_token=token,
                         ))
+
+                    # ── Sincroniza avatares dos usuários ───────────────────────
+                    # O Monitor inclui a lista de usuários (username + avatar_url)
+                    # na resposta. O app atualiza o banco local para que o avatar
+                    # apareça na topbar sem precisar de acesso direto ao cliente.
+                    usuarios_sync = resp_data.get("usuarios")
+                    if usuarios_sync:
+                        empresa_id = emp.get("id")
+                        if empresa_id:
+                            try:
+                                from ..core.database import _pool as _app_pool
+                                if _app_pool is not None:
+                                    async with _app_pool.acquire() as conn:
+                                        for u in usuarios_sync:
+                                            await conn.execute(
+                                                """UPDATE usuarios
+                                                   SET avatar_url = $1
+                                                   WHERE username = $2 AND empresa_id = $3""",
+                                                u.get("avatar_url"),
+                                                u["username"],
+                                                empresa_id,
+                                            )
+                                    logger.debug(
+                                        "[reporter] Avatares sincronizados: %d usuário(s) empresa=%s",
+                                        len(usuarios_sync), empresa_id,
+                                    )
+                            except Exception as exc:
+                                logger.debug("[reporter] Erro ao sincronizar avatares: %s", exc)
+
                 except Exception as exc:
                     logger.debug("[reporter] Erro ao processar resposta do heartbeat: %s", exc)
 
