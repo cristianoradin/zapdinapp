@@ -1617,6 +1617,16 @@
     <!-- Dashboard -->
     <div class="page active" id="page-dashboard">
 
+      <!-- Fix 12: Banner de fila travada (oculto por padrão) -->
+      <div id="queueStuckBanner" style="display:none;align-items:center;gap:1rem;padding:.85rem 1.1rem;background:#fff3cd;border:1px solid #ffc107;border-radius:10px;margin-bottom:1rem">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <div style="flex:1">
+          <div style="font-weight:600;color:#92400e;font-size:.88rem">Fila de envios parada</div>
+          <div id="queueStuckMsg" style="color:#78350f;font-size:.8rem;margin-top:.15rem">Há mensagens aguardando há mais de 30 minutos. Verifique o WhatsApp e o worker.</div>
+        </div>
+        <button class="btn btn-sm" onclick="document.getElementById('queueStuckBanner').style.display='none'" style="background:#ffc107;color:#1a1d23;border:none;padding:.35rem .8rem;font-size:.78rem">Dispensar</button>
+      </div>
+
       <!-- Banner: sem sessão WhatsApp -->
       <div class="wa-connect-banner" id="waBanner">
         <div class="wa-connect-banner-icon">
@@ -3966,6 +3976,22 @@
       document.getElementById('statEnviadas').textContent = d.enviadas ?? 0;
       document.getElementById('statFalhas').textContent = d.falhas ?? 0;
       document.getElementById('statSessoes').textContent = d.sessoes_ativas ?? 0;
+
+      // Fix 12: Queue health check — alerta se fila está parada
+      try {
+        const qh = await fetch('/api/stats/queue-health');
+        if (qh.ok) {
+          const qd = await qh.json();
+          const banner = document.getElementById('queueStuckBanner');
+          if (qd.stuck_alert && qd.total_queued > 0) {
+            document.getElementById('queueStuckMsg').textContent =
+              `Há ${qd.total_queued} mensagem(ns) aguardando há ${qd.stuck_minutes} minutos. Verifique o WhatsApp${!qd.wa_connected ? ' (desconectado)' : ''} e o worker.`;
+            banner.style.display = 'flex';
+          } else if (!qd.stuck_alert) {
+            banner.style.display = 'none';
+          }
+        }
+      } catch(e) { /* queue-health é best-effort */ }
       const tbody = document.getElementById('tbodyRecentes');
       if (!d.recentes || d.recentes.length === 0) {
         tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:3rem 1rem">

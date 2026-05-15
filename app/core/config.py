@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     client_name: str = "Posto Principal"
     client_cnpj: str = ""
 
+    # Nome do serviço no Windows (Task Scheduler / NSSM).
+    # O instalador grava este valor no .env para que o updater use ao reiniciar.
+    service_name: str = "ZapDinApp"
+
     github_repo: str = "cristianoradin/zapdin2"
 
     # Velopack: URL do canal de atualizações

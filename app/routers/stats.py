@@ -149,3 +149,74 @@ async def get_queue_stats(
         "sessoes_conectadas": len(conectadas),
         "sessoes": sessoes,
     }
+
+
+@router.get("/queue-health")
+async def queue_health(
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """
+    Fix 12 — Verifica saúde da fila de envio.
+    Retorna alerta se há item 'queued' com mais de 30 minutos sem ser processado
+    (indica que o worker pode estar travado ou WhatsApp desconectado).
+    """
+    empresa_id = user["empresa_id"]
+
+    # Conta mensagens na fila
+    async with db.execute(
+        "SELECT COUNT(*) as c FROM mensagens WHERE empresa_id=? AND status='queued'",
+        (empresa_id,),
+    ) as cur:
+        msg_queued = (await cur.fetchone())["c"]
+
+    async with db.execute(
+        "SELECT COUNT(*) as c FROM arquivos WHERE empresa_id=? AND status='queued'",
+        (empresa_id,),
+    ) as cur:
+        arq_queued = (await cur.fetchone())["c"]
+
+    total_queued = msg_queued + arq_queued
+
+    # Verifica item mais antigo na fila (alerta se > 30 min)
+    stuck_minutes = None
+    stuck_alert = False
+
+    async with db.execute(
+        """SELECT MIN(created_at) as mais_antigo
+           FROM (
+               SELECT created_at FROM mensagens WHERE empresa_id=? AND status='queued'
+               UNION ALL
+               SELECT created_at FROM arquivos WHERE empresa_id=? AND status='queued'
+           ) q""",
+        (empresa_id, empresa_id),
+    ) as cur:
+        row = await cur.fetchone()
+
+    if row and row["mais_antigo"]:
+        from datetime import datetime, timezone
+        try:
+            mais_antigo = row["mais_antigo"]
+            if hasattr(mais_antigo, "tzinfo") and mais_antigo.tzinfo is None:
+                mais_antigo = mais_antigo.replace(tzinfo=timezone.utc)
+            agora = datetime.now(tz=timezone.utc)
+            diff = (agora - mais_antigo).total_seconds() / 60
+            stuck_minutes = round(diff, 1)
+            stuck_alert = diff > 30
+        except Exception:
+            pass
+
+    # Status das sessões
+    sessoes = wa_manager.get_status(empresa_id)
+    conectadas = [s for s in sessoes if s["status"] == "connected"]
+    wa_ok = len(conectadas) > 0
+
+    return {
+        "total_queued":    total_queued,
+        "msg_queued":      msg_queued,
+        "arq_queued":      arq_queued,
+        "stuck_minutes":   stuck_minutes,
+        "stuck_alert":     stuck_alert,    # True = alerta: fila parada há > 30 min
+        "wa_connected":    wa_ok,
+        "sessoes_ativas":  len(conectadas),
+    }

@@ -192,6 +192,20 @@ async def _send_heartbeat() -> None:
                             client_token=token,
                         ))
 
+                    # ── Fix 10: Verifica comando de rollback ────────────────────
+                    rollback_cmd = resp_data.get("rollback")
+                    if rollback_cmd:
+                        logger.warning(
+                            "[reporter] Comando de ROLLBACK recebido do Monitor (job_id=%s)",
+                            rollback_cmd.get("job_id"),
+                        )
+                        try:
+                            import httpx as _httpx
+                            async with _httpx.AsyncClient(timeout=5.0) as _rc:
+                                await _rc.post("http://127.0.0.1:%d/internal/rollback" % settings.port)
+                        except Exception as _re:
+                            logger.error("[reporter] Falha ao chamar /internal/rollback: %s", _re)
+
                     # ── Sincroniza avatares dos usuários ───────────────────────
                     # O Monitor inclui a lista de usuários (username + avatar_url)
                     # na resposta. O app atualiza o banco local para que o avatar
@@ -299,7 +313,7 @@ async def _loop() -> None:
         _cleanup_tick += 1
         if _cleanup_tick >= _CLEANUP_INTERVAL:
             _cleanup_tick = 0
-            await _cleanup_old_files()
+            asyncio.create_task(_cleanup_old_files())  # roda em paralelo — não bloqueia heartbeat
         await asyncio.sleep(30)
 
 

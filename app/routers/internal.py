@@ -227,6 +227,19 @@ async def sessions_status(
     return {"sessions": wa_manager.get_status(empresa_id)}
 
 
+@router.post("/rollback")
+async def trigger_rollback(request: Request):
+    """
+    Fix 10 — Reverte para a versão anterior (app_old/).
+    Chamado pelo reporter.py quando o Monitor envia comando 'rollback'.
+    Protegido por IP: apenas localhost pode chamar.
+    """
+    _require_localhost(request)
+    from ..services import updater as _updater
+    result = _updater.rollback()
+    return result
+
+
 @router.get("/daily-count/{sessao_id}")
 async def daily_count(
     sessao_id: str,
