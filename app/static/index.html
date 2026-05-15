@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -655,6 +656,79 @@
     }
     .btn-ghost:hover { color: var(--text); background: var(--surface2); opacity: 1; box-shadow: var(--shadow-sm); }
     .btn-sm { padding: .35rem .75rem; font-size: .8rem; }
+    /* ── Dashboard Campanhas ────────────────────────────────────────────────── */
+    .dash-kpi-card {
+      padding: 1.1rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: .3rem;
+    }
+    .dkpi-icon {
+      width: 38px; height: 38px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: .25rem;
+      flex-shrink: 0;
+    }
+    .dkpi-val {
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: -.03em;
+      line-height: 1;
+      color: var(--text);
+    }
+    .dkpi-label {
+      font-size: .75rem;
+      font-weight: 600;
+      color: var(--text-mid);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .dkpi-sub {
+      font-size: .72rem;
+      color: var(--text-light);
+      margin-top: .1rem;
+    }
+    .rank-row {
+      display: flex;
+      align-items: center;
+      gap: .625rem;
+    }
+    .rank-num {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: var(--surface2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .68rem; font-weight: 700;
+      color: var(--text-mid);
+      flex-shrink: 0;
+    }
+    .rank-num.gold   { background: #fef9c3; color: #b45309; }
+    .rank-num.silver { background: #f1f5f9; color: #475569; }
+    .rank-num.bronze { background: #fff7ed; color: #c2410c; }
+    .rank-bar-wrap {
+      flex: 1;
+    }
+    .rank-name {
+      font-size: .8rem; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      margin-bottom: .2rem;
+    }
+    .rank-bar-bg {
+      height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;
+    }
+    .rank-bar-fill {
+      height: 100%; border-radius: 3px;
+      transition: width .6s cubic-bezier(.4,0,.2,1);
+    }
+    .rank-stat {
+      font-size: .75rem; font-weight: 700; color: var(--text-mid);
+      white-space: nowrap; text-align: right; min-width: 52px;
+    }
+    @media (max-width: 640px) {
+      #dashRow1, #dashRow2 { grid-template-columns: 1fr; }
+    }
+
     .emoji-btn {
       cursor: pointer;
       font-size: 1.25rem;
@@ -1479,6 +1553,7 @@
   <div class="nav-item" data-page="docs"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span> Documentações</div>
 
   <div class="sidebar-section">Disparo em Massa</div>
+  <div class="nav-item" data-page="dm-dashboard"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span> Dashboard Campanhas</div>
   <div class="nav-item" data-page="dm-contatos"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Contatos</div>
   <div class="nav-item" data-page="dm-campanha"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></span> Enviar Campanhas</div>
   <div class="nav-item" data-page="dm-historico"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span> Gerenciar Campanhas</div>
@@ -2598,6 +2673,159 @@
       </div>
     </div>
 
+    <!-- ── Disparo em Massa: Dashboard Campanhas ── -->
+    <div class="page" id="page-dm-dashboard">
+
+      <div class="page-hero" style="background:linear-gradient(135deg,#1e3a5f 0%,#2d6a9f 60%,#3b82f6 100%)">
+        <div class="page-hero-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        </div>
+        <div class="page-hero-text">
+          <h1>Dashboard Campanhas</h1>
+          <p>Métricas e análises de desempenho de todas as campanhas de disparo em massa.</p>
+        </div>
+      </div>
+
+      <!-- Filtro por campanha -->
+      <div class="card" style="margin-bottom:1rem;padding:.875rem 1.25rem">
+        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+          <label style="font-weight:600;font-size:.85rem;white-space:nowrap">Filtrar por campanha:</label>
+          <select id="dashCampanhaSelect" onchange="loadDashboardCampanhas()" style="flex:1;min-width:200px;max-width:380px;padding:.4rem .75rem;border:1px solid var(--border);border-radius:8px;font-size:.85rem;font-family:inherit;background:var(--surface2)">
+            <option value="">— Todas as campanhas —</option>
+          </select>
+          <select id="dashDiasSelect" onchange="loadDashboardCampanhas()" style="padding:.4rem .75rem;border:1px solid var(--border);border-radius:8px;font-size:.85rem;font-family:inherit;background:var(--surface2)">
+            <option value="7">Últimos 7 dias</option>
+            <option value="30" selected>Últimos 30 dias</option>
+            <option value="90">Últimos 90 dias</option>
+            <option value="365">Último ano</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="loadDashboardCampanhas()" style="display:inline-flex;align-items:center;gap:.3rem">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Atualizar
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Cards -->
+      <div id="dashKpiRow" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem;margin-bottom:1rem">
+        <div class="card dash-kpi-card" id="dkpi-enviados">
+          <div class="dkpi-icon" style="background:#dcfce7;color:#15803d">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </div>
+          <div class="dkpi-val" id="dval-enviados">—</div>
+          <div class="dkpi-label">Enviados</div>
+          <div class="dkpi-sub" id="dsub-enviados"></div>
+        </div>
+        <div class="card dash-kpi-card" id="dkpi-falhas">
+          <div class="dkpi-icon" style="background:#fee2e2;color:#dc2626">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          </div>
+          <div class="dkpi-val" id="dval-falhas" style="color:#dc2626">—</div>
+          <div class="dkpi-label">Falhas</div>
+          <div class="dkpi-sub" id="dsub-falhas"></div>
+        </div>
+        <div class="card dash-kpi-card">
+          <div class="dkpi-icon" style="background:#dbeafe;color:#2563eb">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <div class="dkpi-val" id="dval-taxa" style="color:#2563eb">—</div>
+          <div class="dkpi-label">Taxa de Sucesso</div>
+          <div class="dkpi-sub" id="dsub-taxa"></div>
+        </div>
+        <div class="card dash-kpi-card">
+          <div class="dkpi-icon" style="background:#fef9c3;color:#ca8a04">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </div>
+          <div class="dkpi-val" id="dval-campanhas" style="color:#ca8a04">—</div>
+          <div class="dkpi-label">Campanhas</div>
+          <div class="dkpi-sub" id="dsub-campanhas"></div>
+        </div>
+        <div class="card dash-kpi-card">
+          <div class="dkpi-icon" style="background:#f3e8ff;color:#9333ea">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          </div>
+          <div class="dkpi-val" id="dval-contatos" style="color:#9333ea">—</div>
+          <div class="dkpi-label">Contatos Únicos</div>
+          <div class="dkpi-sub" id="dsub-contatos"></div>
+        </div>
+        <div class="card dash-kpi-card">
+          <div class="dkpi-icon" style="background:#ffedd5;color:#ea580c">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div class="dkpi-val" id="dval-duracao" style="color:#ea580c">—</div>
+          <div class="dkpi-label">Duração Média</div>
+          <div class="dkpi-sub" id="dsub-duracao"></div>
+        </div>
+      </div>
+
+      <!-- Gráficos Row 1 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem" id="dashRow1">
+        <div class="card">
+          <div style="font-weight:700;font-size:.88rem;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem">
+            <span style="width:10px;height:10px;border-radius:50%;background:#3b82f6;display:inline-block"></span>
+            Distribuição por Status
+          </div>
+          <div style="position:relative;height:220px;display:flex;align-items:center;justify-content:center">
+            <canvas id="chartDonut"></canvas>
+          </div>
+          <div id="dashDonutLegend" style="display:flex;justify-content:center;gap:1.5rem;margin-top:.75rem;flex-wrap:wrap;font-size:.78rem"></div>
+        </div>
+        <div class="card">
+          <div style="font-weight:700;font-size:.88rem;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem">
+            <span style="width:10px;height:10px;border-radius:50%;background:#8b5cf6;display:inline-block"></span>
+            Envios por Hora do Dia
+          </div>
+          <div style="position:relative;height:220px">
+            <canvas id="chartHora"></canvas>
+          </div>
+          <div style="font-size:.72rem;color:var(--text-mid);margin-top:.5rem;text-align:center">Distribuição dos envios ao longo do dia</div>
+        </div>
+      </div>
+
+      <!-- Gráfico evolução diária -->
+      <div class="card" style="margin-bottom:1rem">
+        <div style="font-weight:700;font-size:.88rem;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem">
+          <span style="width:10px;height:10px;border-radius:50%;background:#10b981;display:inline-block"></span>
+          Evolução de Envios por Dia
+        </div>
+        <div style="position:relative;height:200px">
+          <canvas id="chartDia"></canvas>
+        </div>
+      </div>
+
+      <!-- Ranking campanhas + Top contatos -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem" id="dashRow2">
+        <!-- Ranking campanhas -->
+        <div class="card">
+          <div style="font-weight:700;font-size:.88rem;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem">
+            <span style="width:10px;height:10px;border-radius:50%;background:#f59e0b;display:inline-block"></span>
+            Ranking de Campanhas
+          </div>
+          <div id="dashRankingCampanhas" style="display:flex;flex-direction:column;gap:.6rem"></div>
+        </div>
+        <!-- Top contatos -->
+        <div class="card">
+          <div style="font-weight:700;font-size:.88rem;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem">
+            <span style="width:10px;height:10px;border-radius:50%;background:#ec4899;display:inline-block"></span>
+            Top Contatos Alcançados
+          </div>
+          <div id="dashTopContatos" style="display:flex;flex-direction:column;gap:.5rem"></div>
+        </div>
+      </div>
+
+      <!-- Gráfico barras horizontal campanhas -->
+      <div class="card" style="margin-bottom:1rem">
+        <div style="font-weight:700;font-size:.88rem;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem">
+          <span style="width:10px;height:10px;border-radius:50%;background:#3d7f1f;display:inline-block"></span>
+          Comparativo de Campanhas (Enviados vs Falhas)
+        </div>
+        <div style="position:relative;height:280px">
+          <canvas id="chartBarCampanhas"></canvas>
+        </div>
+      </div>
+
+    </div>
+
     <!-- ── Disparo em Massa: Contatos ── -->
     <div class="page" id="page-dm-contatos">
 
@@ -3253,6 +3481,7 @@
     arquivo: 'Envio de Arquivo',
     docs: 'Documentações',
     telegram: 'Telegram',
+    'dm-dashboard': 'Dashboard Campanhas',
     'dm-contatos': 'Contatos',
     'dm-campanha': 'Enviar Campanhas',
     'dm-historico': 'Gerenciar Campanhas',
@@ -4023,6 +4252,7 @@
     else if (page === 'arquivo') loadArquivos();
     else if (page === 'teste') loadTeste();
     else if (page === 'telegram') loadTelegram();
+    else if (page === 'dm-dashboard') loadDashboardCampanhas();
     else if (page === 'dm-contatos') loadContatos();
     else if (page === 'dm-campanha') initNovaCampanha();
     else if (page === 'dm-historico') { loadCampanhas(); loadWorkerStatus(); }
@@ -4802,6 +5032,259 @@
     renderCampanhas(lista);
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  //  DASHBOARD CAMPANHAS
+  // ══════════════════════════════════════════════════════════════════════════
+
+  let _dashCharts = {}; // armazena instâncias Chart.js para destruir antes de recriar
+
+  function _destroyCharts() {
+    Object.values(_dashCharts).forEach(c => { try { c.destroy(); } catch(_) {} });
+    _dashCharts = {};
+  }
+
+  async function loadDashboardCampanhas() {
+    _destroyCharts();
+
+    // Popula select de campanhas (uma única vez)
+    const sel = document.getElementById('dashCampanhaSelect');
+    if (sel && sel.options.length <= 1) {
+      try {
+        const r = await fetch('/api/campanha');
+        if (r.ok) {
+          const lista = await r.json();
+          lista.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = c.nome;
+            sel.appendChild(opt);
+          });
+        }
+      } catch(_) {}
+    }
+
+    const campId = document.getElementById('dashCampanhaSelect')?.value || '';
+    const dias   = document.getElementById('dashDiasSelect')?.value || '30';
+    const qs     = new URLSearchParams({ dias });
+    if (campId) qs.set('campanha_id', campId);
+
+    let data;
+    try {
+      const res = await fetch('/api/campanha/dashboard?' + qs);
+      if (!res.ok) return;
+      data = await res.json();
+    } catch(e) { return; }
+
+    const r = data.resumo || {};
+
+    // ── KPI Cards ───────────────────────────────────────────────────────────
+    document.getElementById('dval-enviados').textContent  = (r.total_enviados || 0).toLocaleString('pt-BR');
+    document.getElementById('dsub-enviados').textContent  = `de ${(r.total_mensagens||0).toLocaleString('pt-BR')} mensagens`;
+    document.getElementById('dval-falhas').textContent    = (r.total_falhas || 0).toLocaleString('pt-BR');
+    const taxaFalha = r.total_mensagens > 0 ? ((r.total_falhas / r.total_mensagens) * 100).toFixed(1) : '0.0';
+    document.getElementById('dsub-falhas').textContent    = taxaFalha + '% das mensagens';
+    document.getElementById('dval-taxa').textContent      = (r.taxa_sucesso || 0).toFixed(1) + '%';
+    document.getElementById('dsub-taxa').textContent      = r.na_fila > 0 ? r.na_fila + ' na fila' : 'entregues com sucesso';
+    document.getElementById('dval-campanhas').textContent = r.total_campanhas || 0;
+    document.getElementById('dsub-campanhas').textContent = 'campanhas no período';
+    document.getElementById('dval-contatos').textContent  = (r.contatos_unicos || 0).toLocaleString('pt-BR');
+    document.getElementById('dsub-contatos').textContent  = 'números alcançados';
+    const durFmt = r.duracao_media_min != null
+      ? (r.duracao_media_min < 60 ? Math.round(r.duracao_media_min) + ' min' : (r.duracao_media_min/60).toFixed(1) + ' h')
+      : '—';
+    document.getElementById('dval-duracao').textContent   = durFmt;
+    document.getElementById('dsub-duracao').textContent   = 'por campanha concluída';
+
+    // Cores do design system
+    const GREEN  = '#3d7f1f';
+    const RED    = '#dc2626';
+    const BLUE   = '#3b82f6';
+    const YELLOW = '#f59e0b';
+    const GRAY   = '#e5e7eb';
+    const PURPLE = '#8b5cf6';
+
+    const fontDef = { family: "'Inter','Segoe UI',system-ui,sans-serif", size: 11 };
+
+    // ── Donut: distribuição por status ──────────────────────────────────────
+    const ctxDonut = document.getElementById('chartDonut')?.getContext('2d');
+    if (ctxDonut) {
+      const env = r.total_enviados || 0;
+      const fal = r.total_falhas   || 0;
+      const fil = r.na_fila        || 0;
+      _dashCharts.donut = new Chart(ctxDonut, {
+        type: 'doughnut',
+        data: {
+          labels: ['Enviados', 'Falhas', 'Na fila'],
+          datasets: [{ data: [env, fal, fil], backgroundColor: [GREEN, RED, YELLOW],
+            borderWidth: 2, borderColor: '#fff', hoverOffset: 6 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          cutout: '68%',
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => ` ${ctx.label}: ${ctx.raw.toLocaleString('pt-BR')} (${ctx.raw > 0 ? ((ctx.raw/(env+fal+fil))*100).toFixed(1) : 0}%)`
+              }
+            }
+          }
+        }
+      });
+      const leg = document.getElementById('dashDonutLegend');
+      if (leg) {
+        const items = [['Enviados', GREEN, env], ['Falhas', RED, fal], ['Na fila', YELLOW, fil]];
+        leg.innerHTML = items.map(([lbl, clr, val]) =>
+          `<span style="display:inline-flex;align-items:center;gap:.3rem">
+            <span style="width:10px;height:10px;border-radius:50%;background:${clr};flex-shrink:0"></span>
+            <span>${lbl}: <strong>${val.toLocaleString('pt-BR')}</strong></span>
+          </span>`
+        ).join('');
+      }
+    }
+
+    // ── Bar: envios por hora ─────────────────────────────────────────────────
+    const ctxHora = document.getElementById('chartHora')?.getContext('2d');
+    if (ctxHora && data.por_hora) {
+      const labels = data.por_hora.map(h => h.hora + 'h');
+      const vals   = data.por_hora.map(h => h.enviados);
+      const maxVal = Math.max(...vals, 1);
+      _dashCharts.hora = new Chart(ctxHora, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{ label: 'Enviados', data: vals,
+            backgroundColor: vals.map(v => v === maxVal ? PURPLE : 'rgba(139,92,246,.35)'),
+            borderRadius: 4, borderSkipped: false }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false },
+            tooltip: { callbacks: { label: ctx => ` ${ctx.raw.toLocaleString('pt-BR')} enviados` } }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: fontDef, maxRotation: 0 } },
+            y: { grid: { color: '#f3f4f6' }, ticks: { font: fontDef },
+                 beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    // ── Line: envios por dia ─────────────────────────────────────────────────
+    const ctxDia = document.getElementById('chartDia')?.getContext('2d');
+    if (ctxDia && data.por_dia) {
+      const labels = data.por_dia.map(d => {
+        const dt = new Date(d.dia + 'T12:00:00');
+        return dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+      });
+      const vals = data.por_dia.map(d => d.enviados);
+      _dashCharts.dia = new Chart(ctxDia, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Enviados', data: vals,
+            borderColor: GREEN, backgroundColor: 'rgba(61,127,31,.12)',
+            borderWidth: 2.5, pointRadius: vals.length <= 14 ? 4 : 2,
+            pointBackgroundColor: GREEN, fill: true, tension: .35
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false },
+            tooltip: { callbacks: { label: ctx => ` ${ctx.raw.toLocaleString('pt-BR')} enviados` } }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: fontDef, maxTicksLimit: 15 } },
+            y: { grid: { color: '#f3f4f6' }, ticks: { font: fontDef }, beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    // ── Ranking campanhas (tabela com mini barra) ────────────────────────────
+    const rankDiv = document.getElementById('dashRankingCampanhas');
+    if (rankDiv && data.campanhas) {
+      const sorted = [...data.campanhas].sort((a, b) => b.enviados - a.enviados);
+      const maxEnv = Math.max(...sorted.map(c => c.total || 0), 1);
+      const medals = ['gold', 'silver', 'bronze'];
+      const statusEmoji = { done: '✅', running: '🟢', paused: '⏸', draft: '📝', scheduled: '⏰' };
+      rankDiv.innerHTML = sorted.slice(0, 8).map((c, i) => {
+        const pct = maxEnv > 0 ? Math.round(c.total / maxEnv * 100) : 0;
+        const succPct = c.total > 0 ? Math.round(c.enviados / c.total * 100) : 0;
+        const em = statusEmoji[c.status] || '—';
+        return `<div class="rank-row">
+          <div class="rank-num ${medals[i] || ''}"><span>${i+1}</span></div>
+          <div class="rank-bar-wrap">
+            <div class="rank-name" title="${escHtml(c.nome)}">${em} ${escHtml(c.nome)}</div>
+            <div class="rank-bar-bg">
+              <div class="rank-bar-fill" style="width:${pct}%;background:${succPct>=90?GREEN:succPct>=70?YELLOW:RED}"></div>
+            </div>
+          </div>
+          <div class="rank-stat">
+            <div style="color:${GREEN};font-size:.8rem">${c.enviados.toLocaleString('pt-BR')}</div>
+            <div style="font-size:.68rem;font-weight:400">${succPct}% ok</div>
+          </div>
+        </div>`;
+      }).join('') || '<div style="text-align:center;padding:2rem;color:var(--text-mid)">Nenhuma campanha ainda.</div>';
+    }
+
+    // ── Top contatos ─────────────────────────────────────────────────────────
+    const topDiv = document.getElementById('dashTopContatos');
+    if (topDiv && data.top_contatos) {
+      const maxE = Math.max(...data.top_contatos.map(c => c.enviados), 1);
+      topDiv.innerHTML = data.top_contatos.slice(0, 8).map((c, i) => {
+        const pct  = Math.round(c.enviados / maxE * 100);
+        const nome = c.nome || _fmtPhone(c.phone);
+        return `<div class="rank-row">
+          <div class="rank-num ${['gold','silver','bronze'][i]||''}">${i+1}</div>
+          <div class="rank-bar-wrap">
+            <div class="rank-name" title="${escHtml(nome)}">${escHtml(nome)}</div>
+            <div class="rank-bar-bg">
+              <div class="rank-bar-fill" style="width:${pct}%;background:#ec4899"></div>
+            </div>
+          </div>
+          <div class="rank-stat">
+            <div style="color:#ec4899;font-size:.8rem">${c.enviados} env.</div>
+            <div style="font-size:.68rem;font-weight:400">${c.total_campanhas} camp.</div>
+          </div>
+        </div>`;
+      }).join('') || '<div style="text-align:center;padding:2rem;color:var(--text-mid)">Nenhum dado ainda.</div>';
+    }
+
+    // ── Barras horizontais campanhas: enviados vs falhas ─────────────────────
+    const ctxBar = document.getElementById('chartBarCampanhas')?.getContext('2d');
+    if (ctxBar && data.campanhas && data.campanhas.length) {
+      const top = data.campanhas.slice(0, 10);
+      const labels = top.map(c => c.nome.length > 20 ? c.nome.slice(0, 18) + '…' : c.nome);
+      _dashCharts.bar = new Chart(ctxBar, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Enviados', data: top.map(c => c.enviados),
+              backgroundColor: 'rgba(61,127,31,.8)', borderRadius: 4 },
+            { label: 'Falhas',   data: top.map(c => c.erros),
+              backgroundColor: 'rgba(220,38,38,.7)',  borderRadius: 4 }
+          ]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', labels: { font: fontDef, boxWidth: 12, padding: 10 } },
+            tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toLocaleString('pt-BR')}` } }
+          },
+          scales: {
+            x: { grid: { color: '#f3f4f6' }, ticks: { font: fontDef }, stacked: false },
+            y: { grid: { display: false }, ticks: { font: fontDef } }
+          }
+        }
+      });
+    }
+  }
+
   async function loadCampanhasEnviadas() {
     const div = document.getElementById('listaCampanhasEnviadas');
     if (!div) return;
@@ -5230,6 +5713,8 @@
 
   // Helper showPage (para navegação programática)
   function showPage(p) {
+    // Destrói gráficos do dashboard ao sair da página
+    if (typeof _destroyCharts === 'function' && p !== 'dm-dashboard') _destroyCharts();
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
     const navItem = document.querySelector(`.nav-item[data-page="${p}"]`);

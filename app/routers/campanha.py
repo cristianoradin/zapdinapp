@@ -121,6 +121,137 @@ class CampanhaIn(BaseModel):
     agendado_em: Optional[str] = None
 
 
+@router.get("/dashboard")
+async def dashboard_campanhas(
+    campanha_id: Optional[int] = None,
+    dias: int = 30,
+    db=Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Retorna métricas agregadas para o Dashboard de Campanhas."""
+    empresa_id = _eid(user)
+
+    # ── Condições base ──────────────────────────────────────────────────────
+    if campanha_id:
+        base_cond  = "ce.empresa_id = ? AND ce.campanha_id = ?"
+        base_p     = (empresa_id, campanha_id)
+        camp_cond  = "c.empresa_id = ? AND c.id = ?"
+        camp_p     = (empresa_id, campanha_id)
+    else:
+        base_cond  = "ce.empresa_id = ?"
+        base_p     = (empresa_id,)
+        camp_cond  = "c.empresa_id = ?"
+        camp_p     = (empresa_id,)
+
+    # ── 1. Resumo por status ─────────────────────────────────────────────────
+    async with db.execute(
+        f"SELECT status, COUNT(*) as cnt FROM campanha_envios ce WHERE {base_cond} GROUP BY status",
+        base_p,
+    ) as cur:
+        st_rows = await cur.fetchall()
+    smap = {r["status"]: r["cnt"] for r in st_rows}
+    enviados  = smap.get("sent",   0)
+    falhas    = smap.get("failed", 0)
+    na_fila   = smap.get("queued", 0) + smap.get("paused", 0)
+    total_env = enviados + falhas + na_fila
+    taxa_suc  = round(enviados / total_env * 100, 1) if total_env else 0.0
+
+    # ── 2. Contatos únicos ───────────────────────────────────────────────────
+    async with db.execute(
+        f"SELECT COUNT(DISTINCT ce.phone) as cnt FROM campanha_envios ce WHERE {base_cond}",
+        base_p,
+    ) as cur:
+        u_row = await cur.fetchone()
+    contatos_unicos = u_row["cnt"] if u_row else 0
+
+    # ── 3. Envios por hora do dia ─────────────────────────────────────────────
+    async with db.execute(
+        f"""SELECT EXTRACT(HOUR FROM sent_at)::int as hora, COUNT(*) as cnt
+            FROM campanha_envios ce
+            WHERE {base_cond} AND sent_at IS NOT NULL
+            GROUP BY hora ORDER BY hora""",
+        base_p,
+    ) as cur:
+        h_rows = await cur.fetchall()
+    por_hora_map = {r["hora"]: r["cnt"] for r in h_rows}
+    por_hora = [{"hora": h, "enviados": por_hora_map.get(h, 0)} for h in range(24)]
+
+    # ── 4. Envios por dia (últimos N dias) ───────────────────────────────────
+    async with db.execute(
+        f"""SELECT DATE(sent_at) as dia, COUNT(*) as cnt
+            FROM campanha_envios ce
+            WHERE {base_cond} AND sent_at IS NOT NULL
+              AND sent_at >= NOW() - INTERVAL '{dias} days'
+            GROUP BY dia ORDER BY dia""",
+        base_p,
+    ) as cur:
+        d_rows = await cur.fetchall()
+    por_dia = [{"dia": str(r["dia"]), "enviados": r["cnt"]} for r in d_rows]
+
+    # ── 5. Top contatos ───────────────────────────────────────────────────────
+    async with db.execute(
+        f"""SELECT ce.phone, ce.nome,
+                   COUNT(DISTINCT ce.campanha_id) as total_campanhas,
+                   SUM(CASE WHEN ce.status='sent'   THEN 1 ELSE 0 END) as enviados,
+                   SUM(CASE WHEN ce.status='failed' THEN 1 ELSE 0 END) as falhas
+            FROM campanha_envios ce
+            WHERE {base_cond}
+            GROUP BY ce.phone, ce.nome
+            ORDER BY enviados DESC
+            LIMIT 10""",
+        base_p,
+    ) as cur:
+        top_rows = await cur.fetchall()
+    top_contatos = [dict(r) for r in top_rows]
+
+    # ── 6. Por campanha ───────────────────────────────────────────────────────
+    async with db.execute(
+        f"""SELECT c.id, c.nome, c.status, c.total, c.enviados, c.erros,
+                   c.created_at, c.started_at, c.done_at,
+                   ROUND(EXTRACT(EPOCH FROM (COALESCE(c.done_at, NOW()) - c.started_at))/60)::int AS duracao_min,
+                   CASE WHEN c.total > 0
+                        THEN ROUND(c.enviados::numeric / c.total * 100, 1)
+                        ELSE 0 END AS taxa_sucesso
+            FROM campanhas c
+            WHERE {camp_cond}
+            ORDER BY c.id DESC
+            LIMIT 20""",
+        camp_p,
+    ) as cur:
+        camp_rows = await cur.fetchall()
+
+    campanhas_dash = []
+    for r in camp_rows:
+        d = dict(r)
+        for k in ("created_at", "started_at", "done_at"):
+            if d.get(k):
+                d[k] = d[k].isoformat()
+        d["duracao_min"]  = int(d["duracao_min"])  if d.get("duracao_min")  is not None else None
+        d["taxa_sucesso"] = float(d["taxa_sucesso"]) if d.get("taxa_sucesso") is not None else 0.0
+        campanhas_dash.append(d)
+
+    # Duração média das campanhas concluídas
+    durs = [c["duracao_min"] for c in campanhas_dash if c.get("duracao_min") is not None and c["status"] == "done"]
+    duracao_media = round(sum(durs) / len(durs), 1) if durs else None
+
+    return {
+        "resumo": {
+            "total_enviados":   enviados,
+            "total_falhas":     falhas,
+            "na_fila":          na_fila,
+            "total_mensagens":  total_env,
+            "taxa_sucesso":     taxa_suc,
+            "contatos_unicos":  contatos_unicos,
+            "total_campanhas":  len(campanhas_dash),
+            "duracao_media_min": duracao_media,
+        },
+        "por_hora":     por_hora,
+        "por_dia":      por_dia,
+        "top_contatos": top_contatos,
+        "campanhas":    campanhas_dash,
+    }
+
+
 @router.get("")
 async def list_campanhas(status: Optional[str] = None, db=Depends(get_db), user=Depends(get_current_user)):
     empresa_id = _eid(user)
