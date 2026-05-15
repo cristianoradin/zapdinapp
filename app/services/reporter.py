@@ -250,10 +250,56 @@ async def _get_empresas_ativas() -> list:
 #  Controle do loop (iniciado/parado pelo lifespan do FastAPI em main.py)
 # ─────────────────────────────────────────────────────────────────────────────
 
+async def _cleanup_old_files(retention_days: int = 30) -> None:
+    """
+    Remove arquivos físicos em data/arquivos/ que já foram enviados (ou falharam)
+    e têm mais de `retention_days` dias. Preserva arquivos com status 'queued'.
+    """
+    from ..core.database import get_db_direct
+
+    cutoff_sql = f"NOW() - INTERVAL '{retention_days} days'"
+    try:
+        async with get_db_direct() as db:
+            async with db.execute(
+                f"SELECT nome_arquivo FROM arquivos "
+                f"WHERE status IN ('sent', 'failed') AND sent_at < {cutoff_sql}",
+            ) as cur:
+                rows = await cur.fetchall()
+
+        if not rows:
+            return
+
+        upload_dir = "data/arquivos"
+        removidos = 0
+        for row in rows:
+            nome = row["nome_arquivo"]
+            if not nome:
+                continue
+            caminho = os.path.join(upload_dir, nome)
+            try:
+                if os.path.exists(caminho):
+                    os.remove(caminho)
+                    removidos += 1
+            except Exception as exc:
+                logger.debug("[cleanup] Erro ao remover %s: %s", caminho, exc)
+
+        if removidos:
+            logger.info("[cleanup] %d arquivo(s) antigo(s) removido(s) (>%d dias)", removidos, retention_days)
+    except Exception as exc:
+        logger.debug("[cleanup] Falha na limpeza de arquivos: %s", exc)
+
+
 async def _loop() -> None:
-    """Loop infinito: envia heartbeat e aguarda 30 segundos antes do próximo."""
+    """Loop infinito: envia heartbeat a cada 30s e executa limpeza diária de arquivos."""
+    _cleanup_tick = 0
+    _CLEANUP_INTERVAL = 2880  # 30s × 2880 = 24 horas
+
     while True:
         await _send_heartbeat()
+        _cleanup_tick += 1
+        if _cleanup_tick >= _CLEANUP_INTERVAL:
+            _cleanup_tick = 0
+            await _cleanup_old_files()
         await asyncio.sleep(30)
 
 
