@@ -812,8 +812,15 @@
     }
     .qr-connected-msg.visible { display: flex; }
     .qr-connected-icon { font-size: 2rem; }
-    .qr-connected-msg p   { font-size: .875rem; color: var(--accent); font-weight: 600; }
+    .qr-connected-msg p   { font-size: .875rem; color: var(--accent); font-weight: 600; margin: 0; }
     .qr-connected-msg span { font-size: .78rem; color: var(--text-mid); }
+    .sessao-phone-badge {
+      display: inline-flex; align-items: center; gap: .4rem;
+      background: #fff; border: 2px solid var(--accent);
+      color: var(--accent); font-weight: 700; font-size: 1.05rem;
+      padding: .35rem .9rem; border-radius: 8px; margin-top: .25rem;
+      letter-spacing: .04em; box-shadow: 0 2px 8px rgba(61,127,31,.12);
+    }
 
     /* ─── Alerts ──────────────────────────────────────────────────────────── */
     .alert { padding: .75rem 1rem; border-radius: 8px; font-size: .875rem; margin-bottom: 1rem; }
@@ -3373,6 +3380,19 @@
     } catch { return null; }
   }
 
+  function _formatPhone(phone) {
+    if (!phone) return '';
+    const d = phone.replace(/\D/g, '');
+    // Número brasileiro: 55 + DDD (2 dígitos) + número (8 ou 9 dígitos)
+    if (d.startsWith('55') && d.length >= 12) {
+      const ddd = d.slice(2, 4);
+      const num = d.slice(4);
+      if (num.length === 9) return `+55 (${ddd}) ${num.slice(0,5)}-${num.slice(5)}`;
+      if (num.length === 8) return `+55 (${ddd}) ${num.slice(0,4)}-${num.slice(4)}`;
+    }
+    return phone;
+  }
+
   function _renderSessao(s) {
     const label = STATUS_LABEL[s.status] || s.status;
     const chip  = STATUS_CHIP[s.status] || 'chip-gray';
@@ -3392,13 +3412,13 @@
             </button>
           </div>
         </div>
-        <div class="sessao-meta">ID: ${s.id}${s.phone ? ' · ' + s.phone : ''}</div>
+        <div class="sessao-meta">ID: ${s.id}${s.phone ? ' · ' + _formatPhone(s.phone) : ''}</div>
 
         ${s.status === 'connected' ? `
         <div class="qr-connected-msg visible" id="conn-${s.id}">
           <div class="qr-connected-icon">✅</div>
           <p>WhatsApp conectado e pronto para enviar mensagens!</p>
-          ${s.phone ? `<span>Número: ${s.phone}</span>` : ''}
+          ${s.phone ? `<div class="sessao-phone-badge">📱 ${_formatPhone(s.phone)}</div>` : '<span style="color:var(--text-mid);font-size:.78rem">Número não identificado</span>'}
         </div>` : `
         <div class="qr-area" id="qrarea-${s.id}">
           <div class="phone-mockup">
