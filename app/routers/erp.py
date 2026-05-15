@@ -157,6 +157,59 @@ def _aplicar_template(template: str, body: VendaPayload, telefone_normalizado: s
     )
 
 
+# ── Helpers de negócio (extraídos para clareza) ───────────────────────────────
+
+async def _queue_mensagem(db, empresa_id: int, telefone: str, nome: str, mensagem: str) -> None:
+    """Insere uma mensagem de texto na fila de disparo."""
+    await db.execute(
+        "INSERT INTO mensagens (empresa_id, destinatario, nome_destinatario, mensagem, tipo, status) "
+        "VALUES (?, ?, ?, ?, 'text', 'queued')",
+        (empresa_id, telefone, nome, mensagem),
+    )
+
+
+async def _upsert_contato(db, empresa_id: int, phone: str, nome: str) -> None:
+    """Cria ou atualiza contato na tabela de disparo em massa."""
+    await db.execute(
+        """INSERT INTO contatos (empresa_id, phone, nome, origem)
+           VALUES (?, ?, ?, 'erp')
+           ON CONFLICT (empresa_id, phone) DO UPDATE
+           SET nome = CASE WHEN EXCLUDED.nome != '' THEN EXCLUDED.nome ELSE contatos.nome END,
+               origem = 'erp'""",
+        (empresa_id, phone, nome),
+    )
+
+
+async def _gerar_sufixo_avaliacao(db, empresa_id: int, telefone: str, nome: str,
+                                   vendedor: str, valor: str) -> str | None:
+    """
+    Se avaliação estiver ativa para a empresa, gera token, insere registro e
+    retorna o sufixo de texto a ser anexado à mensagem (com link encurtado).
+    Retorna None se avaliação desabilitada ou em caso de erro.
+    """
+    async with db.execute(
+        "SELECT value FROM config WHERE key='avaliacao_ativa' AND empresa_id=?", (empresa_id,)
+    ) as cur:
+        cfg_aval = await cur.fetchone()
+    if not cfg_aval or cfg_aval["value"] != "1":
+        return None
+
+    token_aval = secrets.token_urlsafe(16)
+    async with db.execute(
+        "SELECT value FROM config WHERE key='avaliacao_url_base' AND empresa_id=?", (empresa_id,)
+    ) as cur2:
+        cfg_url = await cur2.fetchone()
+    url_base = cfg_url["value"] if cfg_url else settings.public_url
+    link_aval = await _encurtar_url(f"{url_base}/avaliacao?t={token_aval}")
+
+    await db.execute(
+        """INSERT INTO avaliacoes (empresa_id, token, phone, nome_cliente, vendedor, valor)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (empresa_id, token_aval, telefone, nome, vendedor, valor),
+    )
+    return f"\n\n⭐ Avalie nosso atendimento:\n{link_aval}"
+
+
 @router.post("/venda")
 async def receber_venda(
     body: VendaPayload,
@@ -166,65 +219,37 @@ async def receber_venda(
 ):
     empresa_id = await _verify_token(x_token, db, request)
     telefone = _normalizar_telefone(body.telefone)
+    nome = body.nome or ""
 
+    # Monta mensagem a partir do template (ou mensagem customizada do ERP)
     async with db.execute(
         "SELECT value FROM config WHERE key='mensagem_padrao' AND empresa_id=?", (empresa_id,)
     ) as cur:
         row = await cur.fetchone()
-
     template = row["value"] if row else "Olá {nome}, obrigado pela sua compra de {valor_total} em {data}!"
     mensagem = body.mensagem_custom or _aplicar_template(template, body, telefone)
 
-    # Gera link de avaliação se habilitado
-    _token_aval = None
+    # Anexa link de avaliação à mensagem (se recurso habilitado)
     try:
-        async with db.execute(
-            "SELECT value FROM config WHERE key='avaliacao_ativa' AND empresa_id=?", (empresa_id,)
-        ) as cur:
-            cfg_aval = await cur.fetchone()
-        if cfg_aval and cfg_aval["value"] == "1":
-            _token_aval = secrets.token_urlsafe(16)
-            async with db.execute(
-                "SELECT value FROM config WHERE key='avaliacao_url_base' AND empresa_id=?", (empresa_id,)
-            ) as cur2:
-                cfg_url = await cur2.fetchone()
-            url_base = cfg_url["value"] if cfg_url else settings.public_url
-            link_aval = await _encurtar_url(f"{url_base}/avaliacao?t={_token_aval}")
-            mensagem = mensagem + f"\n\n⭐ Avalie nosso atendimento:\n{link_aval}"
+        sufixo = await _gerar_sufixo_avaliacao(
+            db, empresa_id, telefone, nome,
+            body.vendedor or "", body.valor_total or body.valor or "",
+        )
+        if sufixo:
+            mensagem += sufixo
     except Exception as exc:
         logger.debug("[erp] Erro ao gerar link de avaliação: %s", exc)
 
-    # Enfileira para disparo assíncrono — API retorna imediatamente
-    await db.execute(
-        "INSERT INTO mensagens (empresa_id, destinatario, nome_destinatario, mensagem, tipo, status) VALUES (?, ?, ?, ?, 'text', 'queued')",
-        (empresa_id, telefone, body.nome or "", mensagem),
-    )
-    # Insere registro de avaliação se token foi gerado
-    if _token_aval:
-        try:
-            await db.execute(
-                """INSERT INTO avaliacoes (empresa_id, token, phone, nome_cliente, vendedor, valor)
-                   VALUES (?, ?, ?, ?, ?, ?)""",
-                (empresa_id, _token_aval, telefone, body.nome or "", body.vendedor or "", body.valor_total or body.valor or ""),
-            )
-        except Exception as exc:
-            logger.debug("[erp] Erro ao inserir avaliação: %s", exc)
-    # Registra/atualiza contato no disparo em massa
+    await _queue_mensagem(db, empresa_id, telefone, nome, mensagem)
     try:
-        await db.execute(
-            """INSERT INTO contatos (empresa_id, phone, nome, origem)
-               VALUES (?, ?, ?, 'erp')
-               ON CONFLICT (empresa_id, phone) DO UPDATE
-               SET nome = CASE WHEN EXCLUDED.nome != '' THEN EXCLUDED.nome ELSE contatos.nome END,
-                   origem = 'erp'""",
-            (empresa_id, telefone, body.nome or ""),
-        )
+        await _upsert_contato(db, empresa_id, telefone, nome)
     except Exception as exc:
         logger.debug("[erp] Upsert contato falhou (ignorado): %s", exc)
+
     await db.commit()
     _record_call(empresa_id, request, "/api/erp/venda", True)
     logger.info("[erp] venda enfileirada → empresa=%s fone=%s nome=%s ip=%s",
-                empresa_id, telefone, body.nome or "?", request.client.host if request.client else "?")
+                empresa_id, telefone, nome or "?", request.client.host if request.client else "?")
     return {"ok": True, "queued": True}
 
 
@@ -269,16 +294,8 @@ async def receber_arquivo(
            VALUES (?, ?, ?, ?, ?, ?, 'queued', ?)""",
         (empresa_id, body.nome_arquivo, nome_salvo, len(conteudo), telefone, "", body.mensagem),
     )
-    # Registra/atualiza contato no disparo em massa
     try:
-        await db.execute(
-            """INSERT INTO contatos (empresa_id, phone, nome, origem)
-               VALUES (?, ?, ?, 'erp')
-               ON CONFLICT (empresa_id, phone) DO UPDATE
-               SET nome = CASE WHEN EXCLUDED.nome != '' THEN EXCLUDED.nome ELSE contatos.nome END,
-                   origem = 'erp'""",
-            (empresa_id, telefone, ""),
-        )
+        await _upsert_contato(db, empresa_id, telefone, "")
     except Exception as exc:
         logger.debug("[erp] Upsert contato (arquivo) falhou (ignorado): %s", exc)
     await db.commit()
