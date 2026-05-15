@@ -402,7 +402,7 @@ async def me(user: dict = Depends(get_current_user), db=Depends(get_db)):
             empresa_cnpj = emp["cnpj"]
 
         async with db.execute(
-            "SELECT menus FROM usuarios WHERE id = ? AND empresa_id = ?",
+            "SELECT menus, avatar_url FROM usuarios WHERE id = ? AND empresa_id = ?",
             (user["uid"], empresa_id),
         ) as cur:
             u = await cur.fetchone()
@@ -412,6 +412,8 @@ async def me(user: dict = Depends(get_current_user), db=Depends(get_db)):
             except Exception:
                 menus = None
 
+    avatar_url = (u["avatar_url"] if u else None) if empresa_id else None
+
     return {
         "username": user["usr"],
         "uid": user["uid"],
@@ -419,6 +421,7 @@ async def me(user: dict = Depends(get_current_user), db=Depends(get_db)):
         "empresa": empresa_nome,
         "cnpj": empresa_cnpj,
         "menus": menus,
+        "avatar_url": avatar_url,
     }
 
 

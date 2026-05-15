@@ -236,7 +236,7 @@
       cursor: default;
     }
     .topbar-user-avatar {
-      width: 24px; height: 24px;
+      width: 28px; height: 28px;
       border-radius: 50%;
       background: rgba(255,255,255,.25);
       display: flex; align-items: center; justify-content: center;
@@ -244,6 +244,7 @@
       font-weight: 700;
       color: #fff;
       flex-shrink: 0;
+      overflow: hidden;
     }
     .topbar-user-name {
       font-size: .8rem;
@@ -3159,7 +3160,14 @@
       const name = data.username || '?';
       document.getElementById('userBadge').textContent = name;
       const av = document.getElementById('userAvatar');
-      if (av) av.textContent = name.charAt(0).toUpperCase();
+      if (av) {
+        if (data.avatar_url) {
+          av.innerHTML = `<img src="${data.avatar_url}" alt="${name}"
+            style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+        } else {
+          av.textContent = name.charAt(0).toUpperCase();
+        }
+      }
 
       // Nome e CNPJ da empresa logada
       const clientName = data.empresa || data.client_name || '';

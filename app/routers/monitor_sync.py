@@ -40,6 +40,7 @@ class UserSyncPayload(BaseModel):
     username: str
     password_hash: str  # SEC-09: bcrypt hash — nunca plaintext em trânsito
     menus: list | None = None  # None = todos os menus; lista = só esses menus
+    avatar_url: str | None = None
 
 
 class SenhaPayload(BaseModel):
@@ -48,6 +49,10 @@ class SenhaPayload(BaseModel):
 
 class UsernamePayload(BaseModel):
     username: str
+
+
+class AvatarPayload(BaseModel):
+    avatar_url: str | None = None
 
 
 @router.get("/usuarios")
@@ -73,12 +78,13 @@ async def sync_usuario(
     menus_json = json.dumps(body.menus) if body.menus is not None else None
     # SEC-09: recebe hash pronto — não re-hasheia, não expõe plaintext em trânsito
     await db.execute(
-        """INSERT INTO usuarios (empresa_id, username, password_hash, menus)
-           VALUES (?, ?, ?, ?)
+        """INSERT INTO usuarios (empresa_id, username, password_hash, menus, avatar_url)
+           VALUES (?, ?, ?, ?, ?)
            ON CONFLICT (empresa_id, username) DO UPDATE
            SET password_hash = EXCLUDED.password_hash,
-               menus = EXCLUDED.menus""",
-        (empresa_id, username, body.password_hash, menus_json),
+               menus = EXCLUDED.menus,
+               avatar_url = COALESCE(EXCLUDED.avatar_url, usuarios.avatar_url)""",
+        (empresa_id, username, body.password_hash, menus_json, body.avatar_url),
     )
     await db.commit()
     logger.info("[monitor-sync] Usuário '%s' sincronizado na empresa %s (menus=%s).", username, empresa_id, body.menus)
@@ -152,4 +158,20 @@ async def rename_usuario(
         await db.commit()
     except Exception:
         pass
+    return {"ok": True}
+
+
+@router.put("/usuarios/{username}/avatar")
+async def update_usuario_avatar(
+    username: str,
+    body: AvatarPayload,
+    empresa_id: int = Depends(_get_empresa_id),
+    db=Depends(get_db),
+):
+    await db.execute(
+        "UPDATE usuarios SET avatar_url = ? WHERE username = ? AND empresa_id = ?",
+        (body.avatar_url, username.lower(), empresa_id),
+    )
+    await db.commit()
+    logger.info("[monitor-sync] Avatar de '%s' atualizado na empresa %s.", username, empresa_id)
     return {"ok": True}
