@@ -393,6 +393,7 @@ async def init_db() -> None:
             )
         """)
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_campanhas_empresa ON campanhas(empresa_id)")
+        await conn.execute("ALTER TABLE campanhas ADD COLUMN IF NOT EXISTS agendado_em TIMESTAMPTZ")
 
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS campanha_arquivos (

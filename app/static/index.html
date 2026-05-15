@@ -655,6 +655,20 @@
     }
     .btn-ghost:hover { color: var(--text); background: var(--surface2); opacity: 1; box-shadow: var(--shadow-sm); }
     .btn-sm { padding: .35rem .75rem; font-size: .8rem; }
+    .emoji-btn {
+      cursor: pointer;
+      font-size: 1.25rem;
+      padding: .2rem .25rem;
+      border-radius: 6px;
+      transition: background .12s, transform .1s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      line-height: 1;
+    }
+    .emoji-btn:hover { background: var(--accent-mid); transform: scale(1.15); }
+    .emoji-btn:active { transform: scale(.95); }
 
     /* ─── Session cards ───────────────────────────────────────────────────── */
     .sessao-card {
@@ -1466,8 +1480,9 @@
 
   <div class="sidebar-section">Disparo em Massa</div>
   <div class="nav-item" data-page="dm-contatos"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Contatos</div>
-  <div class="nav-item" data-page="dm-campanha"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></span> Nova Campanha</div>
-  <div class="nav-item" data-page="dm-historico"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span> Campanhas</div>
+  <div class="nav-item" data-page="dm-campanha"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></span> Enviar Campanhas</div>
+  <div class="nav-item" data-page="dm-historico"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span> Gerenciar Campanhas</div>
+  <div class="nav-item" data-page="dm-enviadas"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span> Campanhas Enviadas</div>
 
   <div class="sidebar-section">Outros</div>
   <div class="nav-item" data-page="telegram"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></span> Telegram</div>
@@ -2786,8 +2801,8 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
         </div>
         <div class="page-hero-text">
-          <h1>Nova Campanha</h1>
-          <p>Configure uma campanha de disparo em massa. Escolha envio de texto ou arquivo para todos os contatos da lista.</p>
+          <h1>Enviar Campanhas</h1>
+          <p>Configure e envie campanhas de disparo em massa com agendamento automático.</p>
         </div>
       </div>
 
@@ -2825,8 +2840,115 @@
         </div>
 
         <div class="form-group">
-          <label>Mensagem <span style="color:var(--text-mid);font-weight:400">(obrigatória para texto; opcional como legenda para arquivo)</span></label>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
+            <label style="margin:0">Mensagem <span style="color:var(--text-mid);font-weight:400">(obrigatória para texto; opcional como legenda para arquivo)</span></label>
+            <button type="button" class="btn btn-ghost btn-sm" id="btnToggleEmojis" onclick="toggleEmojiBank()" title="Inserir emoji" style="display:inline-flex;align-items:center;gap:.3rem;font-size:.78rem">
+              😊 Emojis
+            </button>
+          </div>
+
+          <!-- Emoji bank panel -->
+          <div id="emojiBank" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:.75rem;margin-bottom:.5rem">
+            <div style="display:flex;flex-wrap:wrap;gap:.3rem;line-height:1">
+              <!-- Comunicação -->
+              <div style="width:100%;font-size:.68rem;color:var(--text-light);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin:0 0 .3rem;padding-bottom:.25rem;border-bottom:1px solid var(--border)">Comunicação</div>
+              <span class="emoji-btn" onclick="insertEmoji('✅')">✅</span>
+              <span class="emoji-btn" onclick="insertEmoji('❌')">❌</span>
+              <span class="emoji-btn" onclick="insertEmoji('✉️')">✉️</span>
+              <span class="emoji-btn" onclick="insertEmoji('📱')">📱</span>
+              <span class="emoji-btn" onclick="insertEmoji('💬')">💬</span>
+              <span class="emoji-btn" onclick="insertEmoji('📞')">📞</span>
+              <span class="emoji-btn" onclick="insertEmoji('🔔')">🔔</span>
+              <span class="emoji-btn" onclick="insertEmoji('📢')">📢</span>
+              <span class="emoji-btn" onclick="insertEmoji('📣')">📣</span>
+              <span class="emoji-btn" onclick="insertEmoji('ℹ️')">ℹ️</span>
+              <!-- Negócios -->
+              <div style="width:100%;font-size:.68rem;color:var(--text-light);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin:.5rem 0 .3rem;padding-bottom:.25rem;border-bottom:1px solid var(--border)">Negócios</div>
+              <span class="emoji-btn" onclick="insertEmoji('💰')">💰</span>
+              <span class="emoji-btn" onclick="insertEmoji('💳')">💳</span>
+              <span class="emoji-btn" onclick="insertEmoji('💼')">💼</span>
+              <span class="emoji-btn" onclick="insertEmoji('📊')">📊</span>
+              <span class="emoji-btn" onclick="insertEmoji('📈')">📈</span>
+              <span class="emoji-btn" onclick="insertEmoji('🏆')">🏆</span>
+              <span class="emoji-btn" onclick="insertEmoji('🎯')">🎯</span>
+              <span class="emoji-btn" onclick="insertEmoji('💡')">💡</span>
+              <span class="emoji-btn" onclick="insertEmoji('🤝')">🤝</span>
+              <span class="emoji-btn" onclick="insertEmoji('🔑')">🔑</span>
+              <!-- Pessoas -->
+              <div style="width:100%;font-size:.68rem;color:var(--text-light);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin:.5rem 0 .3rem;padding-bottom:.25rem;border-bottom:1px solid var(--border)">Pessoas</div>
+              <span class="emoji-btn" onclick="insertEmoji('👤')">👤</span>
+              <span class="emoji-btn" onclick="insertEmoji('👥')">👥</span>
+              <span class="emoji-btn" onclick="insertEmoji('👋')">👋</span>
+              <span class="emoji-btn" onclick="insertEmoji('🙏')">🙏</span>
+              <span class="emoji-btn" onclick="insertEmoji('👍')">👍</span>
+              <span class="emoji-btn" onclick="insertEmoji('❤️')">❤️</span>
+              <span class="emoji-btn" onclick="insertEmoji('😊')">😊</span>
+              <span class="emoji-btn" onclick="insertEmoji('🎉')">🎉</span>
+              <!-- Compras -->
+              <div style="width:100%;font-size:.68rem;color:var(--text-light);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin:.5rem 0 .3rem;padding-bottom:.25rem;border-bottom:1px solid var(--border)">Compras &amp; Ofertas</div>
+              <span class="emoji-btn" onclick="insertEmoji('🛒')">🛒</span>
+              <span class="emoji-btn" onclick="insertEmoji('🛍️')">🛍️</span>
+              <span class="emoji-btn" onclick="insertEmoji('🏷️')">🏷️</span>
+              <span class="emoji-btn" onclick="insertEmoji('🎁')">🎁</span>
+              <span class="emoji-btn" onclick="insertEmoji('💝')">💝</span>
+              <span class="emoji-btn" onclick="insertEmoji('🔥')">🔥</span>
+              <span class="emoji-btn" onclick="insertEmoji('⭐')">⭐</span>
+              <span class="emoji-btn" onclick="insertEmoji('✨')">✨</span>
+              <span class="emoji-btn" onclick="insertEmoji('🆕')">🆕</span>
+              <span class="emoji-btn" onclick="insertEmoji('🆓')">🆓</span>
+              <!-- Data & Hora -->
+              <div style="width:100%;font-size:.68rem;color:var(--text-light);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin:.5rem 0 .3rem;padding-bottom:.25rem;border-bottom:1px solid var(--border)">Data &amp; Hora</div>
+              <span class="emoji-btn" onclick="insertEmoji('📅')">📅</span>
+              <span class="emoji-btn" onclick="insertEmoji('⏰')">⏰</span>
+              <span class="emoji-btn" onclick="insertEmoji('🕐')">🕐</span>
+              <span class="emoji-btn" onclick="insertEmoji('⌛')">⌛</span>
+              <span class="emoji-btn" onclick="insertEmoji('⏱️')">⏱️</span>
+              <!-- Alertas -->
+              <div style="width:100%;font-size:.68rem;color:var(--text-light);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin:.5rem 0 .3rem;padding-bottom:.25rem;border-bottom:1px solid var(--border)">Alertas</div>
+              <span class="emoji-btn" onclick="insertEmoji('⚠️')">⚠️</span>
+              <span class="emoji-btn" onclick="insertEmoji('🚨')">🚨</span>
+              <span class="emoji-btn" onclick="insertEmoji('🆗')">🆗</span>
+              <span class="emoji-btn" onclick="insertEmoji('📍')">📍</span>
+              <span class="emoji-btn" onclick="insertEmoji('🏠')">🏠</span>
+              <span class="emoji-btn" onclick="insertEmoji('🚗')">🚗</span>
+              <span class="emoji-btn" onclick="insertEmoji('⛽')">⛽</span>
+              <span class="emoji-btn" onclick="insertEmoji('🔧')">🔧</span>
+            </div>
+          </div>
+
           <textarea id="inpCampMensagem" rows="5" placeholder="Digite a mensagem que será enviada a todos os contatos…"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Quando enviar</label>
+          <div style="display:flex;flex-direction:column;gap:.6rem">
+            <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-weight:400">
+              <input type="radio" name="campAgendamento" value="agora" checked
+                     onchange="document.getElementById('secAgendamento').style.display='none'">
+              <span>Enviar imediatamente (ao clicar em Criar)</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-weight:400">
+              <input type="radio" name="campAgendamento" value="agendar"
+                     onchange="document.getElementById('secAgendamento').style.display='block'">
+              <span>Agendar para data e hora específica</span>
+            </label>
+          </div>
+        </div>
+
+        <div id="secAgendamento" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1rem">
+          <div style="display:flex;gap:1rem;flex-wrap:wrap">
+            <div class="form-group" style="flex:1;min-width:140px;margin-bottom:0">
+              <label>Data</label>
+              <input type="date" id="inpCampData" min="" style="width:100%">
+            </div>
+            <div class="form-group" style="flex:1;min-width:120px;margin-bottom:0">
+              <label>Hora</label>
+              <input type="time" id="inpCampHora" value="08:00" style="width:100%">
+            </div>
+          </div>
+          <div style="font-size:.78rem;color:var(--text-mid);margin-top:.5rem">
+            📅 A campanha será disparada automaticamente nesta data e hora (horário local).
+          </div>
         </div>
 
         <div id="secCampArquivos" style="display:none">
@@ -3016,6 +3138,32 @@
       </div>
     </div>
 
+    <!-- ── Disparo em Massa: Campanhas Enviadas ── -->
+    <div class="page" id="page-dm-enviadas">
+      <div class="page-hero hero-teal">
+        <div class="page-hero-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </div>
+        <div class="page-hero-text">
+          <h1>Campanhas Enviadas</h1>
+          <p>Histórico de todas as campanhas concluídas.</p>
+        </div>
+      </div>
+      <div class="alert" id="alertEnviadas"></div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
+          <h2 style="font-size:.9rem;font-weight:700">Campanhas Concluídas</h2>
+          <button class="btn btn-ghost btn-sm" onclick="loadCampanhasEnviadas()" style="display:inline-flex;align-items:center;gap:.35rem">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Atualizar
+          </button>
+        </div>
+        <div id="listaCampanhasEnviadas">
+          <div style="text-align:center;padding:3rem;color:var(--text-mid)">Carregando…</div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -3106,8 +3254,9 @@
     docs: 'Documentações',
     telegram: 'Telegram',
     'dm-contatos': 'Contatos',
-    'dm-campanha': 'Nova Campanha',
-    'dm-historico': 'Campanhas',
+    'dm-campanha': 'Enviar Campanhas',
+    'dm-historico': 'Gerenciar Campanhas',
+    'dm-enviadas': 'Campanhas Enviadas',
   };
   function _setTopbarPage(p) {
     document.getElementById('pageTitle').textContent = pages[p] || p;
@@ -3877,6 +4026,7 @@
     else if (page === 'dm-contatos') loadContatos();
     else if (page === 'dm-campanha') initNovaCampanha();
     else if (page === 'dm-historico') { loadCampanhas(); loadWorkerStatus(); }
+    else if (page === 'dm-enviadas') loadCampanhasEnviadas();
   }
 
   // ── Telegram ──────────────────────────────────────────────────────────────────
@@ -4483,6 +4633,21 @@
     document.getElementById('secCampArquivos').style.display = value === 'file' ? 'block' : 'none';
   }
 
+  function toggleEmojiBank() {
+    const bank = document.getElementById('emojiBank');
+    bank.style.display = bank.style.display === 'none' ? 'block' : 'none';
+  }
+
+  function insertEmoji(emoji) {
+    const ta = document.getElementById('inpCampMensagem');
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end   = ta.selectionEnd;
+    ta.value = ta.value.slice(0, start) + emoji + ta.value.slice(end);
+    ta.selectionStart = ta.selectionEnd = start + emoji.length;
+    ta.focus();
+  }
+
   function initNovaCampanha() {
     // Reset form
     document.getElementById('inpCampNome').value = '';
@@ -4493,6 +4658,16 @@
     _campanhaCriadaArquivos = [];
     const btnArq = document.getElementById('btnAddCampArquivo');
     btnArq.disabled = true; btnArq.style.opacity = '0.45'; btnArq.style.cursor = 'not-allowed';
+    // Reset emoji bank
+    document.getElementById('emojiBank').style.display = 'none';
+    // Reset scheduling
+    document.querySelector('input[name="campAgendamento"][value="agora"]').checked = true;
+    document.getElementById('secAgendamento').style.display = 'none';
+    document.getElementById('inpCampData').value = '';
+    document.getElementById('inpCampHora').value = '08:00';
+    // Set min date to today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('inpCampData').min = today;
   }
 
   document.querySelectorAll('.tipo-envio-card').forEach(card => {
@@ -4588,7 +4763,15 @@
     const tipo = document.querySelector('input[name="campTipo"]:checked').value;
     if (!nome) { showAlert('alertCampanha', 'Informe o nome da campanha.', 'error'); return; }
     if (tipo === 'text' && !mensagem) { showAlert('alertCampanha', 'Informe a mensagem.', 'error'); return; }
-    const res = await api('POST', '/api/campanha', { nome, tipo, mensagem });
+    const agendamento = document.querySelector('input[name="campAgendamento"]:checked').value;
+    let agendado_em = null;
+    if (agendamento === 'agendar') {
+      const data = document.getElementById('inpCampData').value;
+      const hora = document.getElementById('inpCampHora').value;
+      if (!data || !hora) { showAlert('alertCampanha', 'Informe data e hora para o agendamento.', 'error'); return; }
+      agendado_em = new Date(`${data}T${hora}:00`).toISOString();
+    }
+    const res = await api('POST', '/api/campanha', { nome, tipo, mensagem, agendado_em });
     if (!res.ok) { showAlert('alertCampanha', 'Erro ao criar campanha.', 'error'); return; }
     _campanhaCriadaId = res.id;
     if (tipo === 'file') {
@@ -4598,7 +4781,10 @@
       btn.style.cursor = 'pointer';
       showAlert('alertCampanha', `Campanha "${nome}" criada! Agora clique em "Selecionar arquivo" para adicionar o(s) arquivo(s).`);
     } else {
-      showAlert('alertCampanha', `Campanha "${nome}" criada! Vá em Campanhas para iniciar o disparo.`);
+      const msg = agendado_em
+        ? `Campanha "${nome}" agendada para ${new Date(agendado_em).toLocaleString('pt-BR')}!`
+        : `Campanha "${nome}" criada! Vá em Gerenciar Campanhas para iniciar o disparo.`;
+      showAlert('alertCampanha', msg);
       setTimeout(() => showPage('dm-historico'), 1500);
     }
   });
@@ -4614,6 +4800,64 @@
     if (!res.ok) return;
     const lista = await res.json();
     renderCampanhas(lista);
+  }
+
+  async function loadCampanhasEnviadas() {
+    const div = document.getElementById('listaCampanhasEnviadas');
+    if (!div) return;
+    div.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text-mid)">Carregando…</div>';
+    try {
+      const res = await fetch('/api/campanha?status=done');
+      if (!res.ok) { div.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text-mid)">Erro ao carregar.</div>'; return; }
+      const lista = await res.json();
+      if (!lista.length) {
+        div.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text-mid)">Nenhuma campanha concluída ainda.</div>';
+        return;
+      }
+      div.innerHTML = lista.map(c => {
+        const dt       = c.created_at ? new Date(c.created_at).toLocaleDateString('pt-BR') : '—';
+        const doneAt   = c.done_at ? new Date(c.done_at).toLocaleString('pt-BR') : '—';
+        const tipoChip = c.tipo === 'file'
+          ? '<span class="chip chip-purple" style="font-size:.72rem">📎 Arquivo</span>'
+          : '<span class="chip chip-blue" style="font-size:.72rem">💬 Texto</span>';
+        const msg = c.mensagem
+          ? `<div style="margin-top:.5rem;font-size:.8rem;color:var(--text-mid);font-style:italic">"${escHtml(c.mensagem.substring(0,100))}${c.mensagem.length>100?'…':''}"</div>`
+          : '';
+        const pct = c.total > 0 ? Math.round((c.enviados / c.total) * 100) : 0;
+        return `
+        <div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid #22c55e;border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:.75rem;box-shadow:var(--shadow-sm)">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap">
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:.625rem;flex-wrap:wrap;margin-bottom:.3rem">
+                <span style="font-weight:700;font-size:.9375rem">${escHtml(c.nome)}</span>
+                ${tipoChip}
+                <span class="chip chip-blue" style="font-size:.72rem">✅ Concluída</span>
+              </div>
+              <div style="font-size:.78rem;color:var(--text-mid)">
+                Criada em ${dt} &nbsp;·&nbsp; Concluída em ${doneAt}
+                &nbsp;·&nbsp; Total: <strong>${c.total}</strong>
+                &nbsp;·&nbsp; Enviados: <strong style="color:var(--accent)">${c.enviados}</strong>
+                &nbsp;·&nbsp; Erros: <strong style="color:var(--red)">${c.erros}</strong>
+              </div>
+              ${msg}
+            </div>
+            <div style="display:flex;gap:.4rem;flex-shrink:0">
+              <button class="btn btn-ghost btn-sm" onclick="deletarCampanha(${c.id})" style="color:var(--red);border-color:#fecaca;display:inline-flex;align-items:center;gap:.3rem" title="Excluir">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>Excluir
+              </button>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:.75rem;margin-top:.875rem">
+            <div style="flex:1;height:7px;background:var(--border);border-radius:4px;overflow:hidden">
+              <div style="height:100%;width:${pct}%;background:#22c55e;border-radius:4px"></div>
+            </div>
+            <span style="font-size:.78rem;color:var(--text-mid);white-space:nowrap;font-weight:600;min-width:80px;text-align:right">${c.enviados}/${c.total} (${pct}%)</span>
+          </div>
+        </div>`;
+      }).join('');
+    } catch(e) {
+      div.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text-mid)">Erro ao carregar campanhas enviadas.</div>';
+    }
   }
 
   // ── Worker status widget ──────────────────────────────────────────────────────
@@ -4685,8 +4929,8 @@
       </div>`;
   }
 
-  const _chipClass = { draft:'chip-gray', running:'chip-green', paused:'chip-yellow', done:'chip-blue' };
-  const _statusLabel = { draft:'Rascunho', running:'Disparando', paused:'Pausada', done:'Concluída' };
+  const _chipClass  = { draft:'chip-gray', scheduled:'chip-purple', running:'chip-green', paused:'chip-yellow', done:'chip-blue' };
+  const _statusLabel = { draft:'Rascunho', scheduled:'⏰ Agendada', running:'Disparando', paused:'Pausada', done:'Concluída' };
 
   function renderCampanhas(lista) {
     const div = document.getElementById('listaCampanhas');
@@ -4702,6 +4946,12 @@
         : '<span class="chip chip-blue" style="font-size:.72rem">💬 Texto</span>';
       const dt = c.created_at ? new Date(c.created_at).toLocaleDateString('pt-BR') : '—';
       const msg = c.mensagem ? `<div style="margin-top:.5rem;font-size:.8rem;color:var(--text-mid);font-style:italic">"${escHtml(c.mensagem.substring(0,80))}${c.mensagem.length>80?'…':''}"</div>` : '';
+      const agendadoInfo = c.agendado_em && c.status === 'scheduled'
+        ? `<div style="margin-top:.4rem;font-size:.78rem;color:#7c3aed;display:flex;align-items:center;gap:.3rem">
+             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+             Agendada para ${new Date(c.agendado_em).toLocaleString('pt-BR')}
+           </div>`
+        : '';
       return `
       <div data-camp-id="${c.id}" data-camp-nome="${escHtml(c.nome)}" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:.75rem;box-shadow:var(--shadow-sm)">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap">
@@ -4713,10 +4963,11 @@
             </div>
             <div style="font-size:.78rem;color:var(--text-mid)">Criada em ${dt} &nbsp;·&nbsp; Total: <strong>${c.total}</strong> &nbsp;·&nbsp; Enviados: <strong style="color:var(--accent)">${c.enviados}</strong> &nbsp;·&nbsp; Erros: <strong style="color:var(--red)">${c.erros}</strong></div>
             ${msg}
+            ${agendadoInfo}
           </div>
           <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;flex-shrink:0">
             ${c.tipo === 'file' ? `<button class="btn btn-ghost btn-sm" onclick="abrirModalArquivos(${c.id},'${escHtml(c.nome)}')" style="display:inline-flex;align-items:center;gap:.3rem"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>Arquivos</button>` : ''}
-            ${c.status === 'draft' || c.status === 'done' || c.status === 'paused' ? `<button class="btn btn-primary btn-sm" onclick="iniciarCampanha(${c.id})" style="display:inline-flex;align-items:center;gap:.3rem"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>Iniciar</button>` : ''}
+            ${c.status === 'draft' || c.status === 'scheduled' || c.status === 'done' || c.status === 'paused' ? `<button class="btn btn-primary btn-sm" onclick="iniciarCampanha(${c.id})" style="display:inline-flex;align-items:center;gap:.3rem"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>Iniciar</button>` : ''}
             ${c.status === 'running' ? `<button class="btn btn-ghost btn-sm" onclick="pausarCampanha(${c.id})" style="border-color:#f59e0b;color:#b45309;display:inline-flex;align-items:center;gap:.3rem"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>Pausar</button>` : ''}
             <button class="btn btn-ghost btn-sm" onclick="deletarCampanha(${c.id})" style="color:var(--red);border-color:#fecaca;display:inline-flex;align-items:center;gap:.3rem" title="Excluir campanha"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>Excluir</button>
           </div>
@@ -4880,7 +5131,12 @@
     const ok = await showConfirm({ title: 'Excluir campanha?', body: 'Remove todos os envios e arquivos desta campanha.', okLabel: 'Excluir', type: 'danger' });
     if (!ok) return;
     await api('DELETE', `/api/campanha/${id}`);
-    loadCampanhas();
+    const activePage = document.querySelector('.page.active');
+    if (activePage && activePage.id === 'page-dm-enviadas') {
+      loadCampanhasEnviadas();
+    } else {
+      loadCampanhas();
+    }
   }
 
   // ── Modal arquivos da campanha ────────────────────────────────────────────────

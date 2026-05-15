@@ -193,6 +193,41 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
     """Processa o próximo item na fila. Retorna True se processou algo."""
     now_dt = lambda: datetime.now()
 
+    # ── Auto-inicia campanhas agendadas cujo horário chegou ──────────────────
+    async with get_db_direct() as db:
+        from datetime import timezone as _tz
+        now_utc = datetime.now(_tz.utc)
+        async with db.execute(
+            """SELECT c.id, c.empresa_id FROM campanhas c
+               WHERE c.status = 'scheduled' AND c.agendado_em <= ?""",
+            (now_utc,),
+        ) as cur:
+            agendadas = await cur.fetchall()
+        for camp in agendadas:
+            try:
+                await db.execute(
+                    """INSERT INTO campanha_envios (campanha_id, empresa_id, phone, nome, status)
+                       SELECT ?, co.empresa_id, co.phone, co.nome, 'queued'
+                       FROM contatos co
+                       WHERE co.empresa_id = ? AND co.ativo = TRUE
+                       ON CONFLICT DO NOTHING""",
+                    (camp["id"], camp["empresa_id"]),
+                )
+                async with db.execute(
+                    "SELECT COUNT(*) as cnt FROM campanha_envios WHERE campanha_id = ? AND status='queued'",
+                    (camp["id"],),
+                ) as cnt_cur:
+                    cnt_row = await cnt_cur.fetchone()
+                total = cnt_row["cnt"] if cnt_row else 0
+                await db.execute(
+                    "UPDATE campanhas SET status='running', total=?, enviados=0, erros=0, started_at=NOW() WHERE id=?",
+                    (total, camp["id"]),
+                )
+                await db.commit()
+                logger.info("[worker] Campanha agendada %s iniciada automaticamente (%d contatos)", camp["id"], total)
+            except Exception as exc:
+                logger.warning("[worker] Erro ao auto-iniciar campanha agendada %s: %s", camp["id"], exc)
+
     # ── Mensagens de texto ────────────────────────────────────────────────────
     async with get_db_direct() as db:
         async with db.execute(

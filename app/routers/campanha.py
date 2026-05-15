@@ -118,22 +118,31 @@ class CampanhaIn(BaseModel):
     nome: str
     tipo: str = "text"  # text | file
     mensagem: Optional[str] = ""
+    agendado_em: Optional[str] = None
 
 
 @router.get("")
-async def list_campanhas(db=Depends(get_db), user=Depends(get_current_user)):
+async def list_campanhas(status: Optional[str] = None, db=Depends(get_db), user=Depends(get_current_user)):
     empresa_id = _eid(user)
-    async with db.execute(
-        "SELECT id, nome, tipo, mensagem, status, total, enviados, erros, created_at, started_at, done_at "
-        "FROM campanhas WHERE empresa_id=? ORDER BY id DESC",
-        (empresa_id,),
-    ) as cur:
-        rows = await cur.fetchall()
+    if status:
+        async with db.execute(
+            "SELECT id, nome, tipo, mensagem, status, total, enviados, erros, created_at, started_at, done_at, agendado_em "
+            "FROM campanhas WHERE empresa_id=? AND status=? ORDER BY id DESC",
+            (empresa_id, status),
+        ) as cur:
+            rows = await cur.fetchall()
+    else:
+        async with db.execute(
+            "SELECT id, nome, tipo, mensagem, status, total, enviados, erros, created_at, started_at, done_at, agendado_em "
+            "FROM campanhas WHERE empresa_id=? ORDER BY id DESC",
+            (empresa_id,),
+        ) as cur:
+            rows = await cur.fetchall()
 
     result = []
     for r in rows:
         d = dict(r)
-        for k in ("created_at", "started_at", "done_at"):
+        for k in ("created_at", "started_at", "done_at", "agendado_em"):
             if d.get(k):
                 d[k] = d[k].isoformat()
         result.append(d)
@@ -142,10 +151,20 @@ async def list_campanhas(db=Depends(get_db), user=Depends(get_current_user)):
 
 @router.post("")
 async def create_campanha(body: CampanhaIn, db=Depends(get_db), user=Depends(get_current_user)):
+    from datetime import datetime, timezone
     empresa_id = _eid(user)
+    agendado_em = None
+    status = "draft"
+    if body.agendado_em:
+        try:
+            agendado_em = datetime.fromisoformat(body.agendado_em.replace('Z', '+00:00'))
+            status = "scheduled"
+        except Exception:
+            pass
+
     cur = await db.execute(
-        "INSERT INTO campanhas (empresa_id, nome, tipo, mensagem, status) VALUES (?,?,?,?,?)",
-        (empresa_id, body.nome.strip(), body.tipo, body.mensagem or "", "draft"),
+        "INSERT INTO campanhas (empresa_id, nome, tipo, mensagem, status, agendado_em) VALUES (?,?,?,?,?,?)",
+        (empresa_id, body.nome.strip(), body.tipo, body.mensagem or "", status, agendado_em),
     )
     await db.commit()
     return {"ok": True, "id": cur.lastrowid}
