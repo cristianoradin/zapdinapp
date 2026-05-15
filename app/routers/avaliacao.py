@@ -209,14 +209,15 @@ def _survey_page(nome_empresa: str, token: str, vendedor: str = "", already_answ
     margin-top: .5rem;
   }}
   .powered {{
-    margin-top: 1.5rem;
+    width: 100%;
+    text-align: center;
     font-size: .7rem;
     color: rgba(255,255,255,.55);
-    text-align: center;
+    padding: 1rem 0 .5rem;
   }}
 </style>
 </head>
-<body>
+<body style="flex-direction:column;gap:0;padding-bottom:.5rem;">
   {body_html}
   <div class="powered">Powered by ZapDin</div>
 <script>
@@ -304,6 +305,19 @@ async def survey_page(t: str = ""):
         return HTMLResponse(_survey_page(nome_emp, t, vendedor=row["vendedor"] or ""))
 
 
+_cached_demo_link: str = ""
+
+@router.get("/api/avaliacao/link-demo")
+async def get_link_demo(user=Depends(get_current_user)):
+    """Retorna link encurtado do DEMO — cacheado em memória."""
+    global _cached_demo_link
+    if not _cached_demo_link:
+        url = f"{settings.public_url}/avaliacao?t=DEMO"
+        from ..routers.erp import _encurtar_url
+        _cached_demo_link = await _encurtar_url(url)
+    return {"link": _cached_demo_link}
+
+
 @router.get("/avaliacao/preview", response_class=HTMLResponse, include_in_schema=False)
 async def survey_preview(empresa_id: Optional[int] = None):
     """Demo preview — usado pelo monitor para pré-visualização."""
@@ -329,6 +343,10 @@ class AvaliacaoResposta(BaseModel):
 async def responder_avaliacao(body: AvaliacaoResposta):
     if body.nota < 1 or body.nota > 5:
         return JSONResponse({"ok": False, "detail": "Nota inválida. Use 1 a 5."}, status_code=400)
+    # Token DEMO → simula envio bem-sucedido sem gravar no banco
+    if body.token.upper() == "DEMO":
+        logger.info("[avaliacao] DEMO nota=%d (não gravado)", body.nota)
+        return {"ok": True}
     async with get_db_direct() as db:
         async with db.execute(
             "SELECT id, nota FROM avaliacoes WHERE token = ?", (body.token,)
@@ -380,13 +398,13 @@ async def list_avaliacoes(
     for r in rows:
         result.append({
             "id": r["id"],
-            "phone": r["phone"],
-            "nome_cliente": r["nome_cliente"],
-            "vendedor": r["vendedor"],
+            "telefone": r["phone"] or "",
+            "nome": r["nome_cliente"] or "—",
+            "vendedor": r["vendedor"] or "—",
             "nota": r["nota"],
-            "comentario": r["comentario"],
-            "created_at": r["created_at"].isoformat() if r["created_at"] else None,
-            "respondido_em": r["respondido_em"].isoformat() if r["respondido_em"] else None,
+            "comentario": r["comentario"] or "",
+            "data": r["respondido_em"].strftime("%d/%m/%Y %H:%M") if r["respondido_em"] else (
+                    r["created_at"].strftime("%d/%m/%Y") if r["created_at"] else "—"),
         })
     return result
 
@@ -435,6 +453,28 @@ async def dashboard_avaliacoes(
     total_env = totals["total_enviadas"] or 0
     total_resp = totals["total_respondidas"] or 0
     taxa = round((total_resp / total_env * 100), 1) if total_env else 0.0
+    # Distribuição com chaves numéricas
+    distribuicao_num = {int(k): v for k, v in distribuicao.items()}
+    # Baixas notas (≤ 2) para alerta
+    async with db.execute(
+        """SELECT phone, nome_cliente, vendedor, nota, respondido_em
+           FROM avaliacoes
+           WHERE empresa_id = $1 AND nota <= 2 AND nota IS NOT NULL
+             AND created_at >= NOW() - ($2 * INTERVAL '1 day')
+           ORDER BY respondido_em DESC LIMIT 10""",
+        (empresa_id, dias),
+    ) as cur:
+        baixas_rows = await cur.fetchall()
+    baixas = [
+        {
+            "nome": r["nome_cliente"] or "—",
+            "telefone": r["phone"] or "",
+            "vendedor": r["vendedor"] or "",
+            "nota": r["nota"],
+            "data": r["respondido_em"].strftime("%d/%m/%Y") if r["respondido_em"] else "—",
+        }
+        for r in baixas_rows
+    ]
     return {
         "total_enviadas": total_env,
         "total_respondidas": total_resp,
@@ -442,6 +482,7 @@ async def dashboard_avaliacoes(
         "media_geral": float(totals["media_geral"]) if totals["media_geral"] else None,
         "positivas": totals["positivas"] or 0,
         "negativas": totals["negativas"] or 0,
-        "distribuicao": distribuicao,
-        "vendedores": vendedores,
+        "distribuicao": distribuicao_num,
+        "ranking_vendedores": vendedores,
+        "baixas": baixas,
     }

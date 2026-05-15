@@ -66,12 +66,17 @@
       position: fixed;
       top: 0; left: 0; bottom: 0;
       z-index: 100;
-      overflow-y: auto;
+      overflow: hidden;
       box-shadow: 2px 0 12px rgba(0,0,0,.04);
     }
-    .sidebar::-webkit-scrollbar { width: 3px; }
-    .sidebar::-webkit-scrollbar-track { background: transparent; }
-    .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .sidebar-nav-scroll {
+      flex: 1;
+      overflow-y: auto;
+      min-height: 0;
+    }
+    .sidebar-nav-scroll::-webkit-scrollbar { width: 3px; }
+    .sidebar-nav-scroll::-webkit-scrollbar-track { background: transparent; }
+    .sidebar-nav-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
     /* Faixa decorativa no topo da sidebar — mesma lógica do topbar */
     .sidebar-top-bar {
@@ -1541,28 +1546,32 @@
 
   <div class="sidebar-divider"></div>
 
-  <div class="sidebar-section">Principal</div>
-  <div class="nav-item active" data-page="dashboard"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span> Dashboard</div>
+  <div class="sidebar-nav-scroll">
+  <div class="sidebar-section">Gestão</div>
+  <div class="nav-item active" data-page="dashboard"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span> Gestão de Envios</div>
+  <div class="nav-item" data-page="arquivo"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></span> Gestão de Arquivos</div>
+  <div class="nav-item" data-page="avaliacoes"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span> Gestão de Avaliação</div>
+
+  <div class="sidebar-section">Configurações</div>
   <div class="nav-item" data-page="mensagem"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span> Configurar Mensagem</div>
   <div class="nav-item" data-page="config-envio"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg></span> Configurações de Envio</div>
   <div class="nav-item" data-page="whatsapp"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></span> Conectar WhatsApp</div>
 
-  <div class="sidebar-section">Integrações</div>
-  <div class="nav-item" data-page="token"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg></span> Token API</div>
-  <div class="nav-item" data-page="arquivo"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></span> Envio de Arquivo</div>
-  <div class="nav-item" data-page="docs"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span> Documentações</div>
-
-  <div class="sidebar-section">Disparo em Massa</div>
-  <div class="nav-item" data-page="dm-dashboard"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span> Dashboard Campanhas</div>
+  <div class="sidebar-section">Campanhas</div>
+  <div class="nav-item" data-page="dm-dashboard"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span> Campanhas</div>
   <div class="nav-item" data-page="dm-contatos"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> Contatos</div>
   <div class="nav-item" data-page="dm-campanha"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></span> Enviar Campanhas</div>
   <div class="nav-item" data-page="dm-historico"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span> Gerenciar Campanhas</div>
   <div class="nav-item" data-page="dm-enviadas"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span> Campanhas Enviadas</div>
 
   <div class="sidebar-section">Outros</div>
+  <div class="nav-item" data-page="token"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg></span> Token API</div>
+  <div class="nav-item" data-page="docs"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span> Documentações</div>
   <div class="nav-item" data-page="telegram"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></span> Telegram</div>
 
-  <div style="margin-top:auto;padding-top:1rem">
+  </div><!-- /sidebar-nav-scroll -->
+
+  <div style="padding-top:.5rem;flex-shrink:0">
     <div style="height:1px;background:var(--border);margin:0 1.25rem .75rem"></div>
     <button class="btn-logout" id="btnLogout">
       <span style="font-size:.9rem">🚪</span> Sair
@@ -3523,6 +3532,144 @@
       </div>
     </div>
 
+    <!-- ── Avaliações ── -->
+    <div class="page" id="page-avaliacoes">
+
+      <!-- Header -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem">
+        <div>
+          <h1 style="font-size:1.35rem;font-weight:800;letter-spacing:-.03em;color:var(--text);margin-bottom:.25rem">Avaliações</h1>
+          <p style="font-size:.875rem;color:var(--text-mid);margin:0">Acompanhe o feedback dos seus clientes</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:.625rem;flex-wrap:wrap">
+          <div style="display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:.25rem;gap:.15rem">
+            <button id="avalBtn7" onclick="setAvalDias(7)" class="btn btn-sm" style="border-radius:16px;font-size:.78rem;padding:.3rem .85rem;background:transparent;border:none;color:var(--text-mid)">7 dias</button>
+            <button id="avalBtn30" onclick="setAvalDias(30)" class="btn btn-sm" style="border-radius:16px;font-size:.78rem;padding:.3rem .85rem;background:var(--accent);color:#fff;border:none">30 dias</button>
+            <button id="avalBtn90" onclick="setAvalDias(90)" class="btn btn-sm" style="border-radius:16px;font-size:.78rem;padding:.3rem .85rem;background:transparent;border:none;color:var(--text-mid)">90 dias</button>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="loadAvaliacoes()" style="display:inline-flex;align-items:center;gap:.35rem">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Atualizar
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Cards -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin-bottom:1.5rem">
+
+        <div class="stat-card card-purple">
+          <span class="stat-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </span>
+          <div class="label">Total Enviadas</div>
+          <div class="value" id="avalKpiEnviadas">—</div>
+        </div>
+
+        <div class="stat-card card-green">
+          <span class="stat-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </span>
+          <div class="label">Respondidas</div>
+          <div class="value" id="avalKpiRespondidas">—</div>
+        </div>
+
+        <div class="stat-card card-blue">
+          <span class="stat-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          </span>
+          <div class="label">Taxa de Resposta</div>
+          <div class="value" id="avalKpiTaxa">—%</div>
+        </div>
+
+        <div class="stat-card card-red">
+          <span class="stat-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </span>
+          <div class="label">Média Geral</div>
+          <div class="value" id="avalKpiMedia">—</div>
+        </div>
+
+      </div>
+
+      <!-- Alerta de baixas notas (só aparece se houver notas ≤ 2) -->
+      <div id="avalAlertaBaixas" style="display:none;background:linear-gradient(135deg,#fff5f5,#fee2e2);border:1.5px solid #fca5a5;border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.25rem">
+        <div style="display:flex;align-items:center;gap:.625rem;margin-bottom:.75rem">
+          <span style="font-size:1.2rem">⚠️</span>
+          <strong style="color:#b91c1c;font-size:.9rem" id="avalAlertaTexto">Avaliações com nota baixa</strong>
+        </div>
+        <div id="avalAlertaLista" style="display:flex;flex-direction:column;gap:.5rem"></div>
+      </div>
+
+      <!-- Grid inferior: Distribuição + Ranking -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.25rem">
+
+        <!-- Distribuição por nota -->
+        <div class="card" style="margin-bottom:0">
+          <div class="section-header" style="margin-bottom:1.25rem">
+            <div class="section-header-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+            <h2>Distribuição por Nota</h2>
+          </div>
+          <div id="avalDistribuicao" style="display:flex;flex-direction:column;gap:.75rem">
+            <div style="text-align:center;padding:2rem;color:var(--text-mid)">Carregando…</div>
+          </div>
+        </div>
+
+        <!-- Ranking por Vendedor -->
+        <div class="card" style="margin-bottom:0">
+          <div class="section-header" style="margin-bottom:1.25rem">
+            <div class="section-header-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+            <h2>Ranking por Vendedor</h2>
+          </div>
+          <div id="avalRanking" style="display:flex;flex-direction:column;gap:.625rem">
+            <div style="text-align:center;padding:2rem;color:var(--text-mid)">Carregando…</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Lista de Avaliações -->
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;margin-bottom:1.25rem">
+          <div class="section-header" style="margin-bottom:0">
+            <div class="section-header-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+            <h2>Todas as Avaliações</h2>
+          </div>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+            <button onclick="setAvalFiltro('todas')" id="avalFiltroTodas" class="btn btn-sm btn-primary" style="font-size:.78rem;border-radius:16px;padding:.3rem .85rem">Todas</button>
+            <button onclick="setAvalFiltro('otimas')" id="avalFiltroOtimas" class="btn btn-sm btn-ghost" style="font-size:.78rem;border-radius:16px;padding:.3rem .85rem;color:#2d6a0a;border-color:var(--accent-mid)">⭐⭐⭐⭐⭐ Ótimas</button>
+            <button onclick="setAvalFiltro('regulares')" id="avalFiltroRegulares" class="btn btn-sm btn-ghost" style="font-size:.78rem;border-radius:16px;padding:.3rem .85rem;color:#92400e;border-color:#fde68a">⭐⭐⭐ Regulares</button>
+            <button onclick="setAvalFiltro('ruins')" id="avalFiltroRuins" class="btn btn-sm btn-ghost" style="font-size:.78rem;border-radius:16px;padding:.3rem .85rem;color:#b91c1c;border-color:#fecaca">⭐⭐ Ruins</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table id="avalTabela">
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Telefone</th>
+                <th>Vendedor</th>
+                <th style="text-align:center">Nota</th>
+                <th>Data</th>
+              </tr>
+            </thead>
+            <tbody id="avalTbody">
+              <tr><td colspan="5" style="text-align:center;color:var(--text-mid);padding:2.5rem">Carregando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- Paginação -->
+        <div id="avalPaginacao" style="display:flex;align-items:center;justify-content:space-between;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+          <span id="avalPageInfo" style="font-size:.8rem;color:var(--text-mid)">—</span>
+          <div style="display:flex;gap:.4rem">
+            <button id="avalBtnAnterior" onclick="avalMudarPagina(-1)" class="btn btn-ghost btn-sm">← Anterior</button>
+            <button id="avalBtnProximo" onclick="avalMudarPagina(1)" class="btn btn-ghost btn-sm">Próximo →</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <!-- fim page-avaliacoes -->
+
   </div>
 </div>
 
@@ -3603,7 +3750,7 @@
 <script>
   // ── Nav ──────────────────────────────────────────────────────────────────────
   const pages = {
-    dashboard: 'Dashboard',
+    dashboard: 'Gestão de Envios',
     mensagem: 'Configurar Mensagem',
     'config-envio': 'Configurações de Envio',
     whatsapp: 'Conectar WhatsApp',
@@ -3612,11 +3759,12 @@
     arquivo: 'Envio de Arquivo',
     docs: 'Documentações',
     telegram: 'Telegram',
-    'dm-dashboard': 'Dashboard Campanhas',
+    'dm-dashboard': 'Campanhas',
     'dm-contatos': 'Contatos',
     'dm-campanha': 'Enviar Campanhas',
     'dm-historico': 'Gerenciar Campanhas',
     'dm-enviadas': 'Campanhas Enviadas',
+    'avaliacoes': 'Gestão de Avaliação',
   };
   function _setTopbarPage(p) {
     document.getElementById('pageTitle').textContent = pages[p] || p;
@@ -4420,6 +4568,7 @@
     else if (page === 'dm-campanha') initNovaCampanha();
     else if (page === 'dm-historico') { loadCampanhas(); loadWorkerStatus(); }
     else if (page === 'dm-enviadas') loadCampanhasEnviadas();
+    else if (page === 'avaliacoes') loadAvaliacoes();
   }
 
   // ── Telegram ──────────────────────────────────────────────────────────────────
@@ -4580,6 +4729,15 @@
   }
 
   // ── Teste de Envio integrado em Configurar Mensagem ───────────────────────
+  let _linkDemoAvaliacao = '';
+
+  async function _carregarLinkDemo() {
+    try {
+      const r = await fetch('/api/avaliacao/link-demo');
+      if (r.ok) { const d = await r.json(); _linkDemoAvaliacao = d.link || ''; }
+    } catch(e) {}
+  }
+
   async function _refreshTesteMensagem() {
     const res = await fetch('/api/sessoes/live-status');
     if (!res.ok) return;
@@ -4615,7 +4773,10 @@
       .replace(/{valor_total}/g, 'R$ 221,70')
       .replace(/{valor}/g, 'R$ 221,70');
     const inclAval = document.getElementById('testeMsgIncluirAval')?.checked;
-    if (inclAval) msg += '\n\n⭐ Avalie nosso atendimento:\nhttp://cloud.gruposgapetro.com.br:4000/avaliacao?t=DEMO';
+    if (inclAval) {
+      const link = _linkDemoAvaliacao || `${location.origin}/avaliacao?t=DEMO`;
+      msg += `\n\n⭐ Avalie nosso atendimento:\n${link}`;
+    }
     return msg;
   }
 
@@ -4625,7 +4786,7 @@
   }
 
   async function loadTesteMensagem() {
-    await _refreshTesteMensagem();
+    await Promise.all([_refreshTesteMensagem(), _carregarLinkDemo()]);
     atualizarPreviewTeste();
   }
 
@@ -6031,6 +6192,242 @@
       }
     } catch (_) {}
   })();
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  AVALIAÇÕES
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  let _avalDias = 30;
+  let _avalPage = 1;
+  let _avalFiltroNota = 'todas';
+  let _avalData = { dash: null, lista: [] };
+
+  const _avalCorNota = { 1: '#dc2626', 2: '#f97316', 3: '#eab308', 4: '#84cc16', 5: '#22c55e' };
+  const _avalBgNota  = { 1: '#fff5f5', 2: '#fff7ed', 3: '#fefce8', 4: '#f7fee7', 5: '#f0fdf4' };
+
+  function _starHtml(nota) {
+    let s = '';
+    for (let i = 1; i <= 5; i++) {
+      s += `<span style="color:${i <= nota ? _avalCorNota[nota] : '#d1d5db'};font-size:.95rem">★</span>`;
+    }
+    return s;
+  }
+
+  async function loadAvaliacoes() {
+    await Promise.all([_loadAvalDash(), _loadAvalLista()]);
+  }
+
+  async function _loadAvalDash() {
+    try {
+      const r = await fetch(`/api/avaliacoes/dashboard?dias=${_avalDias}`);
+      if (!r.ok) { _renderAvalDashVazio(); return; }
+      const d = await r.json();
+      _avalData.dash = d;
+
+      // KPIs
+      document.getElementById('avalKpiEnviadas').textContent   = d.total_enviadas   ?? '—';
+      document.getElementById('avalKpiRespondidas').textContent = d.total_respondidas ?? '—';
+      const taxa = d.total_enviadas > 0 ? Math.round((d.total_respondidas / d.total_enviadas) * 100) : 0;
+      document.getElementById('avalKpiTaxa').textContent = (d.taxa_resposta ?? taxa) + '%';
+      const media = typeof d.media_geral === 'number' ? d.media_geral.toFixed(1) : '—';
+      document.getElementById('avalKpiMedia').textContent = media;
+
+      // Alerta de baixas notas
+      const ruins = Array.isArray(d.baixas) ? d.baixas : [];
+      const alertaDiv = document.getElementById('avalAlertaBaixas');
+      if (ruins.length > 0) {
+        document.getElementById('avalAlertaTexto').textContent =
+          `⚠️ ${ruins.length} avaliação${ruins.length > 1 ? 'ões' : ''} com nota baixa nos últimos ${_avalDias} dias`;
+        document.getElementById('avalAlertaLista').innerHTML = ruins.map(a => `
+          <div style="display:flex;align-items:center;gap:.75rem;background:#fff;border:1px solid #fecaca;border-radius:8px;padding:.5rem .875rem;border-left:3px solid #dc2626">
+            <div style="width:32px;height:32px;border-radius:50%;background:#fee2e2;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;color:#b91c1c;flex-shrink:0">${(a.nome||'?').charAt(0).toUpperCase()}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:.84rem">${escHtml(a.nome||'—')}</div>
+              <div style="font-size:.75rem;color:var(--text-mid)">${a.telefone||''}</div>
+            </div>
+            <div>${_starHtml(a.nota)}</div>
+            <div style="font-size:.75rem;color:var(--text-mid);white-space:nowrap">${a.data||''}</div>
+          </div>`).join('');
+        alertaDiv.style.display = '';
+      } else {
+        alertaDiv.style.display = 'none';
+      }
+
+      // Distribuição por nota
+      const dist = d.distribuicao || {};
+      const totalResp = d.total_respondidas || 1;
+      const notaLabels = { 5: '⭐⭐⭐⭐⭐ Excelente', 4: '⭐⭐⭐⭐ Bom', 3: '⭐⭐⭐ Regular', 2: '⭐⭐ Ruim', 1: '⭐ Péssimo' };
+      const notaCores = { 5: '#22c55e', 4: '#84cc16', 3: '#eab308', 2: '#f97316', 1: '#ef4444' };
+      document.getElementById('avalDistribuicao').innerHTML = [5,4,3,2,1].map(n => {
+        const qtd = dist[n] || 0;
+        const pct = totalResp > 0 ? Math.round((qtd / totalResp) * 100) : 0;
+        return `
+          <div style="display:flex;align-items:center;gap:.625rem">
+            <div style="white-space:nowrap;font-size:.78rem;font-weight:600;color:var(--text-mid);min-width:140px">${notaLabels[n]}</div>
+            <div style="flex:1;height:10px;background:var(--border);border-radius:5px;overflow:hidden">
+              <div style="height:100%;width:${pct}%;background:${notaCores[n]};border-radius:5px;transition:width .7s ease"></div>
+            </div>
+            <div style="font-size:.75rem;font-weight:700;color:var(--text-mid);white-space:nowrap;min-width:55px;text-align:right">${qtd} (${pct}%)</div>
+          </div>`;
+      }).join('');
+
+      // Ranking vendedores
+      const ranking = Array.isArray(d.ranking_vendedores) ? d.ranking_vendedores : [];
+      if (!ranking.length) {
+        document.getElementById('avalRanking').innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-mid)">Sem dados</div>';
+      } else {
+        const melhorMedia = ranking[0].media || 5;
+        document.getElementById('avalRanking').innerHTML = ranking.map((v, i) => {
+          const pct = melhorMedia > 0 ? Math.round((v.media / melhorMedia) * 100) : 0;
+          const barColor = i === 0 ? '#22c55e' : i === ranking.length - 1 && ranking.length > 1 ? '#ef4444' : 'var(--accent)';
+          const numClass = i === 0 ? 'rank-num gold' : i === 1 ? 'rank-num silver' : i === 2 ? 'rank-num bronze' : 'rank-num';
+          return `
+            <div class="rank-row">
+              <div class="${numClass}">${i+1}</div>
+              <div class="rank-bar-wrap">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.2rem">
+                  <span class="rank-name" style="max-width:140px">${escHtml(v.vendedor||'—')}</span>
+                  <span style="font-size:.7rem;color:var(--text-mid)">${v.total} aval.</span>
+                </div>
+                <div class="rank-bar-bg">
+                  <div class="rank-bar-fill" style="width:${pct}%;background:${barColor}"></div>
+                </div>
+              </div>
+              <div class="rank-stat">${typeof v.media === 'number' ? v.media.toFixed(1) : '—'} ★</div>
+            </div>`;
+        }).join('');
+      }
+    } catch (e) {
+      _renderAvalDashVazio();
+    }
+  }
+
+  function _renderAvalDashVazio() {
+    ['avalKpiEnviadas','avalKpiRespondidas','avalKpiTaxa','avalKpiMedia'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = '—';
+    });
+    document.getElementById('avalDistribuicao').innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-mid)">Sem dados para o período</div>';
+    document.getElementById('avalRanking').innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-mid)">Sem dados para o período</div>';
+  }
+
+  async function _loadAvalLista() {
+    try {
+      const r = await fetch(`/api/avaliacoes?dias=${_avalDias}`);
+      if (!r.ok) { _avalData.lista = []; }
+      else { _avalData.lista = await r.json(); }
+    } catch { _avalData.lista = []; }
+    _avalPage = 1;
+    _renderAvalTabela();
+  }
+
+  function _renderAvalRow(aval) {
+    const nota = aval.nota || 0;
+    const borderColor = _avalCorNota[nota] || '#e4e6ea';
+    const bgColor     = _avalBgNota[nota]  || '#fff';
+    const inicial = (aval.nome || '?').charAt(0).toUpperCase();
+    const temComentario = aval.comentario && aval.comentario.trim().length > 0;
+    const comentarioHtml = temComentario
+      ? `<div style="font-size:.78rem;color:var(--text-mid);font-style:italic;margin-top:.2rem">"${escHtml(aval.comentario)}"</div>`
+      : '';
+    return `
+      <tr style="border-left:3px solid ${borderColor};background:${bgColor}">
+        <td>
+          <div style="display:flex;align-items:center;gap:.625rem">
+            <div style="width:32px;height:32px;border-radius:50%;background:${borderColor}22;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;color:${borderColor};flex-shrink:0">${inicial}</div>
+            <div>
+              <div style="font-weight:600;font-size:.875rem;display:flex;align-items:center;gap:.35rem">
+                ${escHtml(aval.nome||'—')}
+                ${temComentario ? '<span title="Tem comentário" style="font-size:.75rem">💬</span>' : ''}
+              </div>
+              ${comentarioHtml}
+            </div>
+          </div>
+        </td>
+        <td style="font-family:monospace;font-size:.84rem;color:var(--text-mid)">${_fmtPhone(aval.telefone||'')}</td>
+        <td style="font-size:.84rem">${escHtml(aval.vendedor||'—')}</td>
+        <td style="text-align:center">${_starHtml(nota)}</td>
+        <td style="font-size:.8rem;color:var(--text-mid);white-space:nowrap">${aval.data||'—'}</td>
+      </tr>`;
+  }
+
+  function _renderAvalTabela() {
+    const PER_PAGE = 20;
+    let lista = _avalData.lista || [];
+
+    // Filtro
+    if (_avalFiltroNota === 'otimas')   lista = lista.filter(a => (a.nota||0) >= 4);
+    else if (_avalFiltroNota === 'regulares') lista = lista.filter(a => (a.nota||0) === 3);
+    else if (_avalFiltroNota === 'ruins')     lista = lista.filter(a => (a.nota||0) <= 2);
+
+    const total = lista.length;
+    const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
+    if (_avalPage > totalPages) _avalPage = totalPages;
+
+    const slice = lista.slice((_avalPage - 1) * PER_PAGE, _avalPage * PER_PAGE);
+
+    const tbody = document.getElementById('avalTbody');
+    if (!slice.length) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:2.5rem;color:var(--text-mid)">Nenhuma avaliação encontrada.</td></tr>`;
+    } else {
+      tbody.innerHTML = slice.map(_renderAvalRow).join('');
+    }
+
+    // Paginação
+    const infoEl = document.getElementById('avalPageInfo');
+    if (infoEl) infoEl.textContent = total > 0
+      ? `Exibindo ${(_avalPage-1)*PER_PAGE+1}–${Math.min(_avalPage*PER_PAGE, total)} de ${total}`
+      : 'Nenhum resultado';
+    const btnAnt = document.getElementById('avalBtnAnterior');
+    const btnPro = document.getElementById('avalBtnProximo');
+    if (btnAnt) btnAnt.disabled = _avalPage <= 1;
+    if (btnPro) btnPro.disabled = _avalPage >= totalPages;
+  }
+
+  function setAvalDias(dias) {
+    _avalDias = dias;
+    // Atualiza visual dos botões
+    [7,30,90].forEach(d => {
+      const btn = document.getElementById('avalBtn'+d);
+      if (btn) {
+        if (d === dias) {
+          btn.style.background = 'var(--accent)';
+          btn.style.color = '#fff';
+        } else {
+          btn.style.background = 'transparent';
+          btn.style.color = 'var(--text-mid)';
+        }
+      }
+    });
+    loadAvaliacoes();
+  }
+
+  function setAvalFiltro(filtro) {
+    _avalFiltroNota = filtro;
+    _avalPage = 1;
+    // Visual dos botões de filtro
+    ['todas','otimas','regulares','ruins'].forEach(f => {
+      const btn = document.getElementById('avalFiltro' + f.charAt(0).toUpperCase() + f.slice(1));
+      if (!btn) return;
+      if (f === filtro) {
+        btn.className = 'btn btn-sm btn-primary';
+        btn.style.borderRadius = '16px';
+        btn.style.fontSize = '.78rem';
+        btn.style.padding = '.3rem .85rem';
+      } else {
+        btn.className = 'btn btn-sm btn-ghost';
+        btn.style.borderRadius = '16px';
+        btn.style.fontSize = '.78rem';
+        btn.style.padding = '.3rem .85rem';
+      }
+    });
+    _renderAvalTabela();
+  }
+
+  function avalMudarPagina(delta) {
+    _avalPage += delta;
+    _renderAvalTabela();
+  }
 
   // Helper showPage (para navegação programática)
   function showPage(p) {
