@@ -5,12 +5,29 @@ import secrets
 import uuid
 from datetime import datetime
 from typing import List, Optional
+from urllib.parse import quote
 
+import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, field_validator
 
 from ..core.database import get_db
 from ..core.security import get_current_user, verify_erp_token
+from ..core.config import settings
+
+
+async def _encurtar_url(url: str) -> str:
+    """Encurta via TinyURL. Retorna o link original se falhar."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(
+                f"https://tinyurl.com/api-create.php?url={quote(url, safe='')}"
+            )
+            if r.status_code == 200 and r.text.startswith("http"):
+                return r.text.strip()
+    except Exception as exc:
+        logger.debug("[erp] TinyURL falhou (%s) — usando link original", exc)
+    return url
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +103,7 @@ class VendaPayload(BaseModel):
     data: Optional[str] = None
     # Lista de produtos (opcional)
     produtos: Optional[List[Produto]] = None
+    vendedor: Optional[str] = ""
     mensagem_custom: Optional[str] = None
 
 
@@ -157,11 +175,52 @@ async def receber_venda(
     template = row["value"] if row else "Olá {nome}, obrigado pela sua compra de {valor_total} em {data}!"
     mensagem = body.mensagem_custom or _aplicar_template(template, body, telefone)
 
+    # Gera link de avaliação se habilitado
+    _token_aval = None
+    try:
+        async with db.execute(
+            "SELECT value FROM config WHERE key='avaliacao_ativa' AND empresa_id=?", (empresa_id,)
+        ) as cur:
+            cfg_aval = await cur.fetchone()
+        if cfg_aval and cfg_aval["value"] == "1":
+            _token_aval = secrets.token_urlsafe(16)
+            async with db.execute(
+                "SELECT value FROM config WHERE key='avaliacao_url_base' AND empresa_id=?", (empresa_id,)
+            ) as cur2:
+                cfg_url = await cur2.fetchone()
+            url_base = cfg_url["value"] if cfg_url else settings.public_url
+            link_aval = await _encurtar_url(f"{url_base}/avaliacao?t={_token_aval}")
+            mensagem = mensagem + f"\n\n⭐ Avalie nosso atendimento:\n{link_aval}"
+    except Exception as exc:
+        logger.debug("[erp] Erro ao gerar link de avaliação: %s", exc)
+
     # Enfileira para disparo assíncrono — API retorna imediatamente
     await db.execute(
         "INSERT INTO mensagens (empresa_id, destinatario, nome_destinatario, mensagem, tipo, status) VALUES (?, ?, ?, ?, 'text', 'queued')",
         (empresa_id, telefone, body.nome or "", mensagem),
     )
+    # Insere registro de avaliação se token foi gerado
+    if _token_aval:
+        try:
+            await db.execute(
+                """INSERT INTO avaliacoes (empresa_id, token, phone, nome_cliente, vendedor, valor)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (empresa_id, _token_aval, telefone, body.nome or "", body.vendedor or "", body.valor_total or body.valor or ""),
+            )
+        except Exception as exc:
+            logger.debug("[erp] Erro ao inserir avaliação: %s", exc)
+    # Registra/atualiza contato no disparo em massa
+    try:
+        await db.execute(
+            """INSERT INTO contatos (empresa_id, phone, nome, origem)
+               VALUES (?, ?, ?, 'erp')
+               ON CONFLICT (empresa_id, phone) DO UPDATE
+               SET nome = CASE WHEN EXCLUDED.nome != '' THEN EXCLUDED.nome ELSE contatos.nome END,
+                   origem = 'erp'""",
+            (empresa_id, telefone, body.nome or ""),
+        )
+    except Exception as exc:
+        logger.debug("[erp] Upsert contato falhou (ignorado): %s", exc)
     await db.commit()
     _record_call(empresa_id, request, "/api/erp/venda", True)
     logger.info("[erp] venda enfileirada → empresa=%s fone=%s nome=%s ip=%s",
@@ -210,6 +269,18 @@ async def receber_arquivo(
            VALUES (?, ?, ?, ?, ?, ?, 'queued', ?)""",
         (empresa_id, body.nome_arquivo, nome_salvo, len(conteudo), telefone, "", body.mensagem),
     )
+    # Registra/atualiza contato no disparo em massa
+    try:
+        await db.execute(
+            """INSERT INTO contatos (empresa_id, phone, nome, origem)
+               VALUES (?, ?, ?, 'erp')
+               ON CONFLICT (empresa_id, phone) DO UPDATE
+               SET nome = CASE WHEN EXCLUDED.nome != '' THEN EXCLUDED.nome ELSE contatos.nome END,
+                   origem = 'erp'""",
+            (empresa_id, telefone, ""),
+        )
+    except Exception as exc:
+        logger.debug("[erp] Upsert contato (arquivo) falhou (ignorado): %s", exc)
     await db.commit()
     _record_call(empresa_id, request, "/api/erp/arquivo", True)
     logger.info("[erp] arquivo enfileirado → empresa=%s fone=%s arquivo=%s tamanho=%dKB ip=%s",

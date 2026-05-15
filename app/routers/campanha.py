@@ -37,14 +37,14 @@ async def list_contatos(q: str = "", db=Depends(get_db), user=Depends(get_curren
     empresa_id = _eid(user)
     if q:
         async with db.execute(
-            "SELECT id, phone, nome, ativo FROM contatos "
+            "SELECT id, phone, nome, ativo, COALESCE(origem,'manual') AS origem FROM contatos "
             "WHERE empresa_id=? AND (phone ILIKE ? OR nome ILIKE ?) ORDER BY nome",
             (empresa_id, f"%{q}%", f"%{q}%"),
         ) as cur:
             rows = await cur.fetchall()
     else:
         async with db.execute(
-            "SELECT id, phone, nome, ativo FROM contatos WHERE empresa_id=? ORDER BY nome",
+            "SELECT id, phone, nome, ativo, COALESCE(origem,'manual') AS origem FROM contatos WHERE empresa_id=? ORDER BY nome",
             (empresa_id,),
         ) as cur:
             rows = await cur.fetchall()

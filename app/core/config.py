@@ -59,6 +59,8 @@ class Settings(BaseSettings):
     dispatch_min_delay: float = 1.0   # segundos mínimos entre disparos
     dispatch_max_delay: float = 4.0   # segundos máximos entre disparos
 
+    public_url: str = "http://localhost:4000"
+
     # Backend de WhatsApp: "playwright" (padrão) ou "evolution"
     wa_backend: str = "playwright"
 

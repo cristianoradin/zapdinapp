@@ -375,6 +375,7 @@ async def init_db() -> None:
             )
         """)
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_contatos_empresa ON contatos(empresa_id)")
+        await conn.execute("ALTER TABLE contatos ADD COLUMN IF NOT EXISTS origem TEXT DEFAULT 'manual'")
 
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS campanhas (
@@ -464,3 +465,23 @@ async def init_db() -> None:
                 UNIQUE (empresa_id, sessao_id)
             )
         """)
+
+        # ── Avaliações de atendimento ──────────────────────────────────────────────
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS avaliacoes (
+                id            BIGSERIAL PRIMARY KEY,
+                empresa_id    BIGINT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+                token         TEXT UNIQUE NOT NULL,
+                phone         TEXT NOT NULL,
+                nome_cliente  TEXT DEFAULT '',
+                vendedor      TEXT DEFAULT '',
+                valor         TEXT DEFAULT '',
+                nota          INTEGER,
+                comentario    TEXT,
+                created_at    TIMESTAMPTZ DEFAULT NOW(),
+                respondido_em TIMESTAMPTZ
+            )
+        """)
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_avaliacoes_empresa ON avaliacoes(empresa_id)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_avaliacoes_token ON avaliacoes(token)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_avaliacoes_vendedor ON avaliacoes(empresa_id, vendedor)")
