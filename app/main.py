@@ -50,7 +50,10 @@ def _setup_logging() -> None:
 _setup_logging()
 from .core.database import init_db, get_db, get_db_direct
 from .core.http_client import close_http_client
-from .routers import auth, whatsapp, erp, config_router, arquivos, stats, telegram_router
+from .routers import whatsapp, erp, config_router, arquivos, stats, telegram_router
+from .routers.auth_login import router as auth_login_router
+from .routers.auth_empresa import router as auth_empresa_router
+from .routers.auth_usuarios import router as auth_usuarios_router
 from .routers.activation import router as activation_router
 from .routers.internal import router as internal_router
 from .routers.monitor_sync import router as monitor_sync_router
@@ -222,7 +225,9 @@ fastapi_app.add_middleware(LockMiddleware)
 fastapi_app.include_router(activation_router)   # /activate + /api/activate
 fastapi_app.include_router(internal_router)     # /internal/* (localhost only)
 fastapi_app.include_router(monitor_sync_router) # /api/monitor-sync/* (token auth, rede)
-fastapi_app.include_router(auth.router)
+fastapi_app.include_router(auth_login_router)    # /api/auth/* — login, logout, me, check-cnpj
+fastapi_app.include_router(auth_empresa_router)  # /api/auth/* — auto-setup, registrar-empresa
+fastapi_app.include_router(auth_usuarios_router) # /api/auth/usuarios — CRUD usuários
 fastapi_app.include_router(whatsapp.router)
 fastapi_app.include_router(erp.router)
 fastapi_app.include_router(config_router.router)
