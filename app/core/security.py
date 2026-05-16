@@ -85,6 +85,20 @@ def normalize_cnpj(cnpj: str) -> str:
     return "".join(c for c in cnpj if c.isdigit())
 
 
-def verify_erp_token(token: str, stored_token: str) -> bool:
-    """Comparação segura contra timing attacks."""
-    return hmac.compare_digest(token.encode(), stored_token.encode())
+def hash_erp_token(token: str) -> str:
+    """SHA-256 do token ERP — valor a ser armazenado no banco."""
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def verify_erp_token(token: str, stored: str) -> bool:
+    """
+    M8: comparação segura contra timing attacks.
+    Suporta dois formatos no banco:
+      - Hash SHA-256 (64 chars hex): compare hash(incoming) com stored  ← novo padrão
+      - Plaintext legado: compare diretamente (migração transparente)
+    """
+    if len(stored) == 64 and all(c in "0123456789abcdef" for c in stored):
+        # Novo padrão: armazena hash, compara hash
+        return hmac.compare_digest(hashlib.sha256(token.encode()).hexdigest(), stored)
+    # Legado: plaintext — compara diretamente (tokens existentes continuam funcionando)
+    return hmac.compare_digest(token.encode(), stored.encode())

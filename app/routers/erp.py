@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, field_validator
 
 from ..core.database import get_db
-from ..core.security import get_current_user, verify_erp_token
+from ..core.security import get_current_user, verify_erp_token, hash_erp_token
 from ..core.config import settings
 
 
@@ -64,13 +64,24 @@ async def _verify_token(x_token: Optional[str], db, request: Request = None) -> 
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token ERP não informado",
         )
-    # Busca todos os tokens ERP ativos e compara com compare_digest
+    # Busca todos os tokens ERP e compara — verify_erp_token suporta hash e plaintext
     async with db.execute(
         "SELECT empresa_id, value FROM config WHERE key='erp_token'"
     ) as cur:
         rows = await cur.fetchall()
     for row in rows:
         if verify_erp_token(x_token, row["value"]):
+            # M8: migração transparente — se ainda era plaintext, salva hash no banco
+            if len(row["value"]) != 64:
+                try:
+                    await db.execute(
+                        """UPDATE config SET value = ? WHERE key='erp_token' AND empresa_id = ?""",
+                        (hash_erp_token(x_token), row["empresa_id"]),
+                    )
+                    await db.commit()
+                    logger.info("[erp] Token ERP migrado para SHA-256 (empresa %s)", row["empresa_id"])
+                except Exception:
+                    pass
             return row["empresa_id"]
     logger.warning("[erp] Token inválido recebido de ip=%s token=%s...", ip, x_token[:8] if x_token else "")
     # Alerta Telegram — possível tentativa de acesso indevido (best-effort)
@@ -319,12 +330,21 @@ async def get_erp_config(
     db=Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
+    """
+    M8: retorna se o token existe mas não o valor (hash não é reversível).
+    O token bruto só é exibido no momento da geração (/gerar-token).
+    """
     empresa_id = user["empresa_id"]
     async with db.execute(
         "SELECT value FROM config WHERE key='erp_token' AND empresa_id=?", (empresa_id,)
     ) as cur:
         row = await cur.fetchone()
-    return {"token": row["value"] if row else ""}
+    if not row:
+        return {"token": "", "configurado": False}
+    # Retorna últimos 8 chars se plaintext legado, ou prefixo do hash para indicar existência
+    stored = row["value"]
+    preview = f"••••••••{stored[-4:]}" if stored else ""
+    return {"token": preview, "configurado": bool(stored)}
 
 
 @router.post("/config")
@@ -333,12 +353,16 @@ async def set_erp_config(
     db=Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
+    """M8: salva hash SHA-256 do token informado (nunca o token em plaintext)."""
     empresa_id = user["empresa_id"]
-    token = body.get("token", "")
+    token = body.get("token", "").strip()
+    if not token:
+        return {"ok": False, "detail": "Token não pode ser vazio"}
+    hashed = hash_erp_token(token)
     await db.execute(
         """INSERT INTO config (empresa_id, key, value) VALUES (?, 'erp_token', ?)
            ON CONFLICT (empresa_id, key) DO UPDATE SET value = EXCLUDED.value""",
-        (empresa_id, token),
+        (empresa_id, hashed),
     )
     await db.commit()
     return {"ok": True}
@@ -349,12 +373,18 @@ async def gerar_token(
     db=Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
+    """
+    M8: gera novo token seguro, salva hash no banco.
+    O token bruto é retornado APENAS nesta resposta — não há como recuperá-lo depois.
+    """
     empresa_id = user["empresa_id"]
     novo_token = secrets.token_urlsafe(32)
+    hashed = hash_erp_token(novo_token)
     await db.execute(
         """INSERT INTO config (empresa_id, key, value) VALUES (?, 'erp_token', ?)
            ON CONFLICT (empresa_id, key) DO UPDATE SET value = EXCLUDED.value""",
-        (empresa_id, novo_token),
+        (empresa_id, hashed),
     )
     await db.commit()
-    return {"ok": True, "token": novo_token}
+    logger.info("[erp] Novo token ERP gerado para empresa %s (armazenado como hash)", empresa_id)
+    return {"ok": True, "token": novo_token}  # token bruto: visível UMA VEZ, copie agora
