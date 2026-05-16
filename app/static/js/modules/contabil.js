@@ -233,15 +233,28 @@ window.ctbEmpresas = (() => {
     `).join('');
   }
 
+  function _abrirModalEmpresa() {
+    const m = document.getElementById('modalCtbEmpresa');
+    if (m) { m.style.display = 'flex'; setTimeout(() => m.classList.add('open'), 10); }
+  }
+
+  function fecharModal() {
+    const m = document.getElementById('modalCtbEmpresa');
+    if (m) { m.classList.remove('open'); setTimeout(() => { m.style.display = 'none'; }, 200); }
+  }
+
   function novaEmpresa() {
     document.getElementById('ctbEmpId').value = '';
     document.getElementById('ctbEmpFormTitulo').textContent = 'Nova Empresa';
-    document.getElementById('btnCtbSalvarEmpresa').textContent = 'Salvar e Enviar Boas-Vindas';
+    const btn = document.getElementById('btnCtbSalvarEmpresa');
+    if (btn) { btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Salvar e Enviar Boas-Vindas'; }
     ['ctbEmpNome','ctbEmpCnpj','ctbEmpIe','ctbEmpCpf','ctbEmpRg',
      'ctbEmpEndereco','ctbEmpCidade','ctbEmpUf','ctbEmpTelefone','ctbEmpEmail']
       .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     document.getElementById('ctbEmpRegime').value = 'simples_nacional';
-    document.getElementById('alertCtbEmpForm').style.display = 'none';
+    const al = document.getElementById('alertCtbEmpForm');
+    if (al) al.style.display = 'none';
+    _abrirModalEmpresa();
   }
 
   async function editar(id) {
@@ -262,7 +275,11 @@ window.ctbEmpresas = (() => {
       document.getElementById('ctbEmpEmail').value    = e.email || '';
       document.getElementById('ctbEmpRegime').value   = e.regime_tributario || 'simples_nacional';
       document.getElementById('ctbEmpFormTitulo').textContent = 'Editar Empresa';
-      document.getElementById('btnCtbSalvarEmpresa').textContent = 'Salvar Alterações';
+      const btn = document.getElementById('btnCtbSalvarEmpresa');
+      if (btn) { btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Salvar Alterações'; }
+      const al = document.getElementById('alertCtbEmpForm');
+      if (al) al.style.display = 'none';
+      _abrirModalEmpresa();
     } catch (e) {
       console.error('[ctb] editar empresa', e);
     }
@@ -298,10 +315,10 @@ window.ctbEmpresas = (() => {
     });
 
     if (res.ok) {
-      _ctbAlert('alertCtbEmpForm',
-        id ? 'Empresa atualizada!' : 'Empresa cadastrada! Boas-vindas enviadas via WhatsApp.',
+      fecharModal();
+      _ctbAlert('alertCtbEmpLista',
+        id ? 'Empresa atualizada com sucesso!' : 'Empresa cadastrada! Boas-vindas enviadas via WhatsApp.',
         'success');
-      novaEmpresa();
       await carregar();
     } else {
       const d = await res.json().catch(() => ({}));
@@ -320,7 +337,7 @@ window.ctbEmpresas = (() => {
     }
   }
 
-  return { carregar, buscar, novaEmpresa, editar, salvar, excluir };
+  return { carregar, buscar, novaEmpresa, fecharModal, editar, salvar, excluir };
 })();
 
 
