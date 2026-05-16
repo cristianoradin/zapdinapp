@@ -16,6 +16,9 @@
     'dm-campanha':    'Criar Campanhas',
     'dm-historico':   'Gerenciar Campanhas',
     'dm-enviadas':    'Campanhas Enviadas',
+    'ctb-dashboard':  'Gestão de Documentos',
+    'ctb-empresas':   'Cadastro de Empresas',
+    'ctb-arquivos':   'Gestão de Arquivos',
   };
   function _setTopbarPage(p) {
     const label = pages[p] || p;

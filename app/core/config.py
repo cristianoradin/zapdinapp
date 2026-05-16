@@ -72,6 +72,9 @@ class Settings(BaseSettings):
     evolution_url: str = "http://localhost:8080"
     evolution_api_key: str = ""
 
+    # Módulo Contábil — OCR via OpenAI GPT-4o Vision
+    openai_api_key: str = ""
+
     @property
     def is_locked(self) -> bool:
         return self.app_state.lower() == "locked"

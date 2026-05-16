@@ -1502,3 +1502,125 @@
     .as-green  .arq-val        { color: #15803d; }
     .as-red    .arq-stat-icon { background: #fee2e2; color: #dc2626; }
     .as-red    .arq-val        { color: #dc2626; }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       MÓDULO CONTÁBIL
+    ═══════════════════════════════════════════════════════════════════ */
+
+    /* Cards de estatística */
+    .ctb-stat-card {
+      background: var(--surface); border-radius: 14px; padding: 1.1rem 1.25rem;
+      border: 1.5px solid var(--border); display: flex; align-items: flex-start; gap: 1rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    }
+    .ctb-stat-icon {
+      width: 46px; height: 46px; border-radius: 12px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ctb-stat-body { display: flex; flex-direction: column; gap: .2rem; }
+    .ctb-stat-value { font-size: 1.85rem; font-weight: 800; letter-spacing: -.04em; line-height: 1; }
+    .ctb-stat-label { font-size: .78rem; font-weight: 600; color: var(--text); }
+    .ctb-stat-sub   { font-size: .7rem; color: var(--text-mid); }
+
+    .ctb-card-blue  .ctb-stat-icon { background: #dbeafe; color: #2563eb; }
+    .ctb-card-blue  .ctb-stat-value { color: #2563eb; }
+    .ctb-card-yellow .ctb-stat-icon { background: #fef9c3; color: #ca8a04; }
+    .ctb-card-yellow .ctb-stat-value { color: #ca8a04; }
+    .ctb-card-green .ctb-stat-icon { background: #dcfce7; color: #15803d; }
+    .ctb-card-green .ctb-stat-value { color: #15803d; }
+
+    /* Feed de atividade */
+    .ctb-feed-panel {
+      background: var(--surface); border-radius: 14px; border: 1.5px solid var(--border);
+      padding: 1rem; display: flex; flex-direction: column; gap: .5rem;
+      max-height: 200px; overflow: hidden;
+    }
+    .ctb-feed-title {
+      font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+      color: var(--text-mid); display: flex; align-items: center; gap: .35rem; flex-shrink: 0;
+    }
+    .ctb-feed-list { display: flex; flex-direction: column; gap: .3rem; overflow-y: auto; flex: 1; }
+    .ctb-feed-item {
+      display: flex; align-items: flex-start; gap: .5rem; padding: .3rem 0;
+      border-bottom: 1px solid var(--border); font-size: .72rem;
+    }
+    .ctb-feed-item:last-child { border-bottom: none; }
+    .ctb-feed-dot {
+      width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: .25rem;
+    }
+    .ctb-feed-dot.recebido    { background: #3b82f6; }
+    .ctb-feed-dot.ocr_ok      { background: var(--accent); }
+    .ctb-feed-dot.ocr_erro    { background: var(--red); }
+    .ctb-feed-dot.aprovado    { background: var(--accent); }
+    .ctb-feed-dot.manual      { background: #f59e0b; }
+    .ctb-feed-dot.boas_vindas { background: #8b5cf6; }
+    .ctb-feed-dot.cadastro    { background: #06b6d4; }
+    .ctb-feed-dot.upload      { background: #ec4899; }
+    .ctb-feed-text { flex: 1; color: var(--text); line-height: 1.35; }
+    .ctb-feed-time { color: var(--text-light); white-space: nowrap; font-size: .68rem; }
+    .ctb-feed-empty { font-size: .78rem; color: var(--text-light); text-align: center; padding: 1rem; }
+
+    /* Tabela de documentos */
+    .ctb-doc-table-wrap { overflow-x: auto; }
+    .ctb-doc-table {
+      width: 100%; border-collapse: collapse; font-size: .82rem;
+    }
+    .ctb-doc-table th {
+      text-align: left; padding: .55rem .75rem; font-size: .68rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .06em; color: var(--text-mid);
+      border-bottom: 1.5px solid var(--border); white-space: nowrap;
+    }
+    .ctb-doc-table td {
+      padding: .6rem .75rem; border-bottom: 1px solid var(--border);
+      vertical-align: middle; color: var(--text);
+    }
+    .ctb-doc-table tr:last-child td { border-bottom: none; }
+    .ctb-doc-table tr:hover td { background: var(--bg); }
+    .ctb-table-empty {
+      text-align: center; color: var(--text-light); padding: 2rem !important;
+      font-size: .82rem;
+    }
+
+    /* Status chips */
+    .ctb-status {
+      display: inline-flex; align-items: center; gap: .3rem;
+      font-size: .68rem; font-weight: 600; padding: .18rem .55rem;
+      border-radius: 20px; white-space: nowrap;
+    }
+    .ctb-status.recebido     { background: #dbeafe; color: #1d4ed8; }
+    .ctb-status.ocr_pendente { background: #fef9c3; color: #92400e; }
+    .ctb-status.ocr_erro     { background: #fee2e2; color: #991b1b; }
+    .ctb-status.revisao_manual { background: #fef3c7; color: #92400e; }
+    .ctb-status.aprovado     { background: #dcfce7; color: #15803d; }
+
+    /* Lista de empresas (Cadastro) */
+    .ctb-emp-list { display: flex; flex-direction: column; gap: 0; max-height: 520px; overflow-y: auto; }
+    .ctb-emp-row {
+      display: flex; align-items: center; gap: .85rem; padding: .8rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .ctb-emp-row:last-child { border-bottom: none; }
+    .ctb-emp-avatar {
+      width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+      background: var(--accent-soft); border: 1.5px solid var(--accent-mid);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: .9rem; color: var(--accent);
+    }
+    .ctb-emp-info { flex: 1; min-width: 0; }
+    .ctb-emp-nome { font-weight: 700; font-size: .88rem; color: var(--text); }
+    .ctb-emp-meta { font-size: .72rem; color: var(--text-mid); margin-top: .1rem; }
+    .ctb-emp-actions { display: flex; gap: .25rem; flex-shrink: 0; }
+
+    /* Seção de título no modal NF */
+    .ctb-nf-section-title {
+      font-size: .68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .08em; color: var(--text-mid); margin-bottom: .5rem;
+      padding-bottom: .3rem; border-bottom: 1px solid var(--border);
+    }
+
+    /* Regime tributário label */
+    .ctb-regime-chip {
+      font-size: .63rem; background: #f0fdf4; color: var(--accent);
+      border: 1px solid var(--accent-mid); border-radius: 20px;
+      padding: .1rem .45rem; font-weight: 600; white-space: nowrap;
+    }

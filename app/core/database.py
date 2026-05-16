@@ -656,6 +656,94 @@ async def init_db() -> None:
             END $$
         """)
 
+        # ── Módulo Contábil ───────────────────────────────────────────────────
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS empresas_contabil (
+                id               BIGSERIAL PRIMARY KEY,
+                nome             TEXT NOT NULL,
+                cnpj             TEXT,
+                ie               TEXT,
+                cpf              TEXT,
+                rg               TEXT,
+                endereco         TEXT,
+                cidade           TEXT,
+                uf               TEXT,
+                telefone         TEXT NOT NULL,
+                email            TEXT,
+                regime_tributario TEXT DEFAULT 'simples_nacional',
+                ativo            BOOLEAN DEFAULT TRUE,
+                boas_vindas_enviadas BOOLEAN DEFAULT FALSE,
+                created_at       TIMESTAMPTZ DEFAULT NOW(),
+                updated_at       TIMESTAMPTZ DEFAULT NOW()
+            )
+        """)
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_empresas_contabil_telefone
+            ON empresas_contabil(telefone)
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS documentos_fiscais (
+                id               BIGSERIAL PRIMARY KEY,
+                empresa_id       BIGINT REFERENCES empresas_contabil(id) ON DELETE CASCADE,
+                tipo             TEXT DEFAULT 'nfe',   -- nfe | nfce | cte | outro
+                status           TEXT DEFAULT 'recebido',
+                -- recebido | ocr_pendente | ocr_erro | revisao_manual | aprovado
+                origem_wa        TEXT,     -- número WhatsApp que enviou
+                arquivo_path     TEXT,     -- caminho em disco
+                arquivo_mime     TEXT,     -- image/jpeg | application/pdf | etc
+                arquivo_nome     TEXT,
+                dados_ocr        JSONB,    -- JSON extraído pela IA
+                dados_manual     JSONB,    -- JSON inserido manualmente (override)
+                erro_msg         TEXT,
+                chave_acesso     TEXT,
+                numero_nf        TEXT,
+                emitente_nome    TEXT,
+                emitente_cnpj    TEXT,
+                destinatario_nome TEXT,
+                destinatario_cnpj TEXT,
+                valor_total      NUMERIC(14,2),
+                data_emissao     DATE,
+                created_at       TIMESTAMPTZ DEFAULT NOW(),
+                updated_at       TIMESTAMPTZ DEFAULT NOW()
+            )
+        """)
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_docs_fiscais_empresa
+            ON documentos_fiscais(empresa_id, created_at DESC)
+        """)
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_docs_fiscais_status
+            ON documentos_fiscais(status, created_at DESC)
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS ocr_jobs (
+                id              BIGSERIAL PRIMARY KEY,
+                documento_id    BIGINT NOT NULL REFERENCES documentos_fiscais(id) ON DELETE CASCADE,
+                status          TEXT NOT NULL DEFAULT 'pending',
+                -- pending | processing | done | failed
+                tentativas      INTEGER DEFAULT 0,
+                erro            TEXT,
+                criado_em       TIMESTAMPTZ DEFAULT NOW(),
+                processado_em   TIMESTAMPTZ,
+                UNIQUE (documento_id)
+            )
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS contabil_feed (
+                id          BIGSERIAL PRIMARY KEY,
+                empresa_id  BIGINT REFERENCES empresas_contabil(id) ON DELETE SET NULL,
+                documento_id BIGINT REFERENCES documentos_fiscais(id) ON DELETE SET NULL,
+                tipo        TEXT NOT NULL,
+                -- recebido | ocr_iniciado | ocr_ok | ocr_erro | aprovado | manual | boas_vindas
+                descricao   TEXT NOT NULL,
+                criado_em   TIMESTAMPTZ DEFAULT NOW()
+            )
+        """)
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_contabil_feed_ts
+            ON contabil_feed(criado_em DESC)
+        """)
+
         # 4) Tabela de tracking de migrações aplicadas
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -670,6 +758,7 @@ async def init_db() -> None:
             ("002_m5_indexes",        "Índices M5: campanhas, envios, avaliacoes, pdv_tokens"),
             ("003_m3_blacklist",      "Tabela invalidated_sessions para logout seguro"),
             ("004_dba_improvements",  "DBA: índices extras, CHECK constraints, updated_at"),
+            ("005_contabil",          "Módulo Contábil: empresas_contabil, documentos_fiscais, ocr_jobs, contabil_feed"),
         ]:
             await conn.execute(
                 "INSERT INTO schema_migrations(version, descricao) VALUES($1,$2) "

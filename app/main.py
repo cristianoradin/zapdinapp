@@ -62,6 +62,7 @@ from .routers.docs_router import router as docs_router
 from .routers.campanha import router as campanha_router
 from .routers.pdv_router import router as pdv_router
 from .routers.avaliacao import router as avaliacao_router
+from .routers.contabil import router as contabil_router
 from .services import reporter, updater, telegram_service, queue_worker
 from .services.whatsapp_service import wa_manager as _playwright_manager
 from .services.evolution_service import evo_manager as _evo_manager
@@ -257,6 +258,7 @@ fastapi_app.include_router(docs_router)             # /api/docs/* (documentaçã
 fastapi_app.include_router(campanha_router)         # /api/campanha/* (disparo em massa)
 fastapi_app.include_router(pdv_router)              # /api/pdv/* (ZapDin PDV local)
 fastapi_app.include_router(avaliacao_router)        # /avaliacao + /api/avaliacao/* + /api/avaliacoes
+fastapi_app.include_router(contabil_router)         # /api/contabil/* (módulo contábil)
 
 
 @fastapi_app.post("/api/logout")
