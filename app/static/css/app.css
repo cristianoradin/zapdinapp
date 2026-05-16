@@ -373,7 +373,7 @@
       background: var(--red-soft);
     }
 
-    .content { padding: 2rem; flex: 1; max-width: 1120px; }
+    .content { padding: 2rem; flex: 1; min-width: 0; }
 
     /* ─── Pages ───────────────────────────────────────────────────────────── */
     .page        { display: none; }
