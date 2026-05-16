@@ -14,6 +14,8 @@ from pydantic import BaseModel, field_validator
 from ..core.database import get_db
 from ..core.security import get_current_user, verify_erp_token, hash_erp_token
 from ..core.config import settings
+from ..repositories import MensagemRepository, AvaliacaoRepository
+from ..repositories.config_repository import ConfigRepository
 
 
 async def _encurtar_url(url: str) -> str:
@@ -65,10 +67,7 @@ async def _verify_token(x_token: Optional[str], db, request: Request = None) -> 
             detail="Token ERP não informado",
         )
     # Busca todos os tokens ERP e compara — verify_erp_token suporta hash e plaintext
-    async with db.execute(
-        "SELECT empresa_id, value FROM config WHERE key='erp_token'"
-    ) as cur:
-        rows = await cur.fetchall()
+    rows = await ConfigRepository(db).get_all_erp_tokens()
     for row in rows:
         if verify_erp_token(x_token, row["value"]):
             # M8: migração transparente — se ainda era plaintext, salva hash no banco
@@ -233,11 +232,8 @@ async def receber_venda(
     nome = body.nome or ""
 
     # Monta mensagem a partir do template (ou mensagem customizada do ERP)
-    async with db.execute(
-        "SELECT value FROM config WHERE key='mensagem_padrao' AND empresa_id=?", (empresa_id,)
-    ) as cur:
-        row = await cur.fetchone()
-    template = row["value"] if row else "Olá {nome}, obrigado pela sua compra de {valor_total} em {data}!"
+    cfg_repo = ConfigRepository(db)
+    template = await cfg_repo.get_mensagem_padrao(empresa_id)
     mensagem = body.mensagem_custom or _aplicar_template(template, body, telefone)
 
     # Anexa link de avaliação à mensagem (se recurso habilitado)
@@ -251,9 +247,10 @@ async def receber_venda(
     except Exception as exc:
         logger.debug("[erp] Erro ao gerar link de avaliação: %s", exc)
 
-    await _queue_mensagem(db, empresa_id, telefone, nome, mensagem)
+    await MensagemRepository(db).enqueue(empresa_id, telefone, nome, mensagem)
     try:
-        await _upsert_contato(db, empresa_id, telefone, nome)
+        from ..repositories import ContatoRepository
+        await ContatoRepository(db).upsert(empresa_id, telefone, nome, "erp")
     except Exception as exc:
         logger.debug("[erp] Upsert contato falhou (ignorado): %s", exc)
 

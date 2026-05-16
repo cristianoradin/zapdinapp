@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from ..core.database import get_db, get_db_direct
 from ..core.security import get_current_user
 from ..core.config import settings
+from ..repositories import AvaliacaoRepository
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["avaliacao"])
@@ -174,26 +175,17 @@ class AvaliacaoResposta(BaseModel):
 
 @router.post("/api/avaliacao/responder")
 async def responder_avaliacao(body: AvaliacaoResposta):
-    # Nota e token já validados pelo Pydantic — campos fora do range retornam 422
-    # Token DEMO → simula envio bem-sucedido sem gravar no banco
     if body.token.upper() == "DEMO":
         logger.info("[avaliacao] DEMO nota=%d (não gravado)", body.nota)
         return {"ok": True}
     async with get_db_direct() as db:
-        async with db.execute(
-            "SELECT id, nota FROM avaliacoes WHERE token = ?", (body.token,)
-        ) as cur:
-            row = await cur.fetchone()
+        repo = AvaliacaoRepository(db)
+        row = await repo.get_by_token(body.token)
         if not row:
             return JSONResponse({"ok": False, "detail": "Token inválido."}, status_code=404)
         if row["nota"] is not None:
             return JSONResponse({"ok": False, "detail": "Avaliação já registrada."}, status_code=409)
-        now = datetime.now(timezone.utc)
-        await db.execute(
-            "UPDATE avaliacoes SET nota = ?, comentario = ?, respondido_em = ? WHERE token = ?",
-            (body.nota, body.comentario or "", now, body.token),
-        )
-        await db.commit()
+        await repo.responder(body.token, body.nota, body.comentario or "")
     logger.info("[avaliacao] nota=%d token=%s", body.nota, body.token[:8])
     return {"ok": True}
 
@@ -207,28 +199,10 @@ async def list_avaliacoes(
     db=Depends(get_db),
     user=Depends(get_current_user),
 ):
-    empresa_id = user["empresa_id"]
-    if vendedor:
-        async with db.execute(
-            """SELECT id, phone, nome_cliente, vendedor, nota, comentario, created_at, respondido_em
-               FROM avaliacoes
-               WHERE empresa_id = ? AND created_at >= NOW() - (? * INTERVAL '1 day') AND vendedor = ?
-               ORDER BY created_at DESC""",
-            (empresa_id, dias, vendedor),
-        ) as cur:
-            rows = await cur.fetchall()
-    else:
-        async with db.execute(
-            """SELECT id, phone, nome_cliente, vendedor, nota, comentario, created_at, respondido_em
-               FROM avaliacoes
-               WHERE empresa_id = ? AND created_at >= NOW() - (? * INTERVAL '1 day')
-               ORDER BY created_at DESC""",
-            (empresa_id, dias),
-        ) as cur:
-            rows = await cur.fetchall()
-    result = []
-    for r in rows:
-        result.append({
+    repo = AvaliacaoRepository(db)
+    rows = await repo.list(user["empresa_id"], dias, vendedor)
+    return [
+        {
             "id": r["id"],
             "telefone": r["phone"] or "",
             "nome": r["nome_cliente"] or "—",
@@ -237,8 +211,9 @@ async def list_avaliacoes(
             "comentario": r["comentario"] or "",
             "data": r["respondido_em"].strftime("%d/%m/%Y %H:%M") if r["respondido_em"] else (
                     r["created_at"].strftime("%d/%m/%Y") if r["created_at"] else "—"),
-        })
-    return result
+        }
+        for r in rows
+    ]
 
 
 @router.get("/api/avaliacoes/dashboard")
@@ -248,65 +223,17 @@ async def dashboard_avaliacoes(
     user=Depends(get_current_user),
 ):
     empresa_id = user["empresa_id"]
-    # Totals
-    async with db.execute(
-        """SELECT
-             COUNT(*) AS total_enviadas,
-             COUNT(nota) AS total_respondidas,
-             ROUND(AVG(nota)::numeric, 2) AS media_geral,
-             COUNT(CASE WHEN nota >= 4 THEN 1 END) AS positivas,
-             COUNT(CASE WHEN nota <= 2 THEN 1 END) AS negativas
-           FROM avaliacoes
-           WHERE empresa_id = ? AND created_at >= NOW() - (? * INTERVAL '1 day')""",
-        (empresa_id, dias),
-    ) as cur:
-        totals = await cur.fetchone()
-    # Distribuição por nota
-    async with db.execute(
-        """SELECT nota, COUNT(*) AS qtd
-           FROM avaliacoes
-           WHERE empresa_id = ? AND nota IS NOT NULL AND created_at >= NOW() - (? * INTERVAL '1 day')
-           GROUP BY nota ORDER BY nota""",
-        (empresa_id, dias),
-    ) as cur:
-        dist_rows = await cur.fetchall()
-    distribuicao = {str(r["nota"]): r["qtd"] for r in dist_rows}
-    # Por vendedor
-    async with db.execute(
-        """SELECT vendedor, COUNT(*) AS total, COUNT(nota) AS respondidas, ROUND(AVG(nota)::numeric,2) AS media
-           FROM avaliacoes
-           WHERE empresa_id = ? AND vendedor != '' AND created_at >= NOW() - (? * INTERVAL '1 day')
-           GROUP BY vendedor ORDER BY media DESC NULLS LAST""",
-        (empresa_id, dias),
-    ) as cur:
-        vend_rows = await cur.fetchall()
-    vendedores = [{"vendedor": r["vendedor"], "total": r["total"], "respondidas": r["respondidas"], "media": float(r["media"]) if r["media"] else None} for r in vend_rows]
-    # Taxa de resposta
-    total_env = totals["total_enviadas"] or 0
+    repo = AvaliacaoRepository(db)
+
+    totals       = await repo.dashboard_totais(empresa_id, dias)
+    distribuicao = await repo.dashboard_distribuicao(empresa_id, dias)
+    vendedores   = await repo.dashboard_vendedores(empresa_id, dias)
+    baixas       = await repo.dashboard_baixas(empresa_id, dias)
+
+    total_env  = totals["total_enviadas"] or 0
     total_resp = totals["total_respondidas"] or 0
     taxa = round((total_resp / total_env * 100), 1) if total_env else 0.0
-    # Distribuição com chaves numéricas
-    distribuicao_num = {int(k): v for k, v in distribuicao.items()}
-    # Baixas notas (≤ 2) para alerta
-    async with db.execute(
-        """SELECT phone, nome_cliente, vendedor, nota, respondido_em
-           FROM avaliacoes
-           WHERE empresa_id = $1 AND nota <= 2 AND nota IS NOT NULL
-             AND created_at >= NOW() - ($2 * INTERVAL '1 day')
-           ORDER BY respondido_em DESC LIMIT 10""",
-        (empresa_id, dias),
-    ) as cur:
-        baixas_rows = await cur.fetchall()
-    baixas = [
-        {
-            "nome": r["nome_cliente"] or "—",
-            "telefone": r["phone"] or "",
-            "vendedor": r["vendedor"] or "",
-            "nota": r["nota"],
-            "data": r["respondido_em"].strftime("%d/%m/%Y") if r["respondido_em"] else "—",
-        }
-        for r in baixas_rows
-    ]
+
     return {
         "total_enviadas": total_env,
         "total_respondidas": total_resp,
@@ -314,7 +241,7 @@ async def dashboard_avaliacoes(
         "media_geral": float(totals["media_geral"]) if totals["media_geral"] else None,
         "positivas": totals["positivas"] or 0,
         "negativas": totals["negativas"] or 0,
-        "distribuicao": distribuicao_num,
+        "distribuicao": distribuicao,
         "ranking_vendedores": vendedores,
         "baixas": baixas,
     }

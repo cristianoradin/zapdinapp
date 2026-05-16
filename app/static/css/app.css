@@ -373,7 +373,7 @@
       background: var(--red-soft);
     }
 
-    .content { padding: 2rem; flex: 1; min-width: 0; }
+    .content { padding: 2rem; flex: 1; width: 100%; overflow-x: hidden; }
 
     /* ─── Pages ───────────────────────────────────────────────────────────── */
     .page        { display: none; }
