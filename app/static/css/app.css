@@ -1252,6 +1252,58 @@
     }
     .var-tag:hover { background: #c7d2fe; transform: scale(1.04); }
     .var-tag:active { transform: scale(.97); }
+    /* Var-tag color variants */
+    .var-tag-green  { background: #dcfce7; color: #15803d; border-color: #86efac; }
+    .var-tag-green:hover  { background: #bbf7d0; }
+    .var-tag-blue   { background: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
+    .var-tag-blue:hover   { background: #bfdbfe; }
+    .var-tag-purple { background: #ede9fe; color: #7c3aed; border-color: #c4b5fd; }
+    .var-tag-purple:hover { background: #ddd6fe; }
+    .var-tag-orange { background: #ffedd5; color: #c2410c; border-color: #fdba74; }
+    .var-tag-orange:hover { background: #fed7aa; }
+    .var-tag-teal   { background: #ccfbf1; color: #0f766e; border-color: #5eead4; }
+    .var-tag-teal:hover   { background: #99f6e4; }
+    .var-tag-red    { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
+    .var-tag-red:hover    { background: #fecaca; }
+
+    /* ─── Phone mockup for WA preview ──────────────────────────────────────── */
+    .phone-mockup {
+      background: #1c1c1e;
+      border-radius: 36px;
+      padding: 9px;
+      box-shadow: 0 20px 50px rgba(0,0,0,.22), 0 0 0 2px #3a3a3c, inset 0 0 0 1px #555;
+      max-width: 280px;
+      margin: 0 auto;
+    }
+    .phone-mockup-screen { border-radius: 27px; overflow: hidden; }
+    .wa-status-bar {
+      background: #075e54;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .25rem .75rem;
+    }
+    .wa-status-bar-time { font-size: .65rem; font-weight: 700; color: rgba(255,255,255,.9); }
+    .wa-status-bar-icons { display: flex; align-items: center; gap: .25rem; }
+    .wa-header-bar {
+      background: #075e54;
+      padding: .45rem .75rem;
+      display: flex; align-items: center; gap: .6rem;
+      border-top: 1px solid rgba(255,255,255,.08);
+    }
+    .wa-header-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: #128c7e;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .wa-header-info { flex: 1; min-width: 0; }
+    .wa-header-name  { font-size: .75rem; font-weight: 700; color: #fff; line-height: 1.2; }
+    .wa-header-status { font-size: .62rem; color: rgba(255,255,255,.65); }
+    .wa-preview-wrap-inner {
+      background: #e5ddd5 url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c8b9a6' fill-opacity='0.25'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      min-height: 110px;
+      padding: .875rem;
+      display: flex; align-items: flex-end;
+    }
 
     /* ─── WhatsApp message bubble ─────────────────────────────────────────── */
     .wa-preview-wrap {
