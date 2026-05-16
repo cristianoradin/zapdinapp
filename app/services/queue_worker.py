@@ -175,6 +175,7 @@ async def _loop() -> None:
         from .whatsapp_service import wa_manager
 
     logger.info("Queue worker loop iniciado")
+    _bv_check_counter = 0  # verifica pendentes a cada ~30s (30 ciclos de 1s)
     while True:
         try:
             dispatched = await _process_next(wa_manager, settings, get_db_direct)
@@ -186,6 +187,19 @@ async def _loop() -> None:
             _last_error = str(exc)
             logger.error("Queue worker erro: %s", exc, exc_info=True)
             dispatched = False
+
+        # Verifica boas-vindas WA pendentes a cada ~30 ciclos de sleep(1s)
+        _bv_check_counter += 1
+        if _bv_check_counter >= 30:
+            _bv_check_counter = 0
+            try:
+                from ..routers.contabil import processar_boasvindas_pendentes
+                _bv_enviados = await processar_boasvindas_pendentes(wa_manager, get_db_direct)
+                if _bv_enviados:
+                    logger.info("[worker] Boas-vindas pendentes: %s enviadas", _bv_enviados)
+            except Exception as bv_exc:
+                logger.debug("[worker] processar_boasvindas_pendentes: %s", bv_exc)
+
         await asyncio.sleep(0.2 if dispatched else 1.0)
 
 

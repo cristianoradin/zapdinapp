@@ -96,47 +96,105 @@ class DadosManuaisNF(BaseModel):
 
 # ── Helper: enviar boas-vindas WA ─────────────────────────────────────────────
 
+_MSG_BOAS_VINDAS = (
+    "👋 *Olá, {nome}!*\n\n"
+    "Seu cadastro no nosso escritório de contabilidade foi realizado com sucesso! ✅\n\n"
+    "*Como enviar seus documentos:*\n"
+    "📄 Envie suas *Notas Fiscais* (imagens ou PDF) diretamente aqui neste chat.\n"
+    "📊 Aceitamos NF-e, NF-Ce e CT-e.\n\n"
+    "Nossa equipe irá processar seus documentos e mantê-lo informado. 🚀\n\n"
+    "_Dúvidas? Responda esta mensagem._"
+)
+
+
 async def _enviar_boas_vindas(empresa_id: int, telefone: str, nome: str, db) -> None:
-    """Envia mensagem de boas-vindas via WhatsApp para o número cadastrado."""
+    """Envia mensagem de boas-vindas via WhatsApp. Se não houver sessão ativa,
+    grava em contabil_wa_pendentes para o worker reenviar depois."""
     try:
         from ..main import wa_manager
         sessoes = list(wa_manager._sessions.values())
         if not sessoes:
-            logger.warning("[contabil] Nenhuma sessão WA para enviar boas-vindas a %s", telefone)
+            # Sem sessão WA: enfileirar para reenvio futuro
+            await db.execute(
+                "INSERT INTO contabil_wa_pendentes(empresa_id, telefone, nome) VALUES(?,?,?)",
+                (empresa_id, telefone, nome),
+            )
+            await db.commit()
+            logger.info(
+                "[contabil] Sem sessão WA — boas-vindas para %s enfileiradas (%s)",
+                nome, telefone,
+            )
             return
 
-        sessao = sessoes[0]
-        phone_wa = "55" + telefone if not telefone.startswith("55") else telefone
-
-        msg = (
-            f"👋 *Olá, {nome}!*\n\n"
-            f"Seu cadastro no nosso escritório de contabilidade foi realizado com sucesso! ✅\n\n"
-            f"*Como enviar seus documentos:*\n"
-            f"📄 Envie suas *Notas Fiscais* (imagens ou PDF) diretamente aqui neste chat.\n"
-            f"📊 Aceitamos NF-e, NF-Ce e CT-e.\n\n"
-            f"Nossa equipe irá processar seus documentos e mantê-lo informado. 🚀\n\n"
-            f"_Dúvidas? Responda esta mensagem._"
-        )
-
-        await sessao.send_text(phone_wa, msg)
-
-        async with db.execute(
-            "UPDATE empresas_contabil SET boas_vindas_enviadas=TRUE WHERE id=?",
-            (empresa_id,)
-        ):
-            pass
-        await db.commit()
-
-        # Feed
-        await db.execute(
-            "INSERT INTO contabil_feed(empresa_id, tipo, descricao) VALUES(?,?,?)",
-            (empresa_id, "boas_vindas", f"Mensagem de boas-vindas enviada para {nome}")
-        )
-        await db.commit()
-        logger.info("[contabil] Boas-vindas enviadas para %s (%s)", nome, telefone)
+        await _entregar_boas_vindas(empresa_id, telefone, nome, db, sessoes[0])
 
     except Exception as e:
         logger.error("[contabil] Erro ao enviar boas-vindas: %s", e)
+
+
+async def _entregar_boas_vindas(empresa_id: int, telefone: str, nome: str, db, sessao) -> None:
+    """Faz o envio real e marca no banco. Reutilizado pelo worker."""
+    phone_wa = "55" + telefone if not telefone.startswith("55") else telefone
+    msg = _MSG_BOAS_VINDAS.format(nome=nome)
+    await sessao.send_text(phone_wa, msg)
+
+    await db.execute(
+        "UPDATE empresas_contabil SET boas_vindas_enviadas=TRUE WHERE id=?",
+        (empresa_id,),
+    )
+    await db.execute(
+        "INSERT INTO contabil_feed(empresa_id, tipo, descricao) VALUES(?,?,?)",
+        (empresa_id, "boas_vindas", f"Mensagem de boas-vindas enviada para {nome}"),
+    )
+    await db.commit()
+    logger.info("[contabil] Boas-vindas enviadas para %s (%s)", nome, telefone)
+
+
+async def processar_boasvindas_pendentes(wa_manager, get_db_direct) -> int:
+    """Chamado pelo queue_worker. Processa até 5 pendentes por rodada.
+    Retorna quantos foram enviados com sucesso."""
+    sessoes = list(wa_manager._sessions.values())
+    if not sessoes:
+        return 0  # ainda sem sessão, não faz nada
+
+    sessao = sessoes[0]
+    enviados = 0
+
+    async with get_db_direct() as db:
+        async with db.execute(
+            "SELECT id, empresa_id, telefone, nome, tentativas "
+            "FROM contabil_wa_pendentes WHERE status='pendente' "
+            "ORDER BY criado_em LIMIT 5"
+        ) as cur:
+            pendentes = await cur.fetchall()
+
+        for row in pendentes:
+            pid, empresa_id, telefone, nome, tentativas = (
+                row["id"], row["empresa_id"], row["telefone"],
+                row["nome"], row["tentativas"],
+            )
+            try:
+                await _entregar_boas_vindas(empresa_id, telefone, nome, db, sessao)
+                await db.execute(
+                    "UPDATE contabil_wa_pendentes SET status='enviado', enviado_em=NOW() WHERE id=?",
+                    (pid,),
+                )
+                await db.commit()
+                enviados += 1
+            except Exception as exc:
+                novas_tentativas = tentativas + 1
+                novo_status = "falha" if novas_tentativas >= 3 else "pendente"
+                await db.execute(
+                    "UPDATE contabil_wa_pendentes SET tentativas=?, status=? WHERE id=?",
+                    (novas_tentativas, novo_status, pid),
+                )
+                await db.commit()
+                logger.warning(
+                    "[contabil] Falha ao entregar boas-vindas pendente id=%s (tentativa %s): %s",
+                    pid, novas_tentativas, exc,
+                )
+
+    return enviados
 
 
 # ── CRUD Empresas ─────────────────────────────────────────────────────────────

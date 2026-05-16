@@ -743,6 +743,23 @@ async def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_contabil_feed_ts
             ON contabil_feed(criado_em DESC)
         """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS contabil_wa_pendentes (
+                id          BIGSERIAL PRIMARY KEY,
+                empresa_id  BIGINT REFERENCES empresas_contabil(id) ON DELETE CASCADE,
+                telefone    TEXT NOT NULL,
+                nome        TEXT NOT NULL,
+                tentativas  INTEGER DEFAULT 0,
+                status      TEXT DEFAULT 'pendente',
+                -- pendente | enviado | falha
+                criado_em   TIMESTAMPTZ DEFAULT NOW(),
+                enviado_em  TIMESTAMPTZ
+            )
+        """)
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_ctb_wa_pendentes_status
+            ON contabil_wa_pendentes(status, criado_em)
+        """)
 
         # 4) Tabela de tracking de migrações aplicadas
         await conn.execute("""
@@ -759,6 +776,7 @@ async def init_db() -> None:
             ("003_m3_blacklist",      "Tabela invalidated_sessions para logout seguro"),
             ("004_dba_improvements",  "DBA: índices extras, CHECK constraints, updated_at"),
             ("005_contabil",          "Módulo Contábil: empresas_contabil, documentos_fiscais, ocr_jobs, contabil_feed"),
+            ("006_ctb_wa_pendentes",  "Fila de boas-vindas WA pendentes para empresas contábil"),
         ]:
             await conn.execute(
                 "INSERT INTO schema_migrations(version, descricao) VALUES($1,$2) "
