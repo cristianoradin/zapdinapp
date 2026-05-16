@@ -9,9 +9,6 @@ from __future__ import annotations
 
 import json
 import logging
-import time
-from collections import defaultdict
-from threading import Lock
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel
@@ -19,6 +16,8 @@ from pydantic import BaseModel
 from ..core.config import settings
 from ..core.database import get_db
 from ..core.http_client import get_http_client
+from ..core.rate_limiter import login_limiter as _login_limiter, activation_limiter
+from ..core.dependencies import client_ip
 from ..core.security import (
     verify_password,
     create_session_token,
@@ -32,42 +31,10 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
-# ── Rate limiter simples em memória ───────────────────────────────────────────
-
-class _RateLimiter:
-    """Limita chamadas por chave (IP) dentro de uma janela de tempo."""
-
-    def __init__(self, max_calls: int, period_seconds: float):
-        self._max = max_calls
-        self._period = period_seconds
-        self._calls: dict[str, list[float]] = defaultdict(list)
-        self._lock = Lock()
-
-    def is_allowed(self, key: str) -> bool:
-        now = time.monotonic()
-        with self._lock:
-            calls = self._calls[key]
-            calls[:] = [t for t in calls if now - t < self._period]
-            if len(calls) >= self._max:
-                return False
-            calls.append(now)
-            return True
+# Rate limiters importados de core/rate_limiter.py (centralizados)
 
 
-# 10 tentativas de login por IP por minuto
-_login_limiter = _RateLimiter(max_calls=10, period_seconds=60)
-# 5 tentativas de ativação/registro por IP por hora (importado por auth_empresa)
-activation_limiter = _RateLimiter(max_calls=5, period_seconds=3600)
-
-
-def client_ip(request: Request) -> str:
-    """Retorna IP real do cliente, ignorando X-Forwarded-For forjado."""
-    direct_ip = request.client.host if request.client else "unknown"
-    if direct_ip in ("127.0.0.1", "::1"):
-        forwarded = request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
-        return forwarded or direct_ip
-    return direct_ip
-
+# client_ip importado de core/dependencies.py
 
 # Sentinel: usuário criado localmente sem hash real (autenticado via monitor)
 MONITOR_AUTH_SENTINEL = "__MONITOR_AUTH__"
