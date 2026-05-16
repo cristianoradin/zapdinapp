@@ -1289,46 +1289,37 @@
       grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
       gap: .75rem;
     }
+    /* ── erp-stat-card — padrão KPI unificado ───────────────────────────── */
     .erp-stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.25rem;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: .3rem;
+      transition: transform .15s, box-shadow .15s;
+    }
+    .erp-stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+    .erp-stat-card::before { display: none; }
+    .erp-stat-card .erp-icon {
+      width: 38px; height: 38px;
       border-radius: 10px;
-      padding: .9rem 1.1rem;
-      position: relative;
-      overflow: hidden;
-      border: 1px solid transparent;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: .25rem;
+      flex-shrink: 0;
     }
-    .erp-stat-card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 3px;
-      border-radius: 10px 10px 0 0;
-    }
-    .erp-stat-card .esl { font-size: .68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; margin-bottom: .3rem; }
-    .erp-stat-card .esv { font-size: .95rem; font-weight: 700; }
-    .erp-sc-blue   { background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-color: #bfdbfe; }
-    .erp-sc-blue::before { background: #3b82f6; }
-    .erp-sc-blue .esl { color: #1d4ed8; }
-    .erp-sc-blue .esv { color: #1e3a8a; }
-    .erp-sc-green  { background: linear-gradient(135deg, var(--accent-soft) 0%, #d9f0c0 100%); border-color: var(--accent-mid); }
-    .erp-sc-green::before { background: var(--accent); }
-    .erp-sc-green .esl { color: #2d6a0a; }
-    .erp-sc-green .esv { color: #1a4206; }
-    .erp-sc-gray   { background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-color: #e2e8f0; }
-    .erp-sc-gray::before { background: #94a3b8; }
-    .erp-sc-gray .esl { color: #64748b; }
-    .erp-sc-gray .esv { color: #334155; }
-    .erp-sc-purple { background: linear-gradient(135deg, #faf5ff 0%, #ede9fe 100%); border-color: #ddd6fe; }
-    .erp-sc-purple::before { background: #7c3aed; }
-    .erp-sc-purple .esl { color: #5b21b6; }
-    .erp-sc-purple .esv { color: #3b0764; }
-    .erp-sc-orange { background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%); border-color: #fdba74; }
-    .erp-sc-orange::before { background: #f97316; }
-    .erp-sc-orange .esl { color: #c2410c; }
-    .erp-sc-orange .esv { color: #7c2d12; font-size:.8rem; }
-    .erp-sc-red    { background: linear-gradient(135deg, #fff5f5 0%, #fee2e2 100%); border-color: #fecaca; }
-    .erp-sc-red::before { background: var(--red); }
-    .erp-sc-red .esl { color: #b91c1c; }
-    .erp-sc-red .esv { color: #7f1d1d; }
+    .erp-stat-card .erp-icon svg { display: block; }
+    .erp-stat-card .esv { font-size: 1.05rem; font-weight: 800; line-height: 1; color: var(--text); }
+    .erp-stat-card .esl { font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--text-mid); }
+    /* Variantes de cor — só ícone colorido */
+    .erp-sc-blue   .erp-icon { background: #dbeafe; color: #2563eb; }
+    .erp-sc-purple .erp-icon { background: #f3e8ff; color: #9333ea; }
+    .erp-sc-gray   .erp-icon { background: rgba(0,0,0,.06); color: #6b7280; }
+    .erp-sc-orange .erp-icon { background: #ffedd5; color: #ea580c; }
+    .erp-sc-green  .erp-icon { background: #dcfce7; color: #15803d; }
+    .erp-sc-red    .erp-icon { background: #fee2e2; color: #dc2626; }
 
     /* ─── Info banners ────────────────────────────────────────────────────── */
     .info-banner {
