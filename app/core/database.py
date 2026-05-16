@@ -490,3 +490,13 @@ async def init_db() -> None:
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_avaliacoes_empresa ON avaliacoes(empresa_id)")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_avaliacoes_token ON avaliacoes(token)")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_avaliacoes_vendedor ON avaliacoes(empresa_id, vendedor)")
+
+        # ── M3: Blacklist de sessões invalidadas (logout) ──────────────────────
+        # Armazena SHA-256 do token para não expor o cookie cru.
+        # Registros são apagados automaticamente após session_max_age pelo reporter.
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS invalidated_sessions (
+                token_hash   TEXT PRIMARY KEY,
+                invalidated_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """)

@@ -303,10 +303,28 @@ async def _cleanup_old_files(retention_days: int = 30) -> None:
         logger.debug("[cleanup] Falha na limpeza de arquivos: %s", exc)
 
 
+async def _cleanup_invalidated_sessions() -> None:
+    """M3: apaga sessões revogadas mais antigas que session_max_age do banco."""
+    try:
+        from datetime import datetime, timedelta, timezone
+        from ..core.config import settings as _s
+        from ..core.database import get_db_direct
+        cutoff = datetime.now(tz=timezone.utc) - timedelta(seconds=_s.session_max_age)
+        async with get_db_direct() as db:
+            await db.execute(
+                "DELETE FROM invalidated_sessions WHERE invalidated_at < ?", (cutoff,)
+            )
+            await db.commit()
+        logger.debug("[reporter] Sessões revogadas antigas removidas do banco")
+    except Exception as exc:
+        logger.debug("[reporter] Falha ao limpar sessões revogadas: %s", exc)
+
+
 async def _loop() -> None:
     """Loop infinito: envia heartbeat a cada 30s e executa limpeza diária de arquivos."""
     _cleanup_tick = 0
     _CLEANUP_INTERVAL = 2880  # 30s × 2880 = 24 horas
+    _SESSION_CLEANUP_INTERVAL = 720  # 30s × 720 = 6 horas
 
     while True:
         await _send_heartbeat()
@@ -314,6 +332,8 @@ async def _loop() -> None:
         if _cleanup_tick >= _CLEANUP_INTERVAL:
             _cleanup_tick = 0
             asyncio.create_task(_cleanup_old_files())  # roda em paralelo — não bloqueia heartbeat
+        if _cleanup_tick % _SESSION_CLEANUP_INTERVAL == 0:
+            asyncio.create_task(_cleanup_invalidated_sessions())  # M3: limpeza de sessões expiradas
         await asyncio.sleep(30)
 
 

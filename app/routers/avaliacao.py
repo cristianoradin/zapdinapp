@@ -1,8 +1,10 @@
 import html as _html
 import json as _json
+import os as _os
 import secrets
 import logging
 from datetime import datetime, timezone
+from pathlib import Path as _Path
 from typing import Optional
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -16,9 +18,36 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["avaliacao"])
 
 
-# ── HTML da página de avaliação ───────────────────────────────────────────────
+# ── M9: Template externo (app/static/survey.html) ─────────────────────────────
+# HTML em arquivo separado → editável sem tocar em Python, sem risco de XSS.
+
+def _survey_template_path() -> _Path:
+    """Localiza survey.html relativo a este arquivo, compatível com PyInstaller."""
+    import sys
+    if getattr(sys, "frozen", False):
+        base = _Path(sys.executable).parent
+    else:
+        base = _Path(__file__).parent.parent
+    return base / "static" / "survey.html"
+
+
+def _render_survey(body_html: str, nome_empresa: str, token: str) -> str:
+    """Renderiza survey.html substituindo os placeholders com valores escapados."""
+    try:
+        tmpl = _survey_template_path().read_text(encoding="utf-8")
+    except Exception:
+        # Fallback mínimo se o arquivo não existir (improvável em produção)
+        return f"<html><body>{body_html}</body></html>"
+    return (
+        tmpl
+        .replace("{{EMPRESA}}", _html.escape(nome_empresa))
+        .replace("{{TOKEN_JS}}", _json.dumps(token))   # JSON-encoded — seguro em contexto JS
+        .replace("{{BODY_HTML}}", body_html)
+    )
+
 
 def _survey_page(nome_empresa: str, token: str, vendedor: str = "", already_answered: bool = False, invalid: bool = False) -> str:
+    """Monta o HTML da página de avaliação usando o template externo."""
     if invalid:
         body_html = """
         <div class="card">
@@ -34,7 +63,10 @@ def _survey_page(nome_empresa: str, token: str, vendedor: str = "", already_answ
           <p class="sub">Obrigado pelo seu feedback. Sua opinião é muito importante para nós.</p>
         </div>"""
     else:
-        vendedor_html = f'<div class="vendedor">Vendedor: <strong>{_html.escape(vendedor)}</strong></div>' if vendedor else ''
+        vendedor_html = (
+            f'<div class="vendedor">Vendedor: <strong>{_html.escape(vendedor)}</strong></div>'
+            if vendedor else ''
+        )
         body_html = f"""
         <div class="card" id="formCard">
           <div class="empresa-name">{_html.escape(nome_empresa)}</div>
@@ -62,209 +94,7 @@ def _survey_page(nome_empresa: str, token: str, vendedor: str = "", already_answ
           <p class="sub">Sua avaliação foi registrada com sucesso.<br>Agradecemos seu feedback!</p>
         </div>"""
 
-    return f"""<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Avaliação de Atendimento — {_html.escape(nome_empresa)}</title>
-<style>
-  *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
-  body {{
-    min-height: 100dvh;
-    background: linear-gradient(145deg, #1a5c08 0%, #3d7f1f 40%, #7cdc44 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    padding: 1.5rem 1rem;
-  }}
-  .card {{
-    background: #fff;
-    border-radius: 24px;
-    padding: 2.25rem 2rem 2rem;
-    width: 100%;
-    max-width: 460px;
-    box-shadow: 0 20px 60px rgba(0,0,0,.25), 0 4px 16px rgba(0,0,0,.12);
-    text-align: center;
-    animation: fadeUp .4s ease both;
-  }}
-  @keyframes fadeUp {{
-    from {{ opacity: 0; transform: translateY(24px); }}
-    to   {{ opacity: 1; transform: translateY(0); }}
-  }}
-  @keyframes popIn {{
-    0%   {{ transform: scale(.5); opacity: 0; }}
-    70%  {{ transform: scale(1.2); }}
-    100% {{ transform: scale(1);   opacity: 1; }}
-  }}
-  .icon-wrap {{
-    font-size: 3.5rem;
-    line-height: 1;
-    margin-bottom: 1rem;
-    display: block;
-  }}
-  .animate-in {{ animation: popIn .5s ease both .2s; }}
-  .empresa-name {{
-    display: inline-block;
-    background: linear-gradient(90deg, #3d7f1f, #7cdc44);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    font-size: 1.1rem;
-    font-weight: 800;
-    letter-spacing: .02em;
-    margin-bottom: .6rem;
-    padding: .25rem .75rem;
-    border: 2px solid #7cdc44;
-    border-radius: 999px;
-  }}
-  h1 {{
-    font-size: 1.35rem;
-    font-weight: 700;
-    color: #1a1d23;
-    margin-bottom: .4rem;
-    line-height: 1.3;
-  }}
-  .vendedor {{
-    font-size: .85rem;
-    color: #6b7280;
-    margin-bottom: .4rem;
-  }}
-  .sub {{
-    font-size: .88rem;
-    color: #6b7280;
-    line-height: 1.5;
-    margin-bottom: 1.5rem;
-  }}
-  .stars {{
-    display: flex;
-    justify-content: center;
-    gap: .4rem;
-    margin-bottom: .4rem;
-  }}
-  .star {{
-    font-size: 2.6rem;
-    background: none;
-    border: none;
-    cursor: pointer;
-    filter: grayscale(1) opacity(.35);
-    transition: filter .15s, transform .15s;
-    padding: .1rem .15rem;
-    border-radius: 8px;
-    line-height: 1;
-  }}
-  .star:hover, .star.active {{
-    filter: grayscale(0) opacity(1);
-    transform: scale(1.18);
-  }}
-  .star.active {{ transform: scale(1.22); }}
-  .star-labels {{
-    display: flex;
-    justify-content: space-between;
-    font-size: .68rem;
-    color: #9ca3af;
-    padding: 0 .25rem;
-    margin-bottom: .75rem;
-  }}
-  .nota-label {{
-    font-size: .88rem;
-    font-weight: 700;
-    color: #3d7f1f;
-    margin-bottom: .75rem;
-    min-height: 1.2em;
-  }}
-  textarea {{
-    width: 100%;
-    border: 1.5px solid #e4e6ea;
-    border-radius: 12px;
-    padding: .75rem 1rem;
-    font-size: .88rem;
-    font-family: inherit;
-    color: #1a1d23;
-    resize: none;
-    outline: none;
-    transition: border-color .15s;
-    margin-bottom: 1rem;
-    background: #f9fafb;
-  }}
-  textarea:focus {{ border-color: #7cdc44; background: #fff; }}
-  .btn-send {{
-    width: 100%;
-    background: linear-gradient(90deg, #3d7f1f, #7cdc44);
-    color: #fff;
-    border: none;
-    border-radius: 14px;
-    padding: .9rem 1.5rem;
-    font-size: 1rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: opacity .15s, transform .1s;
-    letter-spacing: .02em;
-  }}
-  .btn-send:disabled {{ opacity: .4; cursor: not-allowed; }}
-  .btn-send:not(:disabled):hover {{ opacity: .92; transform: translateY(-1px); }}
-  .btn-send:not(:disabled):active {{ transform: translateY(0); }}
-  .msg-erro {{
-    color: #dc2626;
-    font-size: .82rem;
-    margin-top: .5rem;
-  }}
-  .powered {{
-    width: 100%;
-    text-align: center;
-    font-size: .7rem;
-    color: rgba(255,255,255,.55);
-    padding: 1rem 0 .5rem;
-  }}
-</style>
-</head>
-<body style="flex-direction:column;gap:0;padding-bottom:.5rem;">
-  {body_html}
-  <div class="powered">Powered by ZapDin</div>
-<script>
-  var _nota = 0;
-  var _labels = ['', 'Péssimo 😞', 'Ruim 😕', 'Regular 😐', 'Bom 😊', 'Excelente 🤩'];
-  function setStar(v) {{
-    _nota = v;
-    document.querySelectorAll('.star').forEach(function(s) {{
-      s.classList.toggle('active', parseInt(s.dataset.v) <= v);
-    }});
-    var lbl = document.getElementById('nota-val');
-    if (lbl) {{ lbl.textContent = _labels[v]; lbl.style.display = 'block'; }}
-    var btn = document.getElementById('btnEnviar');
-    if (btn) btn.disabled = false;
-  }}
-  function enviarAvaliacao() {{
-    if (!_nota) return;
-    var btn = document.getElementById('btnEnviar');
-    var erro = document.getElementById('msgErro');
-    btn.disabled = true;
-    btn.textContent = 'Enviando…';
-    if (erro) erro.style.display = 'none';
-    var comentario = (document.getElementById('comentario') || {{}}).value || '';
-    fetch('/api/avaliacao/responder', {{
-      method: 'POST',
-      headers: {{'Content-Type': 'application/json'}},
-      body: JSON.stringify({{token: {_json.dumps(token)}, nota: _nota, comentario: comentario}})
-    }}).then(function(r) {{ return r.json(); }}).then(function(d) {{
-      if (d.ok) {{
-        document.getElementById('formCard').style.display = 'none';
-        document.getElementById('thanksCard').style.display = 'block';
-      }} else {{
-        if (erro) {{ erro.textContent = d.detail || 'Erro ao enviar. Tente novamente.'; erro.style.display = 'block'; }}
-        btn.disabled = false;
-        btn.textContent = 'Enviar Avaliação';
-      }}
-    }}).catch(function() {{
-      if (erro) {{ erro.textContent = 'Erro de conexão. Verifique sua internet.'; erro.style.display = 'block'; }}
-      btn.disabled = false;
-      btn.textContent = 'Enviar Avaliação';
-    }});
-  }}
-</script>
-</body>
-</html>"""
+    return _render_survey(body_html, nome_empresa, token)
 
 
 # ── Rotas públicas ─────────────────────────────────────────────────────────────

@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 
 import socketio
 import uvicorn
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -155,6 +155,22 @@ async def lifespan(app: FastAPI):
 
     await init_db()
 
+    # M3: carrega blacklist de sessões invalidadas do banco para a memória
+    # Tokens revogados antes de um restart continuam inválidos após reiniciar.
+    try:
+        from datetime import datetime, timedelta, timezone as _tz
+        from .core.security import load_invalidated_hashes
+        async with get_db_direct() as _db3:
+            _cutoff = datetime.now(tz=_tz.utc) - timedelta(seconds=settings.session_max_age)
+            async with _db3.execute(
+                "SELECT token_hash FROM invalidated_sessions WHERE invalidated_at > ?", (_cutoff,)
+            ) as _cur3:
+                _rows3 = await _cur3.fetchall()
+            load_invalidated_hashes([r["token_hash"] for r in _rows3])
+            _startup_logger.info("[startup] M3: %d sessão(ões) revogada(s) carregada(s) do banco", len(_rows3))
+    except Exception as _e3:
+        _startup_logger.debug("[startup] M3: falha ao carregar sessões revogadas: %s", _e3)
+
     # Protege o .env via DPAPI na primeira execução após instalação/update (Windows)
     # Máquinas já instaladas com .env em texto puro são protegidas automaticamente
     try:
@@ -241,11 +257,20 @@ fastapi_app.include_router(avaliacao_router)        # /avaliacao + /api/avaliaca
 
 
 @fastapi_app.post("/api/logout")
-async def logout_alias(request: Request):
-    from .core.security import SESSION_COOKIE, invalidate_token
+async def logout_alias(request: Request, db=Depends(get_db)):
+    from .core.security import SESSION_COOKIE, invalidate_token, get_token_hash
     token = request.cookies.get(SESSION_COOKIE)
     if token:
         invalidate_token(token)
+        # M3: persiste hash no banco para sobreviver a restarts
+        try:
+            await db.execute(
+                "INSERT INTO invalidated_sessions (token_hash) VALUES (?) ON CONFLICT DO NOTHING",
+                (get_token_hash(token),),
+            )
+            await db.commit()
+        except Exception:
+            pass  # falha no log não quebra o logout
     resp = JSONResponse({"ok": True})
     resp.delete_cookie(SESSION_COOKIE)
     return resp

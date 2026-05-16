@@ -26,7 +26,7 @@ from ..core.database import get_db
 from ..core.http_client import get_http_client
 from ..core.security import (
     verify_password, hash_password, create_session_token,
-    SESSION_COOKIE, get_current_user, normalize_cnpj, invalidate_token,
+    SESSION_COOKIE, get_current_user, normalize_cnpj, invalidate_token, get_token_hash,
 )
 
 logger = logging.getLogger(__name__)
@@ -228,99 +228,69 @@ async def check_cnpj(body: CNPJCheck, request: Request, db=Depends(get_db)):
 _MONITOR_AUTH = "__MONITOR_AUTH__"
 
 
-# ── Passo 2: Login com usuário/senha ──────────────────────────────────────────
+# ── M6: Helpers privados extraídos do login() ──────────────────────────────────
 
-@router.post("/login")
-async def login(body: LoginRequest, request: Request, response: Response, db=Depends(get_db)):
-    """
-    Fluxo de autenticação (SEC-04):
-      1. Busca empresa e usuário local no banco
-      2. Se o usuário tem hash real (importado do monitor) → verifica localmente.
-         A senha NUNCA é enviada ao monitor neste caminho.
-      3. Se não tem hash real (primeiro login) → fallback ao monitor para verificar.
-         Após sucesso, cria usuário local com sentinel _MONITOR_AUTH para próximos logins.
-    """
-    username = body.username.strip().lower()
-
-    ip = _client_ip(request)
-    if not _login_limiter.is_allowed(ip):
-        logger.warning("[login] Rate limit atingido — IP=%s usuário='%s' bloqueado por 1 minuto", ip, username)
-        raise HTTPException(status_code=429, detail="Muitas tentativas. Aguarde 1 minuto.")
-
-    # Tenta obter token: primeiro de settings, depois do banco (fallback)
-    client_token = settings.monitor_client_token
-    if not client_token:
+async def _resolve_client_token(db) -> str:
+    """Retorna o token do cliente (settings ou banco). Levanta 503 se ausente."""
+    token = settings.monitor_client_token
+    if not token:
         async with db.execute(
             "SELECT token FROM empresas WHERE ativo = TRUE ORDER BY id LIMIT 1"
         ) as cur:
-            _emp = await cur.fetchone()
-        if _emp and _emp["token"]:
-            client_token = _emp["token"]
-            settings.monitor_client_token = client_token
-
-    if not client_token:
-        logger.error("[login] MONITOR_CLIENT_TOKEN ausente e nenhuma empresa ativa no banco — sistema não ativado")
+            row = await cur.fetchone()
+        if row and row["token"]:
+            settings.monitor_client_token = row["token"]
+            return row["token"]
+        logger.error("[login] MONITOR_CLIENT_TOKEN ausente e nenhuma empresa ativa — sistema não ativado")
         raise HTTPException(status_code=503, detail="Sistema não ativado. Informe o token de ativação.")
+    return token
 
-    monitor_url = settings.monitor_url.rstrip("/")
 
-    # ── Busca empresa ─────────────────────────────────────────────────────────
-    if body.cnpj:
-        cnpj_norm = normalize_cnpj(body.cnpj)
+async def _resolve_empresa(db, cnpj: str | None) -> dict:
+    """Retorna empresa ativa pelo CNPJ (se fornecido) ou a primeira ativa. Levanta 503 se nenhuma."""
+    emp = None
+    if cnpj:
         async with db.execute(
-            "SELECT id, nome, token FROM empresas WHERE cnpj = ? AND ativo = TRUE", (cnpj_norm,)
+            "SELECT id, nome, token FROM empresas WHERE cnpj = ? AND ativo = TRUE",
+            (normalize_cnpj(cnpj),),
         ) as cur:
             emp = await cur.fetchone()
-    else:
-        emp = None
-
     if not emp:
         async with db.execute(
             "SELECT id, nome, token FROM empresas WHERE ativo = TRUE ORDER BY id LIMIT 1"
         ) as cur:
             emp = await cur.fetchone()
-
     if not emp:
-        logger.error("[login] Nenhuma empresa ativa no banco — auto-setup não foi executado ou falhou")
+        logger.error("[login] Nenhuma empresa ativa — auto-setup falhou ou não foi executado")
         raise HTTPException(status_code=503, detail="Nenhuma empresa ativa. Ative o sistema primeiro.")
+    return dict(emp)
 
-    empresa_id  = emp["id"]
-    empresa_nome = emp["nome"]
-    emp_token   = emp["token"] or client_token
 
-    # ── Busca usuário local ───────────────────────────────────────────────────
-    async with db.execute(
-        "SELECT id, password_hash FROM usuarios WHERE username = ? AND empresa_id = ?",
-        (username, empresa_id),
-    ) as cur:
-        local_user = await cur.fetchone()
-
-    # Tem hash real importado do monitor → verifica localmente (senha não sai do app)
+async def _authenticate(username: str, password: str, local_user, client_token: str, monitor_url: str) -> None:
+    """
+    Verifica credenciais: localmente (hash bcrypt) ou no Monitor (sem hash local).
+    Levanta HTTPException 401/403/502/503 em caso de falha.
+    """
     has_real_hash = (
         local_user is not None
         and local_user["password_hash"]
         and local_user["password_hash"] != _MONITOR_AUTH
     )
-
     if has_real_hash:
-        if not verify_password(body.password, local_user["password_hash"]):
-            logger.warning("[login] Falha de autenticação local para '%s'", username)
+        if not verify_password(password, local_user["password_hash"]):
+            logger.warning("[login] Falha local para '%s'", username)
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciais inválidas.")
-        logger.debug("[login] Autenticação local para '%s' — senha não enviada ao monitor", username)
-
+        logger.debug("[login] Auth local para '%s' — senha não enviada ao monitor", username)
     else:
-        # Sem hash local → chama monitor (primeiro login ou usuário criado manualmente)
         logger.debug("[login] Sem hash local para '%s', verificando no Monitor", username)
         try:
-            http = get_http_client()
-            r = await http.post(
+            r = await get_http_client().post(
                 f"{monitor_url}/api/auth/verificar",
-                json={"username": username, "password": body.password, "client_token": client_token},
+                json={"username": username, "password": password, "client_token": client_token},
             )
         except Exception as exc:
-            logger.error("Erro ao contatar Monitor (login): %s", exc)
+            logger.error("[login] Erro ao contatar Monitor: %s", exc)
             raise HTTPException(status_code=503, detail="Não foi possível conectar ao servidor de autenticação.")
-
         if r.status_code == 401:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciais inválidas.")
         if r.status_code == 403:
@@ -328,47 +298,80 @@ async def login(body: LoginRequest, request: Request, response: Response, db=Dep
         if r.status_code != 200:
             raise HTTPException(status_code=502, detail=f"Erro no servidor de autenticação ({r.status_code}).")
 
-    # ── Busca menus do monitor (sem senha) ────────────────────────────────────
-    menus_from_monitor = None
+
+async def _fetch_menus(username: str, emp_token: str, monitor_url: str) -> str | None:
+    """Busca menus do usuário no monitor. Retorna JSON ou None (best-effort)."""
     try:
-        http = get_http_client()
-        mr = await http.get(
+        mr = await get_http_client().get(
             f"{monitor_url}/api/auth/usuario-menus/{username}",
             params={"client_token": emp_token},
         )
         if mr.status_code == 200:
-            menus_from_monitor = mr.json().get("menus")
+            menus = mr.json().get("menus")
+            return json.dumps(menus) if menus is not None else None
     except Exception as exc:
         logger.debug("[login] Não foi possível buscar menus do monitor: %s", exc)
+    return None
 
-    menus_json = json.dumps(menus_from_monitor) if menus_from_monitor is not None else None
 
-    # ── Cria ou atualiza usuário local ────────────────────────────────────────
+async def _upsert_local_user(db, local_user, empresa_id: int, username: str, menus_json: str | None) -> int:
+    """Atualiza menus se usuário existe, cria com sentinel se não existe. Retorna local_uid."""
     if local_user:
-        local_uid = local_user["id"]
         await db.execute(
             "UPDATE usuarios SET menus = ? WHERE id = ? AND empresa_id = ?",
-            (menus_json, local_uid, empresa_id),
+            (menus_json, local_user["id"], empresa_id),
         )
         await db.commit()
-    else:
-        # Cria com sentinel — na próxima vez, fallback ao monitor novamente
-        # até que o hash seja sincronizado via auto-setup/registrar-empresa
-        cur2 = await db.execute(
-            "INSERT INTO usuarios (empresa_id, username, password_hash, menus) VALUES (?, ?, ?, ?)",
-            (empresa_id, username, _MONITOR_AUTH, menus_json),
-        )
-        await db.commit()
-        local_uid = cur2.lastrowid or 0
+        return local_user["id"]
+    cur2 = await db.execute(
+        "INSERT INTO usuarios (empresa_id, username, password_hash, menus) VALUES (?, ?, ?, ?)",
+        (empresa_id, username, _MONITOR_AUTH, menus_json),
+    )
+    await db.commit()
+    return cur2.lastrowid or 0
+
+
+# ── Passo 2: Login com usuário/senha ──────────────────────────────────────────
+
+@router.post("/login")
+async def login(body: LoginRequest, request: Request, response: Response, db=Depends(get_db)):
+    """
+    Fluxo de autenticação (SEC-04):
+      1. Resolve token do cliente e empresa ativa
+      2. Verifica credenciais: localmente (hash bcrypt) ou no Monitor (primeiro login)
+      3. Sincroniza menus do monitor e cria/atualiza usuário local
+      4. Emite cookie de sessão assinado
+    """
+    username = body.username.strip().lower()
+
+    ip = _client_ip(request)
+    if not _login_limiter.is_allowed(ip):
+        logger.warning("[login] Rate limit — IP=%s usuário='%s'", ip, username)
+        raise HTTPException(status_code=429, detail="Muitas tentativas. Aguarde 1 minuto.")
+
+    client_token = await _resolve_client_token(db)
+    monitor_url  = settings.monitor_url.rstrip("/")
+    emp          = await _resolve_empresa(db, body.cnpj)
+    empresa_id   = emp["id"]
+    empresa_nome = emp["nome"]
+    emp_token    = emp["token"] or client_token
+
+    async with db.execute(
+        "SELECT id, password_hash FROM usuarios WHERE username = ? AND empresa_id = ?",
+        (username, empresa_id),
+    ) as cur:
+        local_user = await cur.fetchone()
+
+    await _authenticate(username, body.password, local_user, client_token, monitor_url)
+
+    menus_json = await _fetch_menus(username, emp_token, monitor_url)
+    local_uid  = await _upsert_local_user(db, local_user, empresa_id, username, menus_json)
 
     token = create_session_token(local_uid, username, empresa_id)
     response.set_cookie(
-        key=SESSION_COOKIE,
-        value=token,
-        httponly=True,
-        samesite="lax",
-        secure=settings.cookie_secure,
-        max_age=settings.session_max_age,
+        key=SESSION_COOKIE, value=token,
+        httponly=True, samesite="lax",
+        secure=settings.cookie_secure, max_age=settings.session_max_age,
     )
     return {"ok": True, "username": username, "empresa": empresa_nome}
 
@@ -377,10 +380,20 @@ async def login(body: LoginRequest, request: Request, response: Response, db=Dep
 async def logout(
     request: Request,
     response: Response,
+    db=Depends(get_db),
 ):
     token = request.cookies.get(SESSION_COOKIE)
     if token:
         invalidate_token(token)
+        # M3: persiste hash no banco para sobreviver a restarts
+        try:
+            await db.execute(
+                "INSERT INTO invalidated_sessions (token_hash) VALUES (?) ON CONFLICT DO NOTHING",
+                (get_token_hash(token),),
+            )
+            await db.commit()
+        except Exception:
+            pass  # falha no log não quebra o logout
     response.delete_cookie(SESSION_COOKIE)
     return {"ok": True}
 

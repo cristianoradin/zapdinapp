@@ -1,5 +1,5 @@
+import hashlib
 import hmac
-import time
 from typing import Optional
 
 import bcrypt
@@ -13,18 +13,30 @@ _serializer = URLSafeTimedSerializer(settings.secret_key)
 SESSION_COOKIE = "zapdin_session"
 
 # ── Blacklist de tokens invalidados (logout) ──────────────────────────────────
-# Chave: token string — Valor: timestamp de quando foi invalidado
-# Entradas são removidas automaticamente após session_max_age expirar
-_invalidated_tokens: dict[str, float] = {}
+# M3: armazena SHA-256 do token (não o token cru) — mais seguro e suficiente
+# para lookup. Persistência no banco: tabela invalidated_sessions.
+# Populada no startup via load_invalidated_hashes().
+_invalidated_hashes: set[str] = set()
+
+
+def _token_hash(token: str) -> str:
+    """SHA-256 do token de sessão — usado como chave na blacklist."""
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def load_invalidated_hashes(hashes: list[str]) -> None:
+    """Popula a blacklist em memória com hashes carregados do banco no startup."""
+    _invalidated_hashes.update(hashes)
 
 
 def invalidate_token(token: str) -> None:
-    """Adiciona token à blacklist. Limpa entradas expiradas automaticamente."""
-    _invalidated_tokens[token] = time.time()
-    cutoff = time.time() - settings.session_max_age
-    expired = [k for k, v in _invalidated_tokens.items() if v < cutoff]
-    for k in expired:
-        del _invalidated_tokens[k]
+    """Invalida token na memória. Persistência no banco feita pelo caller async."""
+    _invalidated_hashes.add(_token_hash(token))
+
+
+def get_token_hash(token: str) -> str:
+    """Expõe o hash do token para que o caller async possa persistir no banco."""
+    return _token_hash(token)
 
 
 def hash_password(plain: str) -> str:
@@ -48,8 +60,8 @@ def create_session_token(user_id: int, username: str, empresa_id: int) -> str:
 
 
 def decode_session_token(token: str) -> Optional[dict]:
-    # Rejeita tokens explicitamente invalidados (logout)
-    if token in _invalidated_tokens:
+    # M3: rejeita tokens na blacklist (hash lookup — seguro e rápido)
+    if _token_hash(token) in _invalidated_hashes:
         return None
     try:
         return _serializer.loads(token, salt="session", max_age=settings.session_max_age)
