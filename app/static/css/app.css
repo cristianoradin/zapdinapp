@@ -1507,25 +1507,7 @@
        MÓDULO CONTÁBIL
     ═══════════════════════════════════════════════════════════════════ */
 
-    /* Cards de estatística */
-    .ctb-stat-card {
-      display: flex; align-items: flex-start; gap: 1rem;
-    }
-    .ctb-stat-icon {
-      width: 46px; height: 46px; border-radius: 12px; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .ctb-stat-body { display: flex; flex-direction: column; gap: .2rem; }
-    .ctb-stat-value { font-size: 1.85rem; font-weight: 800; letter-spacing: -.04em; line-height: 1; }
-    .ctb-stat-label { font-size: .78rem; font-weight: 600; color: var(--text); }
-    .ctb-stat-sub   { font-size: .7rem; color: var(--text-mid); }
-
-    .ctb-card-blue  .ctb-stat-icon { background: #dbeafe; color: #2563eb; }
-    .ctb-card-blue  .ctb-stat-value { color: #2563eb; }
-    .ctb-card-yellow .ctb-stat-icon { background: #fef9c3; color: #ca8a04; }
-    .ctb-card-yellow .ctb-stat-value { color: #ca8a04; }
-    .ctb-card-green .ctb-stat-icon { background: #dcfce7; color: #15803d; }
-    .ctb-card-green .ctb-stat-value { color: #15803d; }
+    /* Feed de atividade — título usa section-header-icon padrão */
 
     /* Feed de atividade */
     .ctb-feed-panel {
