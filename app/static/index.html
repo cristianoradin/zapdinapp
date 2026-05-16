@@ -171,98 +171,188 @@
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;align-items:start">
 
-        <!-- Editor -->
-        <div class="card" style="margin-bottom:0">
-          <div class="section-header">
-            <div class="section-header-icon shi-green">
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            </div>
-            <h2>Editor do Template</h2>
-          </div>
-          <div class="alert" id="alertMensagem"></div>
+        <!-- ── COLUNA ESQUERDA: Editor + Teste de Envio ── -->
+        <div style="display:flex;flex-direction:column;gap:1.25rem">
 
-          <!-- Nome da empresa bloqueado -->
-          <div style="margin-bottom:1rem">
-            <div style="display:flex;align-items:center;gap:.35rem;font-size:.72rem;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.4rem">
-              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              Cabeçalho fixo — vem da licença
+          <!-- Editor -->
+          <div class="card" style="margin-bottom:0">
+            <div class="section-header">
+              <div class="section-header-icon shi-green">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </div>
+              <h2>Editor do Template</h2>
             </div>
-            <div id="nomeEmpresaFixo" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1.5px solid #86efac;border-radius:10px;padding:.6rem .9rem;display:flex;align-items:center;gap:.55rem">
-              <span style="width:28px;height:28px;background:#15803d;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-              </span>
-              <span id="clientNameDisplay" style="font-family:'JetBrains Mono','Fira Code',monospace;font-size:.88rem;font-weight:700;color:#15803d;letter-spacing:.01em">…</span>
-              <span style="margin-left:auto;font-size:.66rem;background:#dcfce7;color:#15803d;border:1px solid #86efac;border-radius:4px;padding:.1rem .4rem;font-weight:600;white-space:nowrap">fixo</span>
+            <div class="alert" id="alertMensagem"></div>
+
+            <!-- Nome da empresa bloqueado -->
+            <div style="margin-bottom:1rem">
+              <div style="display:flex;align-items:center;gap:.35rem;font-size:.72rem;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.4rem">
+                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                Cabeçalho fixo — vem da licença
+              </div>
+              <div id="nomeEmpresaFixo" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1.5px solid #86efac;border-radius:10px;padding:.6rem .9rem;display:flex;align-items:center;gap:.55rem">
+                <span style="width:28px;height:28px;background:#15803d;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                </span>
+                <span id="clientNameDisplay" style="font-family:'JetBrains Mono','Fira Code',monospace;font-size:.88rem;font-weight:700;color:#15803d;letter-spacing:.01em">…</span>
+                <span style="margin-left:auto;font-size:.66rem;background:#dcfce7;color:#15803d;border:1px solid #86efac;border-radius:4px;padding:.1rem .4rem;font-weight:600;white-space:nowrap">fixo</span>
+              </div>
+              <div style="font-size:.7rem;color:var(--text-mid);margin-top:.3rem">
+                Adicionado automaticamente no topo de todas as mensagens.
+              </div>
             </div>
-            <div style="font-size:.7rem;color:var(--text-mid);margin-top:.3rem">
-              Adicionado automaticamente no topo de todas as mensagens.
+
+            <!-- Variable chips -->
+            <div style="margin-bottom:1rem">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+                <div style="font-size:.72rem;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.08em">Variáveis disponíveis</div>
+                <div style="font-size:.68rem;color:var(--text-mid)">clique para inserir</div>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:.4rem">
+                <span class="var-tag var-tag-green"  data-var="{nome}">{nome}</span>
+                <span class="var-tag var-tag-blue"   data-var="{telefone}">{telefone}</span>
+                <span class="var-tag var-tag-purple" data-var="{data}">{data}</span>
+                <span class="var-tag var-tag-orange" data-var="{produtos}">{produtos}</span>
+                <span class="var-tag var-tag-teal"   data-var="{valor_total_itens}">{valor_total_itens}</span>
+                <span class="var-tag var-tag-red"    data-var="{valor_total}">{valor_total}</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Corpo da mensagem (editável)</label>
+              <textarea id="inputMensagem" rows="9" style="font-family:'JetBrains Mono','Fira Code',monospace;font-size:.85rem"></textarea>
+            </div>
+            <button class="btn btn-primary" id="btnSalvarMensagem" style="width:100%;display:inline-flex;align-items:center;justify-content:center;gap:.45rem">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Salvar Template
+            </button>
+          </div>
+
+          <!-- Teste de Envio -->
+          <div class="card" style="margin-bottom:0">
+            <div class="section-header" style="margin-bottom:1rem">
+              <div class="section-header-icon shi-teal">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </div>
+              <h2>Teste de Envio</h2>
+            </div>
+            <div id="testeMsgAlertSessao" style="display:none;padding:.65rem 1rem;border-radius:8px;font-size:.84rem;margin-bottom:1rem"></div>
+            <div style="display:flex;flex-direction:column;gap:.85rem">
+              <div class="form-group" style="margin-bottom:0">
+                <label>Sessão WhatsApp</label>
+                <select id="testeMsgSessao" style="width:100%">
+                  <option value="">Carregando sessões…</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label>Telefone destinatário</label>
+                <div style="display:flex;align-items:center;gap:.5rem">
+                  <span style="padding:.55rem .7rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;color:#2d6a0a;font-size:.82rem;white-space:nowrap;font-weight:700;display:inline-flex;align-items:center;gap:.3rem">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.93 3.36 2 2 0 0 1 3.91 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 5.93 5.93l1.18-1.18a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                    +55
+                  </span>
+                  <input type="text" id="testeMsgPhone" placeholder="11999998888" maxlength="11" />
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:.6rem .875rem">
+                <div>
+                  <div style="font-size:.84rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:.4rem">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    Incluir link de avaliação
+                  </div>
+                  <div style="font-size:.72rem;color:var(--text-mid);margin-top:.1rem">Adiciona o link de pesquisa ao final da mensagem</div>
+                </div>
+                <label class="toggle-switch" style="flex-shrink:0">
+                  <input type="checkbox" id="testeMsgIncluirAval">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <button class="btn btn-primary" id="btnEnviarTesteMensagem" style="display:inline-flex;align-items:center;justify-content:center;gap:.45rem">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                Enviar Mensagem de Teste
+              </button>
+              <div id="testeMsgResult" style="display:none;padding:.65rem 1rem;border-radius:8px;font-size:.84rem"></div>
             </div>
           </div>
 
-          <!-- Variable chips -->
-          <div style="margin-bottom:1rem">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
-              <div style="font-size:.72rem;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.08em">Variáveis disponíveis</div>
-              <div style="font-size:.68rem;color:var(--text-mid)">clique para inserir</div>
-            </div>
-            <div style="display:flex;flex-wrap:wrap;gap:.4rem">
-              <span class="var-tag var-tag-green"  data-var="{nome}">{nome}</span>
-              <span class="var-tag var-tag-blue"   data-var="{telefone}">{telefone}</span>
-              <span class="var-tag var-tag-purple" data-var="{data}">{data}</span>
-              <span class="var-tag var-tag-orange" data-var="{produtos}">{produtos}</span>
-              <span class="var-tag var-tag-teal"   data-var="{valor_total_itens}">{valor_total_itens}</span>
-              <span class="var-tag var-tag-red"    data-var="{valor_total}">{valor_total}</span>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Corpo da mensagem (editável)</label>
-            <textarea id="inputMensagem" rows="10" style="font-family:'JetBrains Mono','Fira Code',monospace;font-size:.85rem"></textarea>
-          </div>
-          <button class="btn btn-primary" id="btnSalvarMensagem" style="width:100%;display:inline-flex;align-items:center;justify-content:center;gap:.45rem">
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-            Salvar Template
-          </button>
         </div>
 
-        <!-- Preview -->
-        <div>
-          <div class="card" style="margin-bottom:1rem">
-            <div class="section-header">
-              <div class="section-header-icon shi-teal">
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <!-- ── COLUNA DIREITA: Preview + Avaliação ── -->
+        <div style="display:flex;flex-direction:column;gap:1.25rem">
+
+          <!-- Card: Preview ao Vivo + Pesquisa de Avaliação side by side -->
+          <div class="card" style="margin-bottom:0">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;align-items:start">
+
+              <!-- Preview ao Vivo -->
+              <div>
+                <div class="section-header" style="margin-bottom:.75rem">
+                  <div class="section-header-icon shi-teal">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </div>
+                  <h2>Preview ao Vivo</h2>
+                </div>
+                <div class="phone-mockup" style="max-width:210px">
+                  <div class="phone-mockup-screen">
+                    <div class="wa-status-bar">
+                      <span class="wa-status-bar-time">9:41</span>
+                      <div class="wa-status-bar-icons">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="white" stroke="none"><path d="M1.5 8.5a13 13 0 0 1 21 0M5 12a9 9 0 0 1 14 0M8.5 15.5a5 5 0 0 1 7 0M12 19h.01" stroke="white" fill="none" stroke-width="2" stroke-linecap="round"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="white" stroke="none"><rect x="2" y="7" width="16" height="10" rx="2" fill="none" stroke="white" stroke-width="2"/><path d="M22 11v2" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg>
+                      </div>
+                    </div>
+                    <div class="wa-header-bar">
+                      <div class="wa-header-avatar">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                      </div>
+                      <div class="wa-header-info">
+                        <div class="wa-header-name">Cliente</div>
+                        <div class="wa-header-status">online</div>
+                      </div>
+                    </div>
+                    <div class="wa-preview-wrap-inner">
+                      <div class="wa-bubble">
+                        <div id="previewMensagem" style="font-size:.75rem;white-space:pre-wrap"></div>
+                        <div class="wa-bubble-time">9:41 ✓✓</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <h2>Preview ao Vivo</h2>
-            </div>
-            <div class="phone-mockup">
-              <div class="phone-mockup-screen">
-                <div class="wa-status-bar">
-                  <span class="wa-status-bar-time">9:41</span>
-                  <div class="wa-status-bar-icons">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="white" stroke="none"><path d="M1.5 8.5a13 13 0 0 1 21 0M5 12a9 9 0 0 1 14 0M8.5 15.5a5 5 0 0 1 7 0M12 19h.01" stroke="white" fill="none" stroke-width="2" stroke-linecap="round"/></svg>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="white" stroke="none"><rect x="2" y="7" width="16" height="10" rx="2" fill="none" stroke="white" stroke-width="2"/><path d="M22 11v2" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg>
+
+              <!-- Pesquisa de Avaliação -->
+              <div id="cardAvaliacaoCfg">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+                  <div class="section-header" style="margin-bottom:0">
+                    <div class="section-header-icon shi-yellow">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    </div>
+                    <h2>Avaliação</h2>
                   </div>
+                  <label class="toggle-switch" style="flex-shrink:0">
+                    <input type="checkbox" id="toggleAvaliacao" onchange="salvarAvaliacaoCfg()">
+                    <span class="toggle-slider"></span>
+                  </label>
                 </div>
-                <div class="wa-header-bar">
-                  <div class="wa-header-avatar">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <p style="font-size:.78rem;color:var(--text-mid);margin:0 0 .75rem">Ao ativar, um link de avaliação (1–5 estrelas) será enviado junto com cada mensagem do ERP.</p>
+
+                <div id="avaliacaoPreviewWrap" style="display:none">
+                  <div style="font-size:.7rem;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">Prévia da tela</div>
+                  <!-- iframe escalado para caber na coluna -->
+                  <div style="width:100%;height:340px;overflow:hidden;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.12);position:relative">
+                    <iframe id="avaliacaoPreviewIframe" src="/avaliacao/preview"
+                            style="width:167%;height:567px;border:none;display:block;
+                                   transform:scale(0.6);transform-origin:top left"
+                            title="Prévia da avaliação"></iframe>
                   </div>
-                  <div class="wa-header-info">
-                    <div class="wa-header-name">Cliente</div>
-                    <div class="wa-header-status">online</div>
-                  </div>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
-                </div>
-                <div class="wa-preview-wrap-inner">
-                  <div class="wa-bubble">
-                    <div id="previewMensagem" style="font-size:.8rem;white-space:pre-wrap"></div>
-                    <div class="wa-bubble-time">9:41 ✓✓</div>
-                  </div>
+                  <div style="font-size:.7rem;color:var(--text-mid);text-align:center;margin-top:.4rem">Tela que o cliente verá ao clicar no link</div>
                 </div>
               </div>
+
             </div>
           </div>
 
+          <!-- Info banner -->
           <div class="info-banner info-banner-blue">
             <span class="ib-icon">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -274,118 +364,6 @@
 
         </div>
 
-      </div>
-
-      <!-- ── Avaliação de Atendimento ──────────────────────────────────────────── -->
-      <div class="card" style="margin-top:1.25rem" id="cardAvaliacaoCfg">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap">
-          <div class="section-header" style="margin-bottom:0;flex:1">
-            <div class="section-header-icon shi-yellow">
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-            </div>
-            <div>
-              <h2 style="margin-bottom:.2rem">Pesquisa de Avaliação</h2>
-              <p style="font-size:.8rem;color:var(--text-mid);margin:0">Ao ativar, um link de avaliação (1–5 estrelas) será enviado junto com cada mensagem do ERP. Os resultados ficam disponíveis no painel de avaliações.</p>
-            </div>
-          </div>
-          <label class="toggle-switch" style="flex-shrink:0;margin-top:.25rem">
-            <input type="checkbox" id="toggleAvaliacao" onchange="salvarAvaliacaoCfg()">
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-
-        <div id="avaliacaoPreviewWrap" style="display:none;margin-top:1.25rem;border-top:1px solid var(--border);padding-top:1.25rem">
-          <div style="font-size:.78rem;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.75rem">Prévia da tela de avaliação</div>
-          <div style="border-radius:14px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.12);max-width:400px;margin:0 auto">
-            <iframe id="avaliacaoPreviewIframe" src="/avaliacao/preview" style="width:100%;height:560px;border:none;display:block" title="Prévia da avaliação"></iframe>
-          </div>
-          <div style="font-size:.74rem;color:var(--text-mid);text-align:center;margin-top:.5rem">Esta é a tela que o cliente verá ao clicar no link.</div>
-        </div>
-      </div>
-
-      <!-- ── Teste de Envio com Template ────────────────────────────────────── -->
-      <div class="card" style="margin-top:1.25rem">
-        <div class="section-header" style="margin-bottom:1.25rem">
-          <div class="section-header-icon shi-teal">
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-          </div>
-          <h2>Teste de Envio</h2>
-        </div>
-        <div id="testeMsgAlertSessao" style="display:none;padding:.65rem 1rem;border-radius:8px;font-size:.84rem;margin-bottom:1rem"></div>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;align-items:start">
-
-          <!-- Controles -->
-          <div style="display:flex;flex-direction:column;gap:1rem">
-            <div class="form-group" style="margin-bottom:0">
-              <label>Sessão WhatsApp</label>
-              <select id="testeMsgSessao" style="width:100%">
-                <option value="">Carregando sessões…</option>
-              </select>
-            </div>
-            <div class="form-group" style="margin-bottom:0">
-              <label>Telefone destinatário</label>
-              <div style="display:flex;align-items:center;gap:.5rem">
-                <span style="padding:.55rem .7rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;color:#2d6a0a;font-size:.82rem;white-space:nowrap;font-weight:700;display:inline-flex;align-items:center;gap:.3rem">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.93 3.36 2 2 0 0 1 3.91 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 5.93 5.93l1.18-1.18a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                  +55
-                </span>
-                <input type="text" id="testeMsgPhone" placeholder="11999998888" maxlength="11" oninput="atualizarPreviewTeste()" />
-              </div>
-            </div>
-            <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:.65rem .875rem">
-              <div>
-                <div style="font-size:.84rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:.4rem">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                  Incluir link de avaliação
-                </div>
-                <div style="font-size:.73rem;color:var(--text-mid);margin-top:.1rem">Adiciona o link de pesquisa ao final da mensagem</div>
-              </div>
-              <label class="toggle-switch" style="flex-shrink:0">
-                <input type="checkbox" id="testeMsgIncluirAval" onchange="atualizarPreviewTeste()">
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
-            <button class="btn btn-primary" id="btnEnviarTesteMensagem" style="display:inline-flex;align-items:center;justify-content:center;gap:.45rem">
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-              Enviar Mensagem de Teste
-            </button>
-            <div id="testeMsgResult" style="display:none;padding:.65rem 1rem;border-radius:8px;font-size:.84rem"></div>
-          </div>
-
-          <!-- Preview WA -->
-          <div>
-            <div style="font-size:.72rem;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.75rem;text-align:center">Prévia — como o cliente receberá</div>
-            <div class="phone-mockup">
-              <div class="phone-mockup-screen">
-                <div class="wa-status-bar">
-                  <span class="wa-status-bar-time">9:41</span>
-                  <div class="wa-status-bar-icons">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="white" stroke="none"><path d="M1.5 8.5a13 13 0 0 1 21 0M5 12a9 9 0 0 1 14 0M8.5 15.5a5 5 0 0 1 7 0M12 19h.01" stroke="white" fill="none" stroke-width="2" stroke-linecap="round"/></svg>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="white" stroke="none"><rect x="2" y="7" width="16" height="10" rx="2" fill="none" stroke="white" stroke-width="2"/><path d="M22 11v2" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg>
-                  </div>
-                </div>
-                <div class="wa-header-bar">
-                  <div class="wa-header-avatar">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                  </div>
-                  <div class="wa-header-info">
-                    <div class="wa-header-name">Cliente</div>
-                    <div class="wa-header-status">online</div>
-                  </div>
-                </div>
-                <div class="wa-preview-wrap-inner">
-                  <div class="wa-bubble">
-                    <div id="testeMsgPreview" style="font-size:.8rem;white-space:pre-wrap">Carregando…</div>
-                    <div class="wa-bubble-time">9:41 ✓✓</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div style="font-size:.7rem;color:var(--text-mid);margin-top:.6rem;text-align:center">Dados de exemplo para demonstração</div>
-          </div>
-
-        </div>
       </div>
 
     </div>
