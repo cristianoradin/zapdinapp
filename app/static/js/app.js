@@ -869,6 +869,7 @@
     else if (page === 'arquivo') loadArquivos();
     else if (page === 'teste') loadTeste();
     else if (page === 'telegram') loadTelegram();
+    else if (page === 'sistema') loadSistema();
     else if (page === 'dm-dashboard') loadDashboardCampanhas();
     else if (page === 'dm-contatos') loadContatos();
     else if (page === 'dm-campanha') initNovaCampanha();
@@ -2725,6 +2726,134 @@
   function avalMudarPagina(delta) {
     _avalPage += delta;
     _renderAvalTabela();
+  }
+
+  // ── Sistema ───────────────────────────────────────────────────────────────────
+
+  async function loadSistema() {
+    // Carrega username atual
+    try {
+      const r = await fetch('/api/auth/me');
+      if (r.ok) {
+        const d = await r.json();
+        const el = document.getElementById('sysUserAtual');
+        if (el) el.value = d.username || '';
+      }
+    } catch {}
+
+    // Carrega status + preview da chave IA
+    await _sysCarregarTokenIA();
+  }
+
+  async function _sysCarregarTokenIA() {
+    try {
+      const r = await fetch('/api/config/openai-key');
+      if (!r.ok) return;
+      const d = await r.json();
+      const inp  = document.getElementById('sysTokenIaInput');
+      if (inp) inp.value = d.configurado ? d.preview : '';
+      inp && inp.setAttribute('data-preview', d.configurado ? '1' : '0');
+      _sysSetAiStatus(d.configurado ? 'ok' : 'err',
+                      d.configurado ? 'Chave configurada' : 'Não configurada');
+    } catch {}
+  }
+
+  function _sysSetAiStatus(type, text) {
+    const pill = document.getElementById('sysAiStatusPill');
+    const txt  = document.getElementById('sysAiStatusTxt');
+    if (!pill || !txt) return;
+    pill.className = 'sys-status-pill' + (type === 'ok' ? ' ok' : type === 'err' ? ' err' : '');
+    txt.textContent = text;
+  }
+
+  function sysNav(el, panel) {
+    document.querySelectorAll('#page-sistema .sys-menu-item').forEach(i => i.classList.remove('active'));
+    document.querySelectorAll('#page-sistema .sys-panel').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    const panelEl = document.getElementById('sys-panel-' + panel);
+    if (panelEl) panelEl.classList.add('active');
+    if (panel === 'usuario') {
+      // Garante username atualizado ao abrir o painel
+      fetch('/api/auth/me').then(r => r.ok && r.json()).then(d => {
+        if (d) { const el = document.getElementById('sysUserAtual'); if(el) el.value = d.username || ''; }
+      }).catch(()=>{});
+    }
+  }
+
+  function sysToggleKey() {
+    const inp = document.getElementById('sysTokenIaInput');
+    if (!inp) return;
+    if (inp.getAttribute('data-preview') === '1') {
+      // É preview — limpa para o user digitar a nova chave
+      inp.value = '';
+      inp.setAttribute('data-preview', '0');
+      inp.type = 'text';
+      inp.focus();
+      return;
+    }
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  }
+
+  async function salvarTokenIA() {
+    const inp = document.getElementById('sysTokenIaInput');
+    const key = (inp ? inp.value.trim() : '');
+    if (!key) { showAlert('alertSysTokenIa', 'Digite a chave OpenAI.', 'error'); return; }
+    if (!key.startsWith('sk-')) { showAlert('alertSysTokenIa', 'Chave inválida — deve começar com sk-.', 'error'); return; }
+    const r = await api('POST', '/api/config/openai-key', { key });
+    if (r.ok) {
+      showAlert('alertSysTokenIa', 'Chave salva com sucesso!');
+      inp.value = key.slice(0,7) + '...' + key.slice(-4);
+      inp.setAttribute('data-preview', '1');
+      inp.type = 'password';
+      _sysSetAiStatus('ok', 'Chave configurada');
+    } else {
+      showAlert('alertSysTokenIa', r.detail || 'Erro ao salvar.', 'error');
+    }
+  }
+
+  async function testarTokenIA() {
+    _sysSetAiStatus('', '⏳ Verificando…');
+    try {
+      const r = await fetch('/api/contabil/ai-status');
+      if (r.ok) {
+        const d = await r.json();
+        if (d.ativa) _sysSetAiStatus('ok', 'Conexão OK — API ativa');
+        else _sysSetAiStatus('err', 'Falha: ' + (d.motivo || 'API inacessível'));
+      } else {
+        _sysSetAiStatus('err', 'Erro ao verificar');
+      }
+    } catch { _sysSetAiStatus('err', 'Sem resposta'); }
+  }
+
+  async function salvarUsuario() {
+    const senhaAtual  = document.getElementById('sysUserSenhaAtual')?.value.trim() || '';
+    const novoUser    = document.getElementById('sysUserNovo')?.value.trim() || '';
+    const senhaNova   = document.getElementById('sysUserSenhaNova')?.value.trim() || '';
+    const senhaConf   = document.getElementById('sysUserSenhaConf')?.value.trim() || '';
+
+    if (!senhaAtual) { showAlert('alertSysUsuario', 'Informe a senha atual.', 'error'); return; }
+    if (senhaNova && senhaNova !== senhaConf) { showAlert('alertSysUsuario', 'As senhas novas não coincidem.', 'error'); return; }
+
+    const r = await api('PUT', '/api/auth/usuario', {
+      senha_atual: senhaAtual,
+      novo_username: novoUser,
+      nova_senha: senhaNova,
+      confirmar_senha: senhaConf,
+    });
+
+    if (r.ok) {
+      showAlert('alertSysUsuario', 'Usuário atualizado com sucesso!');
+      if (r.username) {
+        const el = document.getElementById('sysUserAtual');
+        if (el) el.value = r.username;
+      }
+      document.getElementById('sysUserNovo').value = '';
+      document.getElementById('sysUserSenhaAtual').value = '';
+      document.getElementById('sysUserSenhaNova').value = '';
+      document.getElementById('sysUserSenhaConf').value = '';
+    } else {
+      showAlert('alertSysUsuario', r.detail || 'Erro ao salvar.', 'error');
+    }
   }
 
   // Helper showPage (para navegação programática)

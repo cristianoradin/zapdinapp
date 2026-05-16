@@ -1,4 +1,8 @@
-from fastapi import APIRouter, Depends
+import os
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
 from ..core.config import settings
 from ..core.database import get_db
@@ -53,4 +57,51 @@ async def set_config(
             (empresa_id, key, str(value)),
         )
     await db.commit()
+    return {"ok": True}
+
+
+# ── OpenAI API Key ────────────────────────────────────────────────────────────
+
+class OpenAIKeyBody(BaseModel):
+    key: str
+
+
+def _update_env_key(env_key: str, value: str) -> None:
+    """Grava/atualiza uma chave no .env em disco e em memória."""
+    from ..core.config import _ENV_FILE
+    env_path = Path(_ENV_FILE)
+
+    lines_out: list[str] = []
+    found = False
+    if env_path.exists():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            if stripped.startswith(env_key + "=") or stripped.startswith(env_key + " ="):
+                lines_out.append(f"{env_key}={value}")
+                found = True
+            else:
+                lines_out.append(line)
+    if not found:
+        lines_out.append(f"{env_key}={value}")
+
+    env_path.write_text("\n".join(lines_out) + "\n", encoding="utf-8")
+    os.environ[env_key] = value
+
+
+@router.get("/openai-key")
+async def get_openai_key_status(user: dict = Depends(get_current_user)):
+    """Retorna apenas se a chave está configurada (nunca expõe o valor)."""
+    key = settings.openai_api_key or ""
+    configurado = bool(key and len(key) > 8)
+    preview = (key[:7] + "..." + key[-4:]) if configurado else ""
+    return {"configurado": configurado, "preview": preview}
+
+
+@router.post("/openai-key")
+async def set_openai_key(body: OpenAIKeyBody, user: dict = Depends(get_current_user)):
+    key = body.key.strip()
+    if key and not key.startswith("sk-"):
+        raise HTTPException(400, "Chave OpenAI inválida — deve começar com 'sk-'")
+    _update_env_key("OPENAI_API_KEY", key)
+    settings.openai_api_key = key
     return {"ok": True}

@@ -49,6 +49,7 @@
   <div class="nav-item" data-page="token"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg></span> Token API</div>
   <div class="nav-item" data-page="docs"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span> Documentações</div>
   <div class="nav-item" data-page="telegram"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></span> Telegram</div>
+  <div class="nav-item" data-page="sistema"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg></span> Sistema</div>
 
   </div><!-- /sidebar-nav-scroll -->
 
@@ -1345,6 +1346,146 @@
 
       </div>
     </div>
+
+    <!-- ── Sistema ── -->
+    <div class="page" id="page-sistema">
+      <div class="sys-layout">
+
+        <!-- Menu lateral esquerdo -->
+        <div class="sys-sidebar">
+          <div class="sys-sidebar-title">Sistema</div>
+          <div class="sys-menu-item active" data-panel="token-ia" onclick="sysNav(this,'token-ia')">
+            <span class="sys-menu-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/><circle cx="7.5" cy="14.5" r="1.5"/><circle cx="16.5" cy="14.5" r="1.5"/></svg></span>
+            Token IA
+          </div>
+          <div class="sys-menu-item" data-panel="usuario" onclick="sysNav(this,'usuario')">
+            <span class="sys-menu-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+            Usuário
+          </div>
+        </div>
+
+        <!-- Conteúdo dinâmico -->
+        <div class="sys-content">
+
+          <!-- Painel: Token IA -->
+          <div class="sys-panel active" id="sys-panel-token-ia">
+            <div class="sys-panel-header">
+              <div class="sys-panel-title">Token IA</div>
+              <div class="sys-panel-sub">Chave OpenAI para extração automática de dados em Notas Fiscais (GPT-4o Vision).</div>
+            </div>
+
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">Chave da API OpenAI</div>
+                <div class="sys-row-desc">Começa com <code style="font-size:.76rem;background:var(--bg);padding:.1rem .3rem;border-radius:4px;border:1px solid var(--border)">sk-</code>. Nunca é exibida completa após salva.</div>
+              </div>
+              <div class="sys-row-control">
+                <div style="display:flex;gap:.4rem;align-items:center">
+                  <input type="password" id="sysTokenIaInput" placeholder="sk-..." style="font-family:monospace;flex:1;font-size:.82rem" />
+                  <button class="btn btn-ghost btn-sm" id="btnSysTokenIaVer" title="Mostrar/ocultar" onclick="sysToggleKey()" style="padding:.38rem .55rem">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="sys-divider"></div>
+
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">Status da conexão</div>
+                <div class="sys-row-desc">Verifica se a chave está ativa e comunicando com a OpenAI.</div>
+              </div>
+              <div class="sys-row-control">
+                <div id="sysAiStatusPill" class="sys-status-pill">
+                  <span class="sys-status-dot"></span>
+                  <span id="sysAiStatusTxt">—</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="sys-divider"></div>
+
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">Modelo em uso</div>
+                <div class="sys-row-desc">Modelo utilizado para OCR de documentos fiscais.</div>
+              </div>
+              <div class="sys-row-control">
+                <span class="sys-mono">gpt-4o</span>
+              </div>
+            </div>
+
+            <div style="margin-top:1.5rem;display:flex;gap:.75rem;align-items:center">
+              <button class="btn btn-primary" onclick="salvarTokenIA()">Salvar chave</button>
+              <button class="btn btn-ghost" onclick="testarTokenIA()">Testar conexão</button>
+            </div>
+            <div class="alert" id="alertSysTokenIa" style="margin-top:.75rem"></div>
+          </div>
+
+          <!-- Painel: Usuário -->
+          <div class="sys-panel" id="sys-panel-usuario">
+            <div class="sys-panel-header">
+              <div class="sys-panel-title">Usuário</div>
+              <div class="sys-panel-sub">Altere o login e a senha de acesso local. Este usuário é independente do Monitor.</div>
+            </div>
+
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">Usuário atual</div>
+                <div class="sys-row-desc">Identificador de login atual.</div>
+              </div>
+              <div class="sys-row-control">
+                <input type="text" id="sysUserAtual" readonly style="background:var(--bg);color:var(--text-mid);font-weight:600" />
+              </div>
+            </div>
+
+            <div class="sys-divider"></div>
+
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">Novo usuário</div>
+                <div class="sys-row-desc">Deixe em branco para manter o atual.</div>
+              </div>
+              <div class="sys-row-control">
+                <input type="text" id="sysUserNovo" placeholder="Novo nome de usuário" autocomplete="off" />
+              </div>
+            </div>
+
+            <div class="sys-divider"></div>
+
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">Senha atual</div>
+                <div class="sys-row-desc">Obrigatória para confirmar qualquer alteração.</div>
+              </div>
+              <div class="sys-row-control">
+                <input type="password" id="sysUserSenhaAtual" placeholder="••••••••" autocomplete="current-password" />
+              </div>
+            </div>
+
+            <div class="sys-divider"></div>
+
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">Nova senha</div>
+                <div class="sys-row-desc">Mínimo 6 caracteres. Deixe em branco para não alterar.</div>
+              </div>
+              <div class="sys-row-control">
+                <input type="password" id="sysUserSenhaNova" placeholder="Nova senha" autocomplete="new-password" />
+                <input type="password" id="sysUserSenhaConf" placeholder="Confirmar nova senha" autocomplete="new-password" />
+              </div>
+            </div>
+
+            <div style="margin-top:1.5rem">
+              <button class="btn btn-primary" onclick="salvarUsuario()">Salvar alterações</button>
+            </div>
+            <div class="alert" id="alertSysUsuario" style="margin-top:.75rem"></div>
+          </div>
+
+        </div><!-- /sys-content -->
+      </div><!-- /sys-layout -->
+    </div><!-- /page-sistema -->
 
     <!-- ── Disparo em Massa: Dashboard Campanhas ── -->
     <div class="page" id="page-dm-dashboard">

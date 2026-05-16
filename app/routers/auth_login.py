@@ -302,3 +302,64 @@ async def me(user: dict = Depends(get_current_user), db=Depends(get_db)):
         "menus": menus,
         "avatar_url": avatar_url,
     }
+
+
+# ── Alterar usuário/senha local ───────────────────────────────────────────────
+
+class AlterarUsuarioBody(BaseModel):
+    senha_atual: str
+    novo_username: str = ""
+    nova_senha: str = ""
+    confirmar_senha: str = ""
+
+
+@router.put("/usuario")
+async def alterar_usuario(
+    body: AlterarUsuarioBody,
+    user: dict = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    uid        = user["uid"]
+    empresa_id = user["empresa_id"]
+
+    # Busca hash atual
+    async with db.execute(
+        "SELECT username, password_hash FROM usuarios WHERE id=? AND empresa_id=?",
+        (uid, empresa_id),
+    ) as cur:
+        row = await cur.fetchone()
+
+    if not row:
+        raise HTTPException(404, "Usuário não encontrado")
+
+    if not verify_password(body.senha_atual, row["password_hash"]):
+        raise HTTPException(400, "Senha atual incorreta")
+
+    novo_username = body.novo_username.strip() or row["username"]
+    nova_senha    = body.nova_senha.strip()
+
+    if nova_senha:
+        if nova_senha != body.confirmar_senha.strip():
+            raise HTTPException(400, "As senhas não coincidem")
+        if len(nova_senha) < 6:
+            raise HTTPException(400, "A nova senha deve ter pelo menos 6 caracteres")
+        novo_hash = hash_password(nova_senha)
+    else:
+        novo_hash = row["password_hash"]
+
+    # Verifica conflito de username
+    if novo_username != row["username"]:
+        async with db.execute(
+            "SELECT id FROM usuarios WHERE empresa_id=? AND username=? AND id!=?",
+            (empresa_id, novo_username, uid),
+        ) as cur:
+            conflict = await cur.fetchone()
+        if conflict:
+            raise HTTPException(400, "Nome de usuário já está em uso")
+
+    await db.execute(
+        "UPDATE usuarios SET username=?, password_hash=? WHERE id=? AND empresa_id=?",
+        (novo_username, novo_hash, uid, empresa_id),
+    )
+    await db.commit()
+    return {"ok": True, "username": novo_username}

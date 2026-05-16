@@ -1719,3 +1719,72 @@
       border: 1px solid var(--accent-mid); border-radius: 20px;
       padding: .1rem .45rem; font-weight: 600; white-space: nowrap;
     }
+
+    /* ─── Tela Sistema (layout split tipo settings) ──────────────────────────── */
+    .sys-layout {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      min-height: 520px;
+      overflow: hidden;
+    }
+    .sys-sidebar {
+      background: var(--bg);
+      border-right: 1px solid var(--border);
+      padding: 1.2rem 0 1.2rem 0;
+    }
+    .sys-sidebar-title {
+      font-size: .68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .08em; color: var(--text-mid);
+      padding: 0 1rem .75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: .4rem;
+    }
+    .sys-menu-item {
+      display: flex; align-items: center; gap: .6rem;
+      padding: .6rem 1rem;
+      font-size: .875rem; color: var(--text-mid);
+      cursor: pointer; border-left: 3px solid transparent;
+      transition: background .15s, color .15s;
+      margin: .1rem 0;
+    }
+    .sys-menu-item:hover { background: #eef0f3; color: var(--text); }
+    .sys-menu-item.active {
+      background: var(--surface);
+      color: var(--accent);
+      font-weight: 600;
+      border-left-color: var(--accent);
+    }
+    .sys-menu-icon { display: flex; align-items: center; flex-shrink: 0; }
+    .sys-content { flex: 1; }
+    .sys-panel { display: none; padding: 1.75rem 2rem; }
+    .sys-panel.active { display: block; }
+    .sys-panel-header { margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+    .sys-panel-title { font-size: 1.1rem; font-weight: 700; color: var(--text); margin-bottom: .25rem; }
+    .sys-panel-sub { font-size: .82rem; color: var(--text-mid); }
+    .sys-row {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 1rem; align-items: center;
+      padding: 1rem 0;
+    }
+    .sys-row-title { font-size: .9rem; font-weight: 600; color: var(--text); margin-bottom: .2rem; }
+    .sys-row-desc  { font-size: .78rem; color: var(--text-mid); line-height: 1.4; }
+    .sys-row-control { display: flex; flex-direction: column; gap: .4rem; }
+    .sys-divider { height: 1px; background: var(--border); }
+    .sys-status-pill {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .3rem .8rem; border-radius: 20px; font-size: .8rem; font-weight: 600;
+      background: var(--bg); border: 1px solid var(--border); color: var(--text-mid);
+    }
+    .sys-status-pill.ok  { background: #f0fdf4; border-color: var(--accent-mid); color: var(--accent); }
+    .sys-status-pill.err { background: #fef2f2; border-color: #fecaca; color: var(--red); }
+    .sys-status-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .sys-mono {
+      font-family: 'JetBrains Mono','Fira Code',monospace;
+      font-size: .82rem; background: var(--bg); padding: .35rem .7rem;
+      border-radius: 6px; border: 1px solid var(--border); color: var(--text);
+    }
