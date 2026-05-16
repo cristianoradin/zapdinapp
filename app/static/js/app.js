@@ -100,9 +100,7 @@
           }
           chip.style.display = 'flex';
         }
-        const sbBadge = document.getElementById('sidebarClientBadge');
-        const sbName  = document.getElementById('sidebarClientName');
-        if (sbBadge && sbName) { sbName.textContent = clientName; sbBadge.style.display = 'flex'; }
+        // sidebarClientBadge removido — info de licença agora apenas no chip flutuante
       }
 
       // ── Permissões de menus ──────────────────────────────────────────────────
