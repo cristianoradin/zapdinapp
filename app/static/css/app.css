@@ -75,13 +75,14 @@
     }
 
     .sidebar-logo {
-      padding: .75rem 1rem;
+      padding: .75rem .25rem;
       display: flex;
       align-items: center;
       justify-content: center;
     }
     .sidebar-logo img {
-      width: 230px;
+      width: 260px;
+      max-width: 100%;
       height: auto;
       object-fit: contain;
       /* tinge a logo na cor verde #3d7f1f (mesmo verde do tema) */
