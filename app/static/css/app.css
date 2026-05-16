@@ -1509,9 +1509,7 @@
 
     /* Cards de estatística */
     .ctb-stat-card {
-      background: var(--surface); border-radius: 14px; padding: 1.1rem 1.25rem;
-      border: 1.5px solid var(--border); display: flex; align-items: flex-start; gap: 1rem;
-      box-shadow: 0 1px 4px rgba(0,0,0,.05);
+      display: flex; align-items: flex-start; gap: 1rem;
     }
     .ctb-stat-icon {
       width: 46px; height: 46px; border-radius: 12px; flex-shrink: 0;
@@ -1531,9 +1529,8 @@
 
     /* Feed de atividade */
     .ctb-feed-panel {
-      background: var(--surface); border-radius: 14px; border: 1.5px solid var(--border);
-      padding: 1rem; display: flex; flex-direction: column; gap: .5rem;
-      max-height: 200px; overflow: hidden;
+      display: flex; flex-direction: column; gap: .5rem;
+      min-height: 480px;
     }
     .ctb-feed-title {
       font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
@@ -1571,7 +1568,7 @@
       border-bottom: 1.5px solid var(--border); white-space: nowrap;
     }
     .ctb-doc-table td {
-      padding: .6rem .75rem; border-bottom: 1px solid var(--border);
+      padding: .45rem .75rem; border-bottom: 1px solid var(--border);
       vertical-align: middle; color: var(--text);
     }
     .ctb-doc-table tr:last-child td { border-bottom: none; }
