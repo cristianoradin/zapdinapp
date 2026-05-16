@@ -1181,65 +1181,34 @@
     .modal-result.err { display: block; background: var(--red-soft); color: var(--red); border: 1px solid #fecaca; }
 
     /* ─── Page Hero Banner ────────────────────────────────────────────────── */
-    .page-hero {
-      border-radius: var(--radius);
-      padding: 1.5rem 1.75rem;
-      margin-bottom: 1.5rem;
+    /* ─── page-hero removido — display:none em todas as instâncias ─────────── */
+    .page-hero { display: none !important; }
+
+    /* ─── Barra de título compartilhada — aparece no topo de toda página ──── */
+    .page-title-bar {
       display: flex;
       align-items: center;
-      gap: 1.25rem;
-      position: relative;
-      overflow: hidden;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid var(--border);
     }
-    .page-hero::after {
+    .page-title-bar h1 {
+      font-size: 1.45rem;
+      font-weight: 800;
+      letter-spacing: -.035em;
+      color: var(--text);
+      margin: 0;
+      position: relative;
+      padding-left: 1rem;
+    }
+    .page-title-bar h1::before {
       content: '';
       position: absolute;
-      right: -20px; top: -20px;
-      width: 120px; height: 120px;
-      border-radius: 50%;
-      opacity: .12;
+      left: 0; top: 10%; bottom: 10%;
+      width: 3px;
+      border-radius: 2px;
+      background: linear-gradient(180deg, var(--accent) 0%, #7cdc44 100%);
     }
-    .page-hero-icon {
-      font-size: 2rem;
-      flex-shrink: 0;
-      width: 52px; height: 52px;
-      display: flex; align-items: center; justify-content: center;
-      border-radius: 14px;
-    }
-    .page-hero-icon svg { display: block; }
-    .hero-green .page-hero-icon svg { stroke: #2d6a0a; }
-    .hero-blue  .page-hero-icon svg { stroke: #1e3a8a; }
-    .hero-teal  .page-hero-icon svg { stroke: #134e4a; }
-    .hero-orange .page-hero-icon svg { stroke: #7c2d12; }
-    .hero-purple .page-hero-icon svg { stroke: #3b0764; }
-    .hero-sky   .page-hero-icon svg { stroke: #0c4a6e; }
-    .page-hero-text h1 { font-size: 1.1rem; font-weight: 700; letter-spacing: -.02em; margin-bottom: .2rem; }
-    .page-hero-text p  { font-size: .84rem; opacity: .8; line-height: 1.5; margin: 0; }
-
-    .hero-green  { background: linear-gradient(135deg, #e8f5e0 0%, #d4edba 100%); border: 1px solid #b8dfa0; }
-    .hero-green .page-hero-icon  { background: #c5e8a0; }
-    .hero-green .page-hero-text  { color: #1a4206; }
-    .hero-green::after           { background: var(--accent); }
-
-    .hero-blue   { background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 1px solid #bfdbfe; }
-    .hero-blue .page-hero-icon   { background: #bfdbfe; }
-    .hero-blue .page-hero-text   { color: #1e3a8a; }
-    .hero-blue::after            { background: #3b82f6; }
-
-    .hero-purple { background: linear-gradient(135deg, #faf5ff 0%, #ede9fe 100%); border: 1px solid #ddd6fe; }
-    .hero-purple .page-hero-icon { background: #ddd6fe; }
-    .hero-purple .page-hero-text { color: #3b0764; }
-    .hero-purple::after          { background: #7c3aed; }
-
-    .hero-orange { background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%); border: 1px solid #fdba74; }
-    .hero-orange .page-hero-icon { background: #fed7aa; }
-    .hero-orange .page-hero-text { color: #7c2d12; }
-    .hero-orange::after          { background: #f97316; }
-
-    .hero-teal   { background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%); border: 1px solid #99f6e4; }
-    .hero-teal .page-hero-icon   { background: #99f6e4; }
-    .hero-teal .page-hero-text   { color: #134e4a; }
-    .hero-teal::after            { background: #14b8a6; }
 
     .hero-sky    { background: linear-gradient(135deg, #f0f9ff 0%, #bae6fd 100%); border: 1px solid #7dd3fc; }
     .hero-sky .page-hero-icon    { background: #bae6fd; }

@@ -94,6 +94,11 @@
 
   <div class="content">
 
+    <!-- Título de página compartilhado — atualizado via JS ao trocar de página -->
+    <div class="page-title-bar">
+      <h1 id="pageTitleText">Gestão de Envios</h1>
+    </div>
+
     <!-- Dashboard -->
     <div class="page active" id="page-dashboard">
 
@@ -2025,12 +2030,8 @@
     <!-- ── Avaliações ── -->
     <div class="page" id="page-avaliacoes">
 
-      <!-- Header -->
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem">
-        <div>
-          <h1 style="font-size:1.35rem;font-weight:800;letter-spacing:-.03em;color:var(--text);margin-bottom:.25rem">Avaliações</h1>
-          <p style="font-size:.875rem;color:var(--text-mid);margin:0">Acompanhe o feedback dos seus clientes</p>
-        </div>
+      <!-- Filtros de período — alinhados à direita abaixo da barra de título global -->
+      <div style="display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:.625rem;margin-bottom:1.5rem">
         <div style="display:flex;align-items:center;gap:.625rem;flex-wrap:wrap">
           <div style="display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:.25rem;gap:.15rem">
             <button id="avalBtn7" onclick="setAvalDias(7)" class="btn btn-sm" style="border-radius:16px;font-size:.78rem;padding:.3rem .85rem;background:transparent;border:none;color:var(--text-mid)">7 dias</button>

@@ -1,28 +1,34 @@
   // ── Nav ──────────────────────────────────────────────────────────────────────
+  // Nomes devem bater exatamente com os itens do menu lateral
   const pages = {
-    dashboard: 'Gestão de Envios',
-    mensagem: 'Configurar Mensagem',
-    'config-envio': 'Configurações de Envio',
-    whatsapp: 'Conectar WhatsApp',
-    teste: 'Teste de Envio',
-    token: 'Token API',
-    arquivo: 'Envio de Arquivo',
-    docs: 'Documentações',
-    telegram: 'Telegram',
-    'dm-dashboard': 'Campanhas',
-    'dm-contatos': 'Contatos',
-    'dm-campanha': 'Enviar Campanhas',
-    'dm-historico': 'Gerenciar Campanhas',
-    'dm-enviadas': 'Campanhas Enviadas',
-    'avaliacoes': 'Gestão de Avaliação',
+    dashboard:        'Gestão de Envios',
+    arquivo:          'Gestão de Arquivos',
+    avaliacoes:       'Gestão de Avaliação',
+    mensagem:         'Configurar Mensagem',
+    'config-envio':   'Configurações de Envio',
+    whatsapp:         'Conectar WhatsApp',
+    teste:            'Teste de Envio',
+    token:            'Token API',
+    docs:             'Documentações',
+    telegram:         'Telegram',
+    'dm-dashboard':   'Campanhas',
+    'dm-contatos':    'Contatos',
+    'dm-campanha':    'Enviar Campanhas',
+    'dm-historico':   'Gerenciar Campanhas',
+    'dm-enviadas':    'Campanhas Enviadas',
   };
   function _setTopbarPage(p) {
+    const label = pages[p] || p;
+    // Barra de título compartilhada (nova)
+    const bar = document.getElementById('pageTitleText');
+    if (bar) bar.textContent = label;
+    // Legados — null-safe
     const title = document.getElementById('pageTitle');
-    if (title) title.textContent = pages[p] || p;
+    if (title) title.textContent = label;
     const el = document.getElementById('pageIcon');
     if (el) el.style.display = 'none';
-    // Atualiza o título da aba do browser
-    document.title = 'ZapDin — ' + (pages[p] || p);
+    // Título da aba do browser
+    document.title = 'ZapDin — ' + label;
   }
 
   document.querySelectorAll('.nav-item').forEach(item => {
