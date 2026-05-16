@@ -1627,6 +1627,17 @@
     .ctb-meta-dot { color: var(--border); font-size: .7rem; }
     .ctb-emp-actions { display: flex; gap: .25rem; flex-shrink: 0; }
 
+    /* Seções do modal de empresa */
+    .ctb-modal-section {
+      display: flex; flex-direction: column; gap: .65rem;
+      padding-bottom: 1.1rem; border-bottom: 1px solid var(--border);
+    }
+    .ctb-modal-section-title {
+      font-size: .68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .07em; color: var(--text-mid);
+      display: flex; align-items: center; gap: .35rem;
+    }
+
     /* Seção de título no modal NF */
     .ctb-nf-section-title {
       font-size: .68rem; font-weight: 700; text-transform: uppercase;

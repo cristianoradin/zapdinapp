@@ -2440,81 +2440,132 @@
 
     <!-- ── Modal Nova/Editar Empresa ──────────────────────────────────────── -->
     <div class="modal-overlay" id="modalCtbEmpresa" style="display:none" onclick="if(event.target===this)ctbEmpresas.fecharModal()">
-      <div class="modal" style="max-width:520px;width:100%">
+      <div class="modal" style="max-width:620px;width:100%">
+
+        <!-- Header -->
         <div class="modal-header">
-          <h3 id="ctbEmpFormTitulo">Nova Empresa</h3>
+          <div style="display:flex;align-items:center;gap:.75rem">
+            <div class="section-header-icon shi-green" style="width:36px;height:36px;border-radius:10px">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+            </div>
+            <div>
+              <h3 id="ctbEmpFormTitulo" style="margin:0;font-size:.95rem">Nova Empresa</h3>
+              <p style="margin:0;font-size:.72rem;color:var(--text-mid)">Preencha os dados do cliente contábil</p>
+            </div>
+          </div>
           <button class="btn-close" onclick="ctbEmpresas.fecharModal()">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
-        <div class="modal-body">
+
+        <!-- Body -->
+        <div class="modal-body" style="display:flex;flex-direction:column;gap:1.25rem">
           <div class="alert" id="alertCtbEmpForm"></div>
           <input type="hidden" id="ctbEmpId">
-          <div class="form-group">
-            <label>Nome / Razão Social <span style="color:var(--red)">*</span></label>
-            <input type="text" id="ctbEmpNome" placeholder="Ex: Posto Brasil LTDA">
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
-            <div class="form-group" style="margin-bottom:.75rem">
-              <label>CNPJ</label>
-              <input type="text" id="ctbEmpCnpj" placeholder="00.000.000/0000-00" maxlength="18">
+
+          <!-- Seção: Identificação -->
+          <div class="ctb-modal-section">
+            <div class="ctb-modal-section-title">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+              Identificação
             </div>
-            <div class="form-group" style="margin-bottom:.75rem">
-              <label>Insc. Estadual</label>
-              <input type="text" id="ctbEmpIe" placeholder="IE">
+            <div class="form-group">
+              <label>Nome / Razão Social <span style="color:var(--red)">*</span></label>
+              <input type="text" id="ctbEmpNome" placeholder="Ex: Posto Brasil LTDA" style="font-size:.9rem">
             </div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
-            <div class="form-group" style="margin-bottom:.75rem">
-              <label>CPF</label>
-              <input type="text" id="ctbEmpCpf" placeholder="000.000.000-00" maxlength="14">
-            </div>
-            <div class="form-group" style="margin-bottom:.75rem">
-              <label>RG</label>
-              <input type="text" id="ctbEmpRg" placeholder="RG">
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Endereço</label>
-            <input type="text" id="ctbEmpEndereco" placeholder="Rua, número, bairro">
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 60px;gap:.75rem">
-            <div class="form-group" style="margin-bottom:.75rem">
-              <label>Cidade</label>
-              <input type="text" id="ctbEmpCidade" placeholder="Cidade">
-            </div>
-            <div class="form-group" style="margin-bottom:.75rem">
-              <label>UF</label>
-              <input type="text" id="ctbEmpUf" placeholder="PR" maxlength="2" style="text-transform:uppercase">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.65rem">
+              <div class="form-group" style="margin-bottom:0">
+                <label>CNPJ</label>
+                <input type="text" id="ctbEmpCnpj" placeholder="00.000.000/0000-00" maxlength="18">
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label>CPF</label>
+                <input type="text" id="ctbEmpCpf" placeholder="000.000.000-00" maxlength="14">
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label>Insc. Estadual</label>
+                <input type="text" id="ctbEmpIe" placeholder="IE">
+              </div>
             </div>
           </div>
-          <div class="form-group">
-            <label>Telefone WhatsApp <span style="color:var(--red)">*</span></label>
-            <div style="display:flex;align-items:center;gap:.5rem">
-              <span style="padding:.55rem .7rem;background:var(--accent-soft);border:1px solid var(--accent-mid);border-radius:8px;color:#2d6a0a;font-size:.82rem;font-weight:700">+55</span>
-              <input type="text" id="ctbEmpTelefone" placeholder="44999998888" maxlength="11" style="flex:1">
+
+          <!-- Seção: Contato -->
+          <div class="ctb-modal-section">
+            <div class="ctb-modal-section-title">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.43 2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.69 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6.18 6.18l.92-.92a2 2 0 0 1 2.11-.45c.91.33 1.85.56 2.81.69A2 2 0 0 1 22 16.92z"/></svg>
+              Contato
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem">
+              <div class="form-group" style="margin-bottom:0">
+                <label>WhatsApp <span style="color:var(--red)">*</span></label>
+                <div style="display:flex;align-items:center;gap:.4rem">
+                  <div style="display:flex;align-items:center;gap:.3rem;padding:.45rem .65rem;background:#dcfce7;border:1px solid #86efac;border-radius:8px;white-space:nowrap;flex-shrink:0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="#15803d"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+                    <span style="font-size:.78rem;font-weight:700;color:#15803d">+55</span>
+                  </div>
+                  <input type="text" id="ctbEmpTelefone" placeholder="44999998888" maxlength="11" style="flex:1">
+                </div>
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label>E-mail</label>
+                <input type="email" id="ctbEmpEmail" placeholder="contato@empresa.com.br">
+              </div>
             </div>
           </div>
-          <div class="form-group">
-            <label>E-mail</label>
-            <input type="email" id="ctbEmpEmail" placeholder="contato@empresa.com.br">
+
+          <!-- Seção: Endereço -->
+          <div class="ctb-modal-section">
+            <div class="ctb-modal-section-title">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              Endereço
+            </div>
+            <div class="form-group" style="margin-bottom:.65rem">
+              <label>Logradouro</label>
+              <input type="text" id="ctbEmpEndereco" placeholder="Rua, número, bairro">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 80px;gap:.65rem">
+              <div class="form-group" style="margin-bottom:0">
+                <label>Cidade</label>
+                <input type="text" id="ctbEmpCidade" placeholder="Cidade">
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label>UF</label>
+                <input type="text" id="ctbEmpUf" placeholder="PR" maxlength="2" style="text-transform:uppercase">
+              </div>
+            </div>
           </div>
-          <div class="form-group" style="margin-bottom:.25rem">
-            <label>Regime Tributário</label>
-            <select id="ctbEmpRegime" style="width:100%">
-              <option value="simples_nacional">Simples Nacional</option>
-              <option value="lucro_presumido">Lucro Presumido</option>
-              <option value="lucro_real">Lucro Real</option>
-              <option value="mei">MEI</option>
-              <option value="isento">Isento</option>
-              <option value="outro">Outro</option>
-            </select>
+
+          <!-- Seção: Fiscal -->
+          <div class="ctb-modal-section" style="border-bottom:none;padding-bottom:0">
+            <div class="ctb-modal-section-title">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              Fiscal
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem">
+              <div class="form-group" style="margin-bottom:0">
+                <label>Regime Tributário</label>
+                <select id="ctbEmpRegime">
+                  <option value="simples_nacional">Simples Nacional</option>
+                  <option value="lucro_presumido">Lucro Presumido</option>
+                  <option value="lucro_real">Lucro Real</option>
+                  <option value="mei">MEI</option>
+                  <option value="isento">Isento</option>
+                  <option value="outro">Outro</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label>RG (Sócio/MEI)</label>
+                <input type="text" id="ctbEmpRg" placeholder="RG do responsável">
+              </div>
+            </div>
           </div>
         </div>
+
+        <!-- Footer -->
         <div class="modal-footer">
           <button class="btn btn-ghost" onclick="ctbEmpresas.fecharModal()">Cancelar</button>
           <button class="btn btn-primary" id="btnCtbSalvarEmpresa" onclick="ctbEmpresas.salvar()">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.43 2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.69 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6.18 6.18l.92-.92a2 2 0 0 1 2.11-.45c.91.33 1.85.56 2.81.69A2 2 0 0 1 22 16.92z"/></svg>
             Salvar e Enviar Boas-Vindas
           </button>
         </div>
