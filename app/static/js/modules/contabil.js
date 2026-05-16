@@ -376,36 +376,44 @@ window.ctbArquivos = (() => {
       const res = await fetch('/api/contabil/empresas');
       if (!res.ok) return;
       _allEmp = await res.json();
-      _renderEmpresas(_allEmp);
+      _renderEmpGrid(_allEmp);
     } catch (e) { console.error('[ctb] arquivos load', e); }
   }
 
   function buscar(q) {
     const ql = q.toLowerCase();
-    _renderEmpresas(q ? _allEmp.filter(e => e.nome.toLowerCase().includes(ql)) : _allEmp);
+    _renderEmpGrid(q ? _allEmp.filter(e => e.nome.toLowerCase().includes(ql)) : _allEmp);
   }
 
-  function _renderEmpresas(lista) {
-    const tbody = document.getElementById('ctbArqEmpTbody');
-    if (!tbody) return;
+  function _renderEmpGrid(lista) {
+    const el = document.getElementById('ctbArqEmpGrid');
+    if (!el) return;
     if (!lista.length) {
-      tbody.innerHTML = '<tr><td colspan="8" class="ctb-table-empty">Nenhuma empresa cadastrada</td></tr>';
+      el.innerHTML = '<div class="ctb-table-empty">Nenhuma empresa encontrada</div>';
       return;
     }
-    tbody.innerHTML = lista.map(e => `
-      <tr>
-        <td><strong>${e.nome}</strong></td>
-        <td style="color:var(--text-mid);font-size:.78rem">${e.cnpj || '—'}</td>
-        <td><span class="ctb-regime-chip">${_ctbRegimeLabel(e.regime_tributario)}</span></td>
-        <td style="text-align:center;font-weight:700">${e.docs_total ?? 0}</td>
-        <td style="text-align:center;color:#ca8a04;font-weight:600">${e.docs_pendentes ?? 0}</td>
-        <td style="text-align:center;color:var(--accent);font-weight:600">${e.docs_aprovados ?? 0}</td>
-        <td style="text-align:center;color:var(--red);font-weight:600">${e.docs_erro ?? 0}</td>
-        <td style="text-align:right">
-          ${_btnAct(`ctbArquivos.abrirEmpresa(${e.id},'${e.nome.replace(/'/g,"\\'")}')`, _icoDocs, 'Ver documentos')}
-        </td>
-      </tr>
-    `).join('');
+    el.innerHTML = lista.map(e => {
+      const initials = e.nome.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+      const total = (e.docs_total || e.total_docs || 0);
+      const pend  = (e.docs_pendentes || e.pendentes || 0);
+      const ok    = (e.docs_aprovados || e.aprovados || 0);
+      const err   = (e.docs_erro || e.erros || 0);
+      return `<div class="ctb-arq-card" onclick="ctbArquivos.abrirEmpresa(${e.id}, '${e.nome.replace(/'/g,"\\'")}')">
+      <div class="ctb-arq-card-header">
+        <div class="ctb-arq-card-avatar">${initials}</div>
+        <div>
+          <div class="ctb-arq-card-name">${e.nome}</div>
+          <div class="ctb-arq-card-cnpj">${e.cnpj || e.regime_tributario || ''}</div>
+        </div>
+      </div>
+      <div class="ctb-arq-card-stats">
+        <span class="ctb-arq-stat-pill total">${total} doc${total!==1?'s':''}</span>
+        ${pend  ? `<span class="ctb-arq-stat-pill pending">${pend} pendente${pend!==1?'s':''}</span>` : ''}
+        ${ok    ? `<span class="ctb-arq-stat-pill ok">${ok} aprovado${ok!==1?'s':''}</span>` : ''}
+        ${err   ? `<span class="ctb-arq-stat-pill err">${err} erro${err!==1?'s':''}</span>` : ''}
+      </div>
+    </div>`;
+    }).join('');
   }
 
   async function abrirEmpresa(id, nome) {

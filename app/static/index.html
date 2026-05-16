@@ -2344,27 +2344,25 @@
 
         <!-- Grid de documentos -->
         <div class="card" style="margin-bottom:0">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:.5rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
             <div class="section-header" style="margin-bottom:0">
               <div class="section-header-icon shi-green">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
               </div>
               <h2>Documentos Recebidos</h2>
             </div>
-            <div style="display:flex;gap:.5rem;align-items:center">
-              <div class="ctb-search-wrap">
-                <svg class="ctb-search-ico" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="search" id="ctbDashSearch" class="ctb-search-input" placeholder="Buscar por empresa ou arquivo…" oninput="ctbDashboard.filtrarTexto(this.value)">
-              </div>
-              <select id="ctbFiltroStatus" class="form-control" style="font-size:.8rem;padding:.3rem .6rem;height:auto;flex-shrink:0" onchange="ctbDashboard.filtrar()">
-                <option value="">Todos os status</option>
-                <option value="recebido">Recebido</option>
-                <option value="ocr_pendente">OCR Pendente</option>
-                <option value="ocr_erro">Erro OCR</option>
-                <option value="revisao_manual">Revisão Manual</option>
-                <option value="aprovado">Aprovado</option>
-              </select>
-            </div>
+            <select id="ctbFiltroStatus" class="form-control" style="font-size:.8rem;padding:.3rem .6rem;height:auto" onchange="ctbDashboard.filtrar()">
+              <option value="">Todos os status</option>
+              <option value="recebido">Recebido</option>
+              <option value="ocr_pendente">OCR Pendente</option>
+              <option value="ocr_erro">Erro OCR</option>
+              <option value="revisao_manual">Revisão Manual</option>
+              <option value="aprovado">Aprovado</option>
+            </select>
+          </div>
+          <div class="ctb-search-wrap" style="margin-bottom:.75rem">
+            <svg class="ctb-search-ico" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="search" id="ctbDashSearch" class="ctb-search-input" placeholder="Buscar por empresa ou arquivo…" oninput="ctbDashboard.filtrarTexto(this.value)">
           </div>
           <div class="alert" id="alertCtbDashboard"></div>
           <div class="ctb-doc-table-wrap">
@@ -2419,23 +2417,21 @@
 
       <!-- Grid de empresas (tela toda) -->
       <div class="card" style="margin-bottom:0">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.75rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
           <div class="section-header" style="margin-bottom:0">
             <div class="section-header-icon shi-green">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
             </div>
             <h2>Empresas Cadastradas</h2>
           </div>
-          <div style="display:flex;align-items:center;gap:.5rem">
-            <div class="ctb-search-wrap">
-              <svg class="ctb-search-ico" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input type="search" id="ctbEmpSearch" class="ctb-search-input" placeholder="Buscar por nome ou telefone…" oninput="ctbEmpresas.buscar(this.value)">
-            </div>
-            <button class="btn btn-primary btn-sm" style="flex-shrink:0" onclick="ctbEmpresas.novaEmpresa()">
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Nova Empresa
-            </button>
-          </div>
+          <button class="btn btn-primary btn-sm" onclick="ctbEmpresas.novaEmpresa()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nova Empresa
+          </button>
+        </div>
+        <div class="ctb-search-wrap" style="margin-bottom:.85rem">
+          <svg class="ctb-search-ico" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="search" id="ctbEmpSearch" class="ctb-search-input" placeholder="Buscar por nome, CNPJ ou telefone…" oninput="ctbEmpresas.buscar(this.value)">
         </div>
         <div class="alert" id="alertCtbEmpLista"></div>
         <div class="ctb-emp-list" id="ctbEmpLista">
@@ -2589,38 +2585,22 @@
         </div>
       </div>
 
-      <!-- Grid de empresas com totais -->
+      <!-- Grid de empresas como cards visuais -->
       <div class="card" style="margin-bottom:1.25rem">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
           <div class="section-header" style="margin-bottom:0">
             <div class="section-header-icon shi-green">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
             </div>
             <h2>Empresas</h2>
           </div>
-          <div class="ctb-search-wrap">
-            <svg class="ctb-search-ico" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="search" id="ctbArqSearch" class="ctb-search-input" placeholder="Buscar por nome ou CNPJ…" oninput="ctbArquivos.buscar(this.value)">
-          </div>
         </div>
-        <div class="ctb-doc-table-wrap">
-          <table class="ctb-doc-table">
-            <thead>
-              <tr>
-                <th>Empresa</th>
-                <th>CNPJ</th>
-                <th>Regime</th>
-                <th style="text-align:center">Total</th>
-                <th style="text-align:center">Pendentes</th>
-                <th style="text-align:center">Aprovados</th>
-                <th style="text-align:center">Erros</th>
-                <th style="text-align:right">Ações</th>
-              </tr>
-            </thead>
-            <tbody id="ctbArqEmpTbody">
-              <tr><td colspan="8" class="ctb-table-empty">Carregando…</td></tr>
-            </tbody>
-          </table>
+        <div class="ctb-search-wrap" style="margin-bottom:.85rem">
+          <svg class="ctb-search-ico" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="search" id="ctbArqSearch" class="ctb-search-input" placeholder="Buscar por nome ou CNPJ…" oninput="ctbArquivos.buscar(this.value)">
+        </div>
+        <div class="ctb-arq-grid" id="ctbArqEmpGrid">
+          <div class="ctb-table-empty">Carregando empresas…</div>
         </div>
       </div>
 

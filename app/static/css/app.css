@@ -1629,13 +1629,14 @@
 
     /* ── Barra de busca padrão — área Contábil ────────────────────────────── */
     .ctb-search-wrap {
-      position: relative; display: flex; align-items: center; flex: 1; min-width: 200px;
+      position: relative; display: flex; align-items: center; width: 100%;
     }
     .ctb-search-ico {
-      position: absolute; left: .8rem; color: var(--text-mid); pointer-events: none; flex-shrink: 0;
+      position: absolute; left: .75rem; color: var(--text-mid); pointer-events: none;
+      display: flex; align-items: center;
     }
     .ctb-search-input {
-      width: 100%; padding: .55rem .85rem .55rem 2.25rem;
+      width: 100%; padding: .6rem .9rem .6rem 2.2rem;
       border: 1px solid var(--border); border-radius: 10px;
       background: var(--surface); font-size: .85rem; font-family: inherit;
       color: var(--text); outline: none; transition: border-color .15s, box-shadow .15s;
@@ -1657,6 +1658,48 @@
       letter-spacing: .07em; color: var(--text-mid);
       display: flex; align-items: center; gap: .35rem;
     }
+
+    /* Grid de empresas em Gestão de Arquivos */
+    .ctb-arq-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: .75rem;
+    }
+    .ctb-arq-card {
+      border: 1.5px solid var(--border); border-radius: 12px; padding: 1rem;
+      cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .12s;
+      display: flex; flex-direction: column; gap: .5rem;
+      background: var(--surface);
+    }
+    .ctb-arq-card:hover {
+      border-color: var(--accent-mid); box-shadow: 0 4px 16px rgba(61,127,31,.12);
+      transform: translateY(-2px);
+    }
+    .ctb-arq-card.active {
+      border-color: var(--accent); background: var(--accent-soft);
+    }
+    .ctb-arq-card-header {
+      display: flex; align-items: center; gap: .65rem;
+    }
+    .ctb-arq-card-avatar {
+      width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
+      background: var(--accent-soft); border: 1.5px solid var(--accent-mid);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: .8rem; color: var(--accent); letter-spacing: -.02em;
+    }
+    .ctb-arq-card-name { font-weight: 700; font-size: .88rem; color: var(--text); line-height: 1.2; }
+    .ctb-arq-card-cnpj { font-size: .68rem; color: var(--text-mid); margin-top: .1rem; }
+    .ctb-arq-card-stats {
+      display: flex; gap: .35rem; flex-wrap: wrap; margin-top: .25rem;
+    }
+    .ctb-arq-stat-pill {
+      font-size: .65rem; font-weight: 700; padding: .18rem .55rem; border-radius: 20px;
+      white-space: nowrap;
+    }
+    .ctb-arq-stat-pill.total   { background: #f1f5f9; color: var(--text-mid); }
+    .ctb-arq-stat-pill.pending { background: #fef9c3; color: #854d0e; }
+    .ctb-arq-stat-pill.ok      { background: #dcfce7; color: #15803d; }
+    .ctb-arq-stat-pill.err     { background: #fee2e2; color: #dc2626; }
 
     /* Seção de título no modal NF */
     .ctb-nf-section-title {
