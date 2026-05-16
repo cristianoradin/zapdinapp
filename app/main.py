@@ -301,6 +301,9 @@ async def evo_webhook(request: Request):
 # ── Arquivos estáticos ────────────────────────────────────────────────────────
 _static_dir = os.path.join(os.path.dirname(__file__), "static")
 _logo_dir = os.path.join(_static_dir, "logo")
+# Serve CSS, JS e outros assets estáticos (css/, js/, etc.)
+# Este mount deve ficar antes do spa_fallback (/{full_path:path}) para ter prioridade.
+fastapi_app.mount("/static", StaticFiles(directory=_static_dir), name="static")
 if os.path.isdir(_logo_dir):
     fastapi_app.mount("/logo", StaticFiles(directory=_logo_dir), name="logo")
 
