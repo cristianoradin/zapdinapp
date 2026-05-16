@@ -1604,6 +1604,7 @@
 
   let _campanhaCriadaId = null;
   let _campanhaCriadaArquivos = [];
+  let _campImagemDataUrl = null;
 
   function _setTipoEnvio(value) {
     document.querySelectorAll('.tipo-envio-card:not(.agend-card)').forEach(card => {
@@ -1627,6 +1628,7 @@
     ta.value = ta.value.slice(0, start) + emoji + ta.value.slice(end);
     ta.selectionStart = ta.selectionEnd = start + emoji.length;
     ta.focus();
+    _updateCampPreview();
   }
 
   function initNovaCampanha() {
@@ -1648,6 +1650,15 @@
     // Set min date to today
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('inpCampData').min = today;
+    // Reset image upload
+    _campImagemDataUrl = null;
+    const inpImg = document.getElementById('inpCampImagem');
+    if (inpImg) inpImg.value = '';
+    const campEmpty = document.getElementById('campImagemEmpty');
+    const campPrev = document.getElementById('campImagemPreview');
+    if (campEmpty) campEmpty.style.display = 'flex';
+    if (campPrev) campPrev.style.display = 'none';
+    _updateCampPreview();
   }
 
   document.querySelectorAll('.tipo-envio-card:not(.agend-card)').forEach(card => {
@@ -1746,6 +1757,65 @@
     }).join('');
   }
 
+  function _updateCampPreview() {
+    const txt = (document.getElementById('inpCampMensagem') || {}).value || '';
+    const imgUrl = _campImagemDataUrl;
+    const prevImagem = document.getElementById('campPrevImagem');
+    const prevImagemImg = document.getElementById('campPrevImagemImg');
+    const prevTexto = document.getElementById('campPrevTexto');
+    const prevVazio = document.getElementById('campPrevVazio');
+
+    // Image
+    if (imgUrl && prevImagem && prevImagemImg) {
+      prevImagemImg.src = imgUrl;
+      prevImagem.style.display = 'block';
+    } else if (prevImagem) {
+      prevImagem.style.display = 'none';
+    }
+
+    // Text
+    if (prevTexto) {
+      if (txt) {
+        prevTexto.textContent = txt;
+        prevTexto.style.color = '#111';
+        prevTexto.style.fontStyle = 'normal';
+      } else {
+        prevTexto.innerHTML = '<span style="color:#aaa;font-style:italic">A mensagem aparecerá aqui…</span>';
+      }
+    }
+
+    // Vazio placeholder
+    if (prevVazio) {
+      prevVazio.style.display = (!txt && !imgUrl) ? 'block' : 'none';
+    }
+  }
+
+  function _removerCampImagem() {
+    _campImagemDataUrl = null;
+    document.getElementById('inpCampImagem').value = '';
+    document.getElementById('campImagemEmpty').style.display = 'flex';
+    document.getElementById('campImagemPreview').style.display = 'none';
+    _updateCampPreview();
+  }
+
+  document.getElementById('inpCampImagem').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      _campImagemDataUrl = ev.target.result;
+      document.getElementById('campImagemEmpty').style.display = 'none';
+      document.getElementById('campImagemPreview').style.display = 'block';
+      document.getElementById('campImagemThumb').src = ev.target.result;
+      document.getElementById('campPrevImagemImg').src = ev.target.result;
+      document.getElementById('campImagemNome').textContent = file.name + ' (' + (file.size > 1048576 ? (file.size/1048576).toFixed(1)+'MB' : (file.size/1024).toFixed(0)+'KB') + ')';
+      _updateCampPreview();
+    };
+    reader.readAsDataURL(file);
+  });
+
+  document.getElementById('inpCampMensagem').addEventListener('input', _updateCampPreview);
+
   document.getElementById('btnCriarCampanha').addEventListener('click', async () => {
     const nome = document.getElementById('inpCampNome').value.trim();
     const mensagem = document.getElementById('inpCampMensagem').value.trim();
@@ -1763,6 +1833,17 @@
     const res = await api('POST', '/api/campanha', { nome, tipo, mensagem, agendado_em });
     if (!res.ok) { showAlert('alertCampanha', 'Erro ao criar campanha.', 'error'); return; }
     _campanhaCriadaId = res.id;
+    // Auto-upload image if selected
+    if (_campImagemDataUrl) {
+      try {
+        const resp = await fetch(_campImagemDataUrl);
+        const blob = await resp.blob();
+        const ext = blob.type.split('/')[1] || 'jpg';
+        const fd = new FormData();
+        fd.append('file', blob, `campanha_imagem.${ext}`);
+        await fetch(`/api/campanha/${_campanhaCriadaId}/arquivo`, { method: 'POST', body: fd });
+      } catch(e) { /* silently ignore image upload error */ }
+    }
     if (tipo === 'file') {
       const btn = document.getElementById('btnAddCampArquivo');
       btn.disabled = false;
