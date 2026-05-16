@@ -85,8 +85,15 @@ settings = Settings()
 
 _DEFAULT_SECRET = "dev-secret-key-change-in-production"
 if settings.secret_key == _DEFAULT_SECRET:
+    # Em produção (app_state=active), recusa subir com chave pública conhecida.
+    # Em desenvolvimento (app_state=locked ou omitido), apenas avisa.
+    if settings.app_state.lower() == "active":
+        raise ValueError(
+            "[config] ERRO FATAL: SECRET_KEY está com o valor padrão de desenvolvimento! "
+            "Defina SECRET_KEY no .env antes de usar em produção — "
+            "qualquer pessoa pode forjar cookies de sessão com este valor."
+        )
     _logger.warning(
         "[config] ATENÇÃO: SECRET_KEY está com o valor padrão de desenvolvimento. "
-        "Defina SECRET_KEY no .env antes de usar em produção — "
-        "qualquer pessoa pode forjar cookies de sessão com este valor."
+        "Defina SECRET_KEY no .env antes de usar em produção."
     )

@@ -1,10 +1,12 @@
+import html as _html
+import json as _json
 import secrets
 import logging
 from datetime import datetime, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from ..core.database import get_db, get_db_direct
 from ..core.security import get_current_user
@@ -32,10 +34,10 @@ def _survey_page(nome_empresa: str, token: str, vendedor: str = "", already_answ
           <p class="sub">Obrigado pelo seu feedback. Sua opinião é muito importante para nós.</p>
         </div>"""
     else:
-        vendedor_html = f'<div class="vendedor">Vendedor: <strong>{vendedor}</strong></div>' if vendedor else ''
+        vendedor_html = f'<div class="vendedor">Vendedor: <strong>{_html.escape(vendedor)}</strong></div>' if vendedor else ''
         body_html = f"""
         <div class="card" id="formCard">
-          <div class="empresa-name">{nome_empresa}</div>
+          <div class="empresa-name">{_html.escape(nome_empresa)}</div>
           <h1>Como foi seu atendimento?</h1>
           {vendedor_html}
           <p class="sub">Sua avaliação nos ajuda a melhorar cada dia mais.</p>
@@ -65,7 +67,7 @@ def _survey_page(nome_empresa: str, token: str, vendedor: str = "", already_answ
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Avaliação de Atendimento — {nome_empresa}</title>
+<title>Avaliação de Atendimento — {_html.escape(nome_empresa)}</title>
 <style>
   *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
   body {{
@@ -244,7 +246,7 @@ def _survey_page(nome_empresa: str, token: str, vendedor: str = "", already_answ
     fetch('/api/avaliacao/responder', {{
       method: 'POST',
       headers: {{'Content-Type': 'application/json'}},
-      body: JSON.stringify({{token: '{token}', nota: _nota, comentario: comentario}})
+      body: JSON.stringify({{token: {_json.dumps(token)}, nota: _nota, comentario: comentario}})
     }}).then(function(r) {{ return r.json(); }}).then(function(d) {{
       if (d.ok) {{
         document.getElementById('formCard').style.display = 'none';
@@ -334,15 +336,15 @@ async def survey_preview(empresa_id: Optional[int] = None):
 
 
 class AvaliacaoResposta(BaseModel):
-    token: str
-    nota: int
-    comentario: Optional[str] = ""
+    # M7: validação forte — rejeita nota fora de 1-5 e token suspeito antes de tocar o banco
+    token: str = Field(min_length=1, max_length=128)
+    nota: int = Field(ge=1, le=5)
+    comentario: Optional[str] = Field(default="", max_length=1000)
 
 
 @router.post("/api/avaliacao/responder")
 async def responder_avaliacao(body: AvaliacaoResposta):
-    if body.nota < 1 or body.nota > 5:
-        return JSONResponse({"ok": False, "detail": "Nota inválida. Use 1 a 5."}, status_code=400)
+    # Nota e token já validados pelo Pydantic — campos fora do range retornam 422
     # Token DEMO → simula envio bem-sucedido sem gravar no banco
     if body.token.upper() == "DEMO":
         logger.info("[avaliacao] DEMO nota=%d (não gravado)", body.nota)

@@ -420,6 +420,11 @@ async def init_db() -> None:
             )
         """)
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_campanha_envios_status ON campanha_envios(campanha_id, status)")
+        # M5: índices adicionais para performance
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_campanhas_status ON campanhas(status)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_campanha_envios_empresa_status ON campanha_envios(empresa_id, status)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_avaliacoes_phone_created ON avaliacoes(phone, created_at DESC)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_pdv_tokens_ativo ON pdv_tokens(ativo)")
         logger.info("[db] Schema inicializado com sucesso")
 
         await conn.execute("""

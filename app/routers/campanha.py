@@ -78,7 +78,10 @@ async def importar_contatos(
     empresa_id = _eid(user)
     content = await file.read()
     text = content.decode("utf-8-sig", errors="replace")
-    imported = 0
+
+    # M4: coleta todos os registros válidos primeiro, depois insere em batch
+    # Evita N+1 queries que bloqueiam o event loop em importações grandes.
+    registros = []
     errors = 0
     for line in text.splitlines():
         line = line.strip()
@@ -89,16 +92,31 @@ async def importar_contatos(
         nome = parts[1] if len(parts) > 1 else ""
         if not phone:
             continue
+        registros.append((empresa_id, phone, nome))
+
+    if registros:
         try:
-            await db.execute(
+            await db.executemany(
                 "INSERT INTO contatos (empresa_id, phone, nome) VALUES (?,?,?) "
                 "ON CONFLICT (empresa_id, phone) DO UPDATE SET nome=EXCLUDED.nome",
-                (empresa_id, phone, nome),
+                registros,
             )
-            imported += 1
         except Exception:
-            errors += 1
+            # Fallback linha a linha se executemany falhar (banco antigo / driver inesperado)
+            errors_batch = 0
+            for reg in registros:
+                try:
+                    await db.execute(
+                        "INSERT INTO contatos (empresa_id, phone, nome) VALUES (?,?,?) "
+                        "ON CONFLICT (empresa_id, phone) DO UPDATE SET nome=EXCLUDED.nome",
+                        reg,
+                    )
+                except Exception:
+                    errors_batch += 1
+            errors += errors_batch
+
     await db.commit()
+    imported = len(registros) - errors
     return {"ok": True, "importados": imported, "erros": errors}
 
 
