@@ -226,7 +226,6 @@
       border-radius: 20px;
       box-shadow: 0 1px 6px rgba(61,127,31,.10);
       cursor: default;
-      max-width: 220px;
     }
     .topbar-client-icon {
       width: 26px; height: 26px;
@@ -257,8 +256,6 @@
       letter-spacing: -.02em;
       line-height: 1.2;
       white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
     .topbar-client-cnpj {
       font-size: .65rem;

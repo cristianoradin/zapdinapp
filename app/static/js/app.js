@@ -13,7 +13,7 @@
     telegram:         'Telegram',
     'dm-dashboard':   'Campanhas',
     'dm-contatos':    'Contatos',
-    'dm-campanha':    'Enviar Campanhas',
+    'dm-campanha':    'Criar Campanhas',
     'dm-historico':   'Gerenciar Campanhas',
     'dm-enviadas':    'Campanhas Enviadas',
   };
