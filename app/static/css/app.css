@@ -1548,7 +1548,8 @@
     /* Feed de atividade */
     .ctb-feed-panel {
       display: flex; flex-direction: column; gap: .5rem;
-      min-height: 480px;
+      min-height: 600px;
+      max-height: calc(100vh - 140px);
     }
     .ctb-feed-title {
       font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
