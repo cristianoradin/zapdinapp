@@ -22,7 +22,12 @@ _pool: asyncpg.Pool | None = None
 @lru_cache(maxsize=512)
 def _to_pg(sql: str) -> str:
     """Converte placeholders SQLite '?' → '$1', '$2', ... do PostgreSQL.
-    Resultado cacheado — a maioria das queries são strings literais repetidas."""
+    Resultado cacheado — a maioria das queries são strings literais repetidas.
+
+    LIMITAÇÃO CONHECIDA: '?' dentro de string literal SQL (ex: WHERE x = '?')
+    seria incorretamente substituído. Não há esse padrão nas queries atuais,
+    mas queries futuras devem evitar '?' literal em strings — usar $$ quoting.
+    """
     n, out = 0, []
     for ch in sql:
         if ch == '?':
@@ -420,12 +425,11 @@ async def init_db() -> None:
             )
         """)
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_campanha_envios_status ON campanha_envios(campanha_id, status)")
-        # M5: índices adicionais para performance
+        # M5: índices para campanhas e envios (tabelas já criadas acima)
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_campanhas_status ON campanhas(status)")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_campanha_envios_empresa_status ON campanha_envios(empresa_id, status)")
-        await conn.execute("CREATE INDEX IF NOT EXISTS idx_avaliacoes_phone_created ON avaliacoes(phone, created_at DESC)")
-        await conn.execute("CREATE INDEX IF NOT EXISTS idx_pdv_tokens_ativo ON pdv_tokens(ativo)")
-        logger.info("[db] Schema inicializado com sucesso")
+        # idx_avaliacoes_phone_created e idx_pdv_tokens_ativo são criados APÓS
+        # as tabelas avaliacoes e pdv_tokens (seção Papel 5 — DBA, no final)
 
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS grupos_contatos (
@@ -500,3 +504,177 @@ async def init_db() -> None:
                 invalidated_at TIMESTAMPTZ DEFAULT NOW()
             )
         """)
+
+        # ── Papel 5 — DBA: índices ausentes, constraints, audit trail ──────────
+
+        # 1) Índices ausentes identificados por análise de query patterns
+        # M5 (movidos aqui para garantir que as tabelas já existam):
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_avaliacoes_phone_created "
+            "ON avaliacoes(phone, created_at DESC)"
+        )
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pdv_tokens_ativo ON pdv_tokens(ativo)"
+        )
+        # mensagens: stats diárias filtram por created_at e sent_at
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_mensagens_empresa_created "
+            "ON mensagens(empresa_id, created_at DESC)"
+        )
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_mensagens_empresa_sent "
+            "ON mensagens(empresa_id, sent_at DESC) "
+            "WHERE sent_at IS NOT NULL"
+        )
+        # avaliacoes: dashboard filtra por created_at e respondido_em
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_avaliacoes_empresa_created "
+            "ON avaliacoes(empresa_id, created_at DESC)"
+        )
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_avaliacoes_respondido "
+            "ON avaliacoes(empresa_id, respondido_em) "
+            "WHERE respondido_em IS NOT NULL"
+        )
+        # campanha_envios: JOIN frequente só pelo campanha_id
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_campanha_envios_campanha "
+            "ON campanha_envios(campanha_id)"
+        )
+        # grupos / grupo_contatos: lookups de listagem e reverse
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_grupos_contatos_empresa "
+            "ON grupos_contatos(empresa_id)"
+        )
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_grupo_contatos_contato "
+            "ON grupo_contatos(contato_id)"
+        )
+        # pdv: listagem por empresa
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pdv_tokens_empresa "
+            "ON pdv_tokens(empresa_id)"
+        )
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_pdv_sessoes_empresa "
+            "ON pdv_sessoes(empresa_id)"
+        )
+        # invalidated_sessions: limpeza pelo reporter filtra por invalidated_at
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_invalidated_sessions_at "
+            "ON invalidated_sessions(invalidated_at)"
+        )
+        # arquivos: worker filtra por empresa_id + status + created_at
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_arquivos_empresa_created "
+            "ON arquivos(empresa_id, created_at DESC)"
+        )
+
+        # 2) CHECK constraints de status (NOT VALID = não varre linhas existentes)
+        #    Garante integridade no banco, independente do código Python.
+        for _chk_sql in [
+            """DO $$ BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.table_constraints
+                    WHERE table_name = 'mensagens' AND constraint_name = 'chk_mensagens_status'
+                ) THEN
+                    ALTER TABLE mensagens
+                        ADD CONSTRAINT chk_mensagens_status
+                        CHECK (status IN ('queued','pending','sent','error','failed','delivered','read'))
+                        NOT VALID;
+                END IF;
+            END $$""",
+            """DO $$ BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.table_constraints
+                    WHERE table_name = 'arquivos' AND constraint_name = 'chk_arquivos_status'
+                ) THEN
+                    ALTER TABLE arquivos
+                        ADD CONSTRAINT chk_arquivos_status
+                        CHECK (status IN ('queued','pending','sent','failed','delivered','read'))
+                        NOT VALID;
+                END IF;
+            END $$""",
+            """DO $$ BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.table_constraints
+                    WHERE table_name = 'campanhas' AND constraint_name = 'chk_campanhas_status'
+                ) THEN
+                    ALTER TABLE campanhas
+                        ADD CONSTRAINT chk_campanhas_status
+                        CHECK (status IN ('draft','scheduled','running','paused','done'))
+                        NOT VALID;
+                END IF;
+            END $$""",
+            """DO $$ BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.table_constraints
+                    WHERE table_name = 'campanha_envios' AND constraint_name = 'chk_envios_status'
+                ) THEN
+                    ALTER TABLE campanha_envios
+                        ADD CONSTRAINT chk_envios_status
+                        CHECK (status IN ('queued','paused','sent','failed','error'))
+                        NOT VALID;
+                END IF;
+            END $$""",
+            """DO $$ BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.table_constraints
+                    WHERE table_name = 'avaliacoes' AND constraint_name = 'chk_avaliacoes_nota'
+                ) THEN
+                    ALTER TABLE avaliacoes
+                        ADD CONSTRAINT chk_avaliacoes_nota
+                        CHECK (nota IS NULL OR (nota >= 1 AND nota <= 5))
+                        NOT VALID;
+                END IF;
+            END $$""",
+        ]:
+            try:
+                await conn.execute(_chk_sql)
+            except Exception as _e:
+                logger.warning("[db] CHECK constraint ignorada: %s", _e)
+
+        # 3) Colunas updated_at para audit trail (contatos e campanhas mudam com frequência)
+        await conn.execute("""
+            DO $$ BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'contatos' AND column_name = 'updated_at'
+                ) THEN
+                    ALTER TABLE contatos ADD COLUMN updated_at TIMESTAMPTZ DEFAULT NOW();
+                END IF;
+            END $$
+        """)
+        await conn.execute("""
+            DO $$ BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'campanhas' AND column_name = 'updated_at'
+                ) THEN
+                    ALTER TABLE campanhas ADD COLUMN updated_at TIMESTAMPTZ DEFAULT NOW();
+                END IF;
+            END $$
+        """)
+
+        # 4) Tabela de tracking de migrações aplicadas
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS schema_migrations (
+                version    TEXT PRIMARY KEY,
+                applied_at TIMESTAMPTZ DEFAULT NOW(),
+                descricao  TEXT
+            )
+        """)
+        # Registra as migrações já aplicadas (idempotente via ON CONFLICT DO NOTHING)
+        for _ver, _desc in [
+            ("001_initial",           "Schema inicial multi-tenant"),
+            ("002_m5_indexes",        "Índices M5: campanhas, envios, avaliacoes, pdv_tokens"),
+            ("003_m3_blacklist",      "Tabela invalidated_sessions para logout seguro"),
+            ("004_dba_improvements",  "DBA: índices extras, CHECK constraints, updated_at"),
+        ]:
+            await conn.execute(
+                "INSERT INTO schema_migrations(version, descricao) VALUES($1,$2) "
+                "ON CONFLICT(version) DO NOTHING",
+                _ver, _desc,
+            )
+
+        logger.info("[db] Schema DBA inicializado — índices, constraints e migrations ok")

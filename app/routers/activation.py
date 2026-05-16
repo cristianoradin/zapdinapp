@@ -20,11 +20,9 @@ from pydantic import BaseModel
 
 from ..core.activation import decrypt_config, apply_config_to_env, env_path as get_env_path
 from ..core.config import settings
+from ..core.dependencies import client_ip as _client_ip
 from ..core.http_client import get_http_client
-from ..routers.auth_login import _RateLimiter, client_ip as _client_ip
-
-# 5 tentativas de ativação por IP por hora
-_activate_limiter = _RateLimiter(max_calls=5, period_seconds=3600)
+from ..core.rate_limiter import activation_limiter as _activate_limiter
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["activation"])
