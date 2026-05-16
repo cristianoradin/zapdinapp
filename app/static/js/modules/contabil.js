@@ -210,27 +210,48 @@ window.ctbEmpresas = (() => {
     const el = document.getElementById('ctbEmpLista');
     if (!el) return;
     if (!lista.length) {
-      el.innerHTML = '<div class="ctb-table-empty">Nenhuma empresa cadastrada</div>';
+      el.innerHTML = `
+        <div style="text-align:center;padding:3rem 1rem;color:var(--text-mid)">
+          <div style="width:56px;height:56px;border-radius:16px;background:var(--accent-soft);
+            border:1.5px solid var(--accent-mid);display:flex;align-items:center;
+            justify-content:center;margin:0 auto 1rem">
+            <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24"
+              fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+            </svg>
+          </div>
+          <div style="font-size:.95rem;font-weight:600;color:var(--text);margin-bottom:.35rem">Nenhuma empresa cadastrada</div>
+          <div style="font-size:.8rem;margin-bottom:1.25rem">Cadastre a primeira empresa para começar a receber documentos fiscais via WhatsApp.</div>
+          <button class="btn btn-primary btn-sm" onclick="ctbEmpresas.novaEmpresa()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Cadastrar Primeira Empresa
+          </button>
+        </div>`;
       return;
     }
-    el.innerHTML = lista.map(e => `
+    el.innerHTML = lista.map(e => {
+      const initials = e.nome.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+      const tel = e.telefone ? `+55 ${e.telefone}` : '';
+      return `
       <div class="ctb-emp-row">
-        <div class="ctb-emp-avatar">${e.nome[0].toUpperCase()}</div>
+        <div class="ctb-emp-avatar">${initials}</div>
         <div class="ctb-emp-info">
           <div class="ctb-emp-nome">${e.nome}</div>
           <div class="ctb-emp-meta">
-            ${e.cnpj ? `CNPJ: ${e.cnpj} &nbsp;·&nbsp; ` : ''}
-            📱 ${e.telefone}
-            &nbsp;·&nbsp;
+            ${e.cnpj ? `<span>${e.cnpj}</span><span class="ctb-meta-dot">·</span>` : ''}
+            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:2px"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/></svg>
+            ${tel}
+            <span class="ctb-meta-dot">·</span>
             <span class="ctb-regime-chip">${_ctbRegimeLabel(e.regime_tributario)}</span>
+            ${e.cidade ? `<span class="ctb-meta-dot">·</span><span>${e.cidade}${e.uf?' / '+e.uf:''}</span>` : ''}
           </div>
         </div>
         <div class="ctb-emp-actions">
           ${_btnAct(`ctbEmpresas.editar(${e.id})`, _icoEdit, 'Editar empresa')}
           ${_btnAct(`ctbEmpresas.excluir(${e.id}, '${e.nome.replace(/'/g,"\\'")}')`, _icoTrash, 'Excluir empresa', 'danger')}
         </div>
-      </div>
-    `).join('');
+      </div>`;
+    }).join('');
   }
 
   function _abrirModalEmpresa() {
