@@ -350,75 +350,71 @@
       gap: 1rem;
       margin-bottom: 1.5rem;
     }
+    /* ── KPI card — padrão unificado do sistema ─────────────────────────── */
     .stat-card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 1.375rem 1.5rem;
+      padding: 1.1rem 1.25rem;
       box-shadow: var(--shadow-sm);
-      position: relative;
-      overflow: hidden;
       display: flex;
       flex-direction: column;
-      gap: .25rem;
-      transition: transform .2s, box-shadow .2s;
+      gap: .3rem;
+      transition: transform .15s, box-shadow .15s;
       cursor: default;
     }
-    .stat-card:hover {
-      transform: translateY(-3px);
-      box-shadow: var(--shadow-lg);
-    }
-    .stat-card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 4px;
-      border-radius: var(--radius) var(--radius) 0 0;
-    }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+    .stat-card::before { display: none; }   /* remove barra colorida */
+
+    /* Ícone — pill colorido no topo */
     .stat-card .stat-icon {
-      font-size: 1.5rem;
-      margin-bottom: .5rem;
-      display: flex;
-      align-items: center;
-      width: 40px;
-      height: 40px;
-      background: rgba(0,0,0,.06);
+      order: 1;
+      width: 38px; height: 38px;
       border-radius: 10px;
-      justify-content: center;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: .25rem;
+      flex-shrink: 0;
+      font-size: 0;       /* esconde texto, mostra só o SVG */
     }
     .stat-card .stat-icon svg { display: block; }
+
+    /* Valor — grande, colorido */
+    .stat-card .value {
+      order: 2;
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: -.03em;
+      line-height: 1;
+      color: var(--text);
+    }
+
+    /* Label — pequeno, uppercase, cinza */
     .stat-card .label {
+      order: 3;
       font-size: .75rem;
       font-weight: 600;
-      letter-spacing: .01em;
-      margin-bottom: .25rem;
+      color: var(--text-mid);
+      text-transform: uppercase;
+      letter-spacing: .04em;
     }
-    .stat-card .value {
-      font-size: 2.25rem;
-      font-weight: 800;
-      letter-spacing: -.04em;
-      line-height: 1;
+
+    /* Sub — linha extra opcional */
+    .stat-card .kpi-sub {
+      order: 4;
+      font-size: .72rem;
+      color: var(--text-light);
     }
-    /* Card — Mensagens hoje (brand green) */
-    .stat-card.card-blue { background: linear-gradient(135deg, var(--accent-soft) 0%, #d9f0c0 100%); border-color: var(--accent-mid); }
-    .stat-card.card-blue::before { background: var(--accent); }
-    .stat-card.card-blue .label  { color: #2d6a0a; }
-    .stat-card.card-blue .value  { color: #1a4206; }
-    /* Card — Total enviadas (brand green) */
-    .stat-card.card-green { background: linear-gradient(135deg, var(--accent-soft) 0%, #d9f0c0 100%); border-color: var(--accent-mid); }
-    .stat-card.card-green::before { background: var(--accent); }
-    .stat-card.card-green .label  { color: #2d6a0a; }
-    .stat-card.card-green .value  { color: #1a4206; }
-    /* Card — Falhas (vermelho semântico) */
-    .stat-card.card-red { background: linear-gradient(135deg, #fff5f5 0%, #fee2e2 100%); border-color: #fecaca; }
-    .stat-card.card-red::before { background: var(--red); }
-    .stat-card.card-red .label  { color: #b91c1c; }
-    .stat-card.card-red .value  { color: #7f1d1d; }
-    /* Card — Sessões ativas (cinza neutro) */
-    .stat-card.card-purple { background: linear-gradient(135deg, #f8f9fb 0%, #f0f2f5 100%); border-color: var(--border); }
-    .stat-card.card-purple::before { background: #6b7280; }
-    .stat-card.card-purple .label  { color: var(--text-mid); }
-    .stat-card.card-purple .value  { color: var(--text); }
+
+    /* ── Variantes de cor ────────────────────────────────────────────────── */
+    /* card-blue  → verde (mensagens / enviados) */
+    .stat-card.card-blue .stat-icon  { background: #dcfce7; color: #15803d; }
+    /* card-green → azul (total / taxa) */
+    .stat-card.card-green .stat-icon { background: #dbeafe; color: #2563eb; }
+    /* card-red   → vermelho (falhas) */
+    .stat-card.card-red .stat-icon   { background: #fee2e2; color: #dc2626; }
+    .stat-card.card-red .value       { color: #dc2626; }
+    /* card-purple → roxo (sessões / média) */
+    .stat-card.card-purple .stat-icon { background: #f3e8ff; color: #9333ea; }
 
     /* ─── Banner de conexão WA ──────────────────────────────────────────── */
     .wa-connect-banner {
@@ -1419,27 +1415,43 @@
     /* ─── Arquivo stats mini-row ──────────────────────────────────────────── */
     .arquivo-stats {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: .625rem;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
       margin-bottom: 1.25rem;
     }
+    /* ── .arq-stat — mesmo padrão KPI vertical ──────────────────────────── */
     .arq-stat {
-      padding: .7rem .9rem;
-      border-radius: 9px;
-      display: flex; align-items: center; gap: .6rem;
-      border: 1px solid transparent;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.25rem;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: .3rem;
+      transition: transform .15s, box-shadow .15s;
+      cursor: default;
     }
-    .arq-stat-icon { display:flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:8px; background:rgba(0,0,0,.06); flex-shrink:0; }
-    .arq-stat-icon svg { display:block; }
-    .arq-stat-body .arq-val { font-size: 1.25rem; font-weight: 800; line-height: 1; }
-    .arq-stat-body .arq-lbl { font-size: .68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; margin-top: .1rem; }
-    .as-yellow { background: #fffbeb; border-color: #fde68a; }
-    .as-yellow .arq-val, .as-yellow .arq-lbl { color: #92400e; }
-    .as-gray   { background: #f8fafc; border-color: #e2e8f0; }
-    .as-gray   .arq-val, .as-gray .arq-lbl { color: #334155; }
-    .as-blue   { background: #eff6ff; border-color: #bfdbfe; }
-    .as-blue   .arq-val, .as-blue .arq-lbl { color: #1e3a8a; }
-    .as-green  { background: var(--accent-soft); border-color: var(--accent-mid); }
-    .as-green  .arq-val, .as-green .arq-lbl { color: #1a4206; }
-    .as-red    { background: #fef2f2; border-color: #fecaca; }
-    .as-red    .arq-val, .as-red .arq-lbl { color: #7f1d1d; }
+    .arq-stat:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+    .arq-stat-icon {
+      width: 38px; height: 38px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      margin-bottom: .25rem;
+    }
+    .arq-stat-icon svg { display: block; }
+    .arq-stat-body { display: flex; flex-direction: column; gap: .25rem; }
+    .arq-stat-body .arq-val { font-size: 1.6rem; font-weight: 800; letter-spacing: -.03em; line-height: 1; }
+    .arq-stat-body .arq-lbl { font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--text-mid); }
+    /* Variantes de cor — só ícone e valor coloridos, card sempre branco */
+    .as-yellow .arq-stat-icon { background: #fef9c3; color: #ca8a04; }
+    .as-yellow .arq-val        { color: #ca8a04; }
+    .as-gray   .arq-stat-icon { background: rgba(0,0,0,.06); color: #6b7280; }
+    .as-gray   .arq-val        { color: var(--text); }
+    .as-blue   .arq-stat-icon { background: #dbeafe; color: #2563eb; }
+    .as-blue   .arq-val        { color: #2563eb; }
+    .as-green  .arq-stat-icon { background: #dcfce7; color: #15803d; }
+    .as-green  .arq-val        { color: #15803d; }
+    .as-red    .arq-stat-icon { background: #fee2e2; color: #dc2626; }
+    .as-red    .arq-val        { color: #dc2626; }
