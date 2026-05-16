@@ -253,7 +253,9 @@
       <div class="card" style="margin-top:1.25rem" id="cardAvaliacaoCfg">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap">
           <div class="section-header" style="margin-bottom:0;flex:1">
-            <div class="section-header-icon" style="background:#fef9c3;color:#ca8a04">⭐</div>
+            <div class="section-header-icon shi-yellow">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </div>
             <div>
               <h2 style="margin-bottom:.2rem">Pesquisa de Avaliação</h2>
               <p style="font-size:.8rem;color:var(--text-mid);margin:0">Ao ativar, um link de avaliação (1–5 estrelas) será enviado junto com cada mensagem do ERP. Os resultados ficam disponíveis no painel de avaliações.</p>
@@ -354,7 +356,12 @@
 
           <!-- Delay Randômico -->
           <div class="wa-cfg-section">
-            <div class="wa-cfg-title">🔀 Delay Randômico</div>
+            <div class="wa-cfg-title">
+              <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:5px;background:#dbeafe;color:#2563eb;flex-shrink:0">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
+              </span>
+              Delay Randômico
+            </div>
             <div class="wa-cfg-desc">Intervalo de espera aleatório entre cada mensagem para evitar detecção.</div>
             <div class="wa-cfg-row">
               <label>Mínimo</label>
@@ -370,7 +377,12 @@
 
           <!-- Limite Diário -->
           <div class="wa-cfg-section">
-            <div class="wa-cfg-title">📊 Limite Diário</div>
+            <div class="wa-cfg-title">
+              <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:5px;background:#ede9fe;color:#7c3aed;flex-shrink:0">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              </span>
+              Limite Diário
+            </div>
             <div class="wa-cfg-desc">Teto de mensagens enviadas por dia por número conectado. Use 0 para sem limite.</div>
             <div class="wa-cfg-row">
               <label>Máx/dia</label>
@@ -381,7 +393,12 @@
 
           <!-- Horário de Funcionamento -->
           <div class="wa-cfg-section">
-            <div class="wa-cfg-title">🕐 Horário de Funcionamento</div>
+            <div class="wa-cfg-title">
+              <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:5px;background:#ccfbf1;color:#0d9488;flex-shrink:0">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              </span>
+              Horário de Funcionamento
+            </div>
             <div class="wa-cfg-desc">Disparos só dentro desta janela. Mensagens na fila aguardam automaticamente.</div>
             <div class="wa-cfg-row">
               <label>Início</label>
@@ -402,7 +419,12 @@
 
           <!-- Spintax -->
           <div class="wa-cfg-section">
-            <div class="wa-cfg-title">🎲 Suporte a Spintax</div>
+            <div class="wa-cfg-title">
+              <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:5px;background:#fed7aa;color:#c2410c;flex-shrink:0">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><line x1="21" y1="16" x2="21" y2="21"/><line x1="16" y1="21" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+              </span>
+              Suporte a Spintax
+            </div>
             <div class="wa-toggle-row">
               <span class="wa-toggle-label">Ativar variações de texto</span>
               <label class="toggle-switch">
@@ -628,7 +650,9 @@
         <div>
           <div class="card" style="margin-bottom:1.25rem">
             <div class="section-header">
-              <div class="section-header-icon shi-orange">🔐</div>
+              <div class="section-header-icon shi-orange">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+              </div>
               <h2>Token Atual</h2>
             </div>
             <div class="alert" id="alertToken"></div>
@@ -653,7 +677,9 @@
           <!-- Campos ERP -->
           <div class="card" style="margin-top:1.25rem">
             <div class="section-header">
-              <div class="section-header-icon shi-green">📋</div>
+              <div class="section-header-icon shi-green">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              </div>
               <h3>Campos enviados pelo ERP</h3>
             </div>
             <table>
@@ -675,7 +701,9 @@
         <div class="card" style="margin-bottom:0">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
             <div class="section-header" style="margin-bottom:0">
-              <div class="section-header-icon shi-blue">📊</div>
+              <div class="section-header-icon shi-blue">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              </div>
               <h2>Status da Conexão ERP</h2>
             </div>
             <button class="btn btn-ghost btn-sm" id="btnAtualizarErpStatus">↻ Atualizar</button>
@@ -955,7 +983,9 @@
 
         <div class="card" style="margin-bottom:0">
           <div class="section-header">
-            <div class="section-header-icon shi-orange">🔐</div>
+            <div class="section-header-icon shi-orange">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+            </div>
             <h2>Autenticação</h2>
           </div>
           <p style="font-size:.84rem;color:var(--text-mid);margin-bottom:.75rem">Envie o token no header de toda requisição:</p>
@@ -973,7 +1003,9 @@
 
         <div class="card" style="margin-bottom:0">
           <div class="section-header">
-            <div class="section-header-icon shi-blue">🔗</div>
+            <div class="section-header-icon shi-blue">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            </div>
             <h2>Endpoints</h2>
           </div>
           <div style="display:flex;flex-direction:column;gap:.5rem">
@@ -1072,7 +1104,9 @@
       <!-- Variáveis -->
       <div class="card">
         <div class="section-header">
-          <div class="section-header-icon shi-purple">🔤</div>
+          <div class="section-header-icon shi-purple">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+          </div>
           <h2>Variáveis do Template</h2>
         </div>
         <p style="font-size:.84rem;color:var(--text-mid);margin-bottom:1rem">Use estas variáveis em <strong>Configurar Mensagem</strong> para personalizar automaticamente o texto enviado.</p>

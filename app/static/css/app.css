@@ -1375,12 +1375,13 @@
       font-size: .95rem; font-weight: 700;
       letter-spacing: -.01em; margin: 0;
     }
-    .shi-green  { background: var(--accent-soft); }
-    .shi-blue   { background: #dbeafe; }
-    .shi-purple { background: #ede9fe; }
-    .shi-orange { background: #fed7aa; }
-    .shi-red    { background: #fee2e2; }
-    .shi-teal   { background: #ccfbf1; }
+    .shi-green  { background: var(--accent-soft); color: #15803d; }
+    .shi-blue   { background: #dbeafe; color: #2563eb; }
+    .shi-purple { background: #ede9fe; color: #7c3aed; }
+    .shi-orange { background: #fed7aa; color: #c2410c; }
+    .shi-red    { background: #fee2e2; color: #dc2626; }
+    .shi-teal   { background: #ccfbf1; color: #0d9488; }
+    .shi-yellow { background: #fef9c3; color: #ca8a04; }
 
     /* ─── Code block ──────────────────────────────────────────────────────── */
     .code-block {
