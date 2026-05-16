@@ -1627,6 +1627,26 @@
     .ctb-meta-dot { color: var(--border); font-size: .7rem; }
     .ctb-emp-actions { display: flex; gap: .25rem; flex-shrink: 0; }
 
+    /* ── Barra de busca padrão — área Contábil ────────────────────────────── */
+    .ctb-search-wrap {
+      position: relative; display: flex; align-items: center; flex: 1; min-width: 200px;
+    }
+    .ctb-search-ico {
+      position: absolute; left: .8rem; color: var(--text-mid); pointer-events: none; flex-shrink: 0;
+    }
+    .ctb-search-input {
+      width: 100%; padding: .55rem .85rem .55rem 2.25rem;
+      border: 1px solid var(--border); border-radius: 10px;
+      background: var(--surface); font-size: .85rem; font-family: inherit;
+      color: var(--text); outline: none; transition: border-color .15s, box-shadow .15s;
+      -webkit-appearance: none; appearance: none;
+    }
+    .ctb-search-input::placeholder { color: var(--text-light); }
+    .ctb-search-input:focus {
+      border-color: var(--accent-mid); box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+    .ctb-search-input::-webkit-search-cancel-button { display: none; }
+
     /* Seções do modal de empresa */
     .ctb-modal-section {
       display: flex; flex-direction: column; gap: .65rem;
