@@ -175,6 +175,19 @@ async def apply_monitor_update(
         shutil.copytree(str(app_src), str(app_new))
         logger.info("[updater] Cópia para app_new/ concluída ✓")
 
+        # Preserva .env e .venv do app/ atual em app_new/ antes do swap.
+        # O zip não inclui esses itens (correto), mas eles precisam existir
+        # na nova versão para o processo iniciar após o restart.
+        for preserve in (".env", ".env.enc", ".venv"):
+            src_item = app_live / preserve
+            dst_item = app_new / preserve
+            if src_item.exists() and not dst_item.exists():
+                if src_item.is_dir():
+                    shutil.copytree(str(src_item), str(dst_item))
+                else:
+                    shutil.copy2(str(src_item), str(dst_item))
+                logger.info("[updater] Preservado %s em app_new/ ✓", preserve)
+
         # 2) Swap: app/ → app_old/ → app_new/ → app/
         app_live.rename(app_old)
         app_new.rename(app_live)
