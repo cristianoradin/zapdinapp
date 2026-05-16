@@ -81,7 +81,7 @@
       justify-content: center;
     }
     .sidebar-logo img {
-      width: 170px;
+      width: 200px;
       height: auto;
       object-fit: contain;
       filter: drop-shadow(0 2px 8px rgba(61,127,31,.18));
