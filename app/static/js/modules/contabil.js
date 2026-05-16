@@ -256,12 +256,12 @@ window.ctbEmpresas = (() => {
 
   function _abrirModalEmpresa() {
     const m = document.getElementById('modalCtbEmpresa');
-    if (m) { m.style.display = 'flex'; setTimeout(() => m.classList.add('open'), 10); }
+    if (m) m.classList.add('open');
   }
 
   function fecharModal() {
     const m = document.getElementById('modalCtbEmpresa');
-    if (m) { m.classList.remove('open'); setTimeout(() => { m.style.display = 'none'; }, 200); }
+    if (m) m.classList.remove('open');
   }
 
   function novaEmpresa() {
