@@ -68,6 +68,32 @@
     } catch { /* silencioso */ }
   }
 
+  // ── Status da IA (OpenAI) ─────────────────────────────────────────────────────
+  async function _updateAiStatus() {
+    const pill = document.getElementById('topbarAiPill');
+    const txt  = document.getElementById('topbarAiText');
+    if (!pill || !txt) return;
+    try {
+      const res = await fetch('/api/contabil/ai-status');
+      if (res.ok) {
+        const d = await res.json();
+        if (d.ativa) {
+          pill.classList.add('active');
+          txt.textContent = 'IA ativa';
+        } else {
+          pill.classList.remove('active');
+          txt.textContent = 'IA inativa';
+        }
+      } else {
+        pill.classList.remove('active');
+        txt.textContent = 'IA inativa';
+      }
+    } catch {
+      pill.classList.remove('active');
+      txt.textContent = 'IA inativa';
+    }
+  }
+
   // ── Auth check + permissões de menus ─────────────────────────────────────────
   async function checkAuth() {
     try {
@@ -898,8 +924,10 @@
   checkAuth().then(() => {
     loadStats();
     _updateTopbarStatus();
+    _updateAiStatus();
     setInterval(loadStats, 30_000);
     setInterval(_updateTopbarStatus, 30_000);
+    setInterval(_updateAiStatus, 60_000); // checa IA a cada 60s
   });
 
   // ── Modal Teste de Envio ──────────────────────────────────────────────────────

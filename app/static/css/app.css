@@ -189,6 +189,11 @@
     }
     .topbar-status-pill.active { color: var(--accent); border-color: var(--accent-mid); background: var(--accent-soft); }
 
+    /* Pill de IA — variante roxa */
+    #topbarAiPill { display: flex; gap: .35rem; }
+    #topbarAiPill.active .sdot { background: #9333ea; box-shadow: 0 0 0 2.5px rgba(147,51,234,.2); }
+    #topbarAiPill.active { color: #9333ea; border-color: #ddd6fe; background: #f5f3ff; }
+
     .topbar-user {
       display: flex;
       align-items: center;

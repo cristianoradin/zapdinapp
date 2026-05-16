@@ -560,3 +560,24 @@ async def feed_atividade(
     ) as cur:
         rows = await cur.fetchall()
     return [dict(r) for r in rows]
+
+
+@router.get("/ai-status")
+async def ai_status(user=Depends(get_current_user)):
+    """Verifica se a IA (OpenAI) está configurada e acessível."""
+    from ..core.config import settings
+    import httpx
+
+    api_key = getattr(settings, "openai_api_key", "") or ""
+    if not api_key:
+        return {"ativa": False, "motivo": "OpenAI API key não configurada"}
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(
+                "https://api.openai.com/v1/models",
+                headers={"Authorization": f"Bearer {api_key}"},
+            )
+        return {"ativa": r.status_code == 200}
+    except Exception as e:
+        return {"ativa": False, "motivo": str(e)}
