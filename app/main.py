@@ -13,6 +13,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from .core.config import settings
 from .core import log_collector as _log_collector
+from .core.security_headers import SecurityHeadersMiddleware
 
 # ── Logging com arquivo rotacionado + coletor para Monitor ───────────────────
 def _setup_logging() -> None:
@@ -234,8 +235,10 @@ async def lifespan(app: FastAPI):
 # ── App ────────────────────────────────────────────────────────────────────────
 fastapi_app = FastAPI(title="ZapDin App", version="2.0.0", lifespan=lifespan)
 
-# Middleware (adicionado antes dos routers)
+# Middlewares (ordem: o último add_middleware é o primeiro a executar)
+# SecurityHeaders executa primeiro (envolve tudo), LockMiddleware segundo.
 fastapi_app.add_middleware(LockMiddleware)
+fastapi_app.add_middleware(SecurityHeadersMiddleware)
 
 # Routers
 fastapi_app.include_router(activation_router)   # /activate + /api/activate

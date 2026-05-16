@@ -12,6 +12,8 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, field_validator
 
 from ..core.database import get_db
+from ..core.dependencies import client_ip
+from ..core.rate_limiter import erp_limiter
 from ..core.security import get_current_user, verify_erp_token, hash_erp_token
 from ..core.config import settings
 from ..repositories import MensagemRepository, AvaliacaoRepository
@@ -227,6 +229,13 @@ async def receber_venda(
     x_token: Optional[str] = Header(default=None),
     db=Depends(get_db),
 ):
+    ip = client_ip(request)
+    if not erp_limiter.is_allowed(ip):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Muitas requisições. Aguarde 1 minuto.",
+            headers={"Retry-After": "60"},
+        )
     empresa_id = await _verify_token(x_token, db, request)
     telefone = _normalizar_telefone(body.telefone)
     nome = body.nome or ""

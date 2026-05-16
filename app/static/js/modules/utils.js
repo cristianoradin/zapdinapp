@@ -61,6 +61,60 @@
     return `+55 ${d}`;
   };
 
+  // ── Toast notification ────────────────────────────────────────────────────
+  // Cria uma notificação temporária no canto inferior direito da tela.
+  // Uso: showToast('Mensagem enviada!', 'success')
+  //      showToast('Erro ao salvar', 'error')
+  //      showToast('Atenção: fila grande', 'warning', 6000)
+  window.showToast = function showToast(msg, type = 'success', duration = 4000) {
+    let container = document.getElementById('_toastContainer');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = '_toastContainer';
+      container.style.cssText = [
+        'position:fixed', 'bottom:1.25rem', 'right:1.25rem',
+        'display:flex', 'flex-direction:column', 'gap:.5rem',
+        'z-index:9999', 'pointer-events:none',
+      ].join(';');
+      document.body.appendChild(container);
+    }
+
+    const colors = {
+      success: { bg: '#f0fdf4', border: '#22c55e', text: '#15803d', icon: '✅' },
+      error:   { bg: '#fef2f2', border: '#ef4444', text: '#b91c1c', icon: '❌' },
+      warning: { bg: '#fffbeb', border: '#f59e0b', text: '#92400e', icon: '⚠️' },
+      info:    { bg: '#eff6ff', border: '#3b82f6', text: '#1d4ed8', icon: 'ℹ️' },
+    };
+    const c = colors[type] || colors.info;
+
+    const toast = document.createElement('div');
+    toast.style.cssText = [
+      `background:${c.bg}`, `border:1px solid ${c.border}`, `color:${c.text}`,
+      'border-radius:10px', 'padding:.625rem 1rem',
+      'font-size:.85rem', 'font-weight:500',
+      'box-shadow:0 4px 12px rgba(0,0,0,.12)',
+      'display:flex', 'align-items:center', 'gap:.5rem',
+      'pointer-events:auto', 'max-width:320px',
+      'opacity:0', 'transform:translateY(8px)',
+      'transition:opacity .25s ease,transform .25s ease',
+    ].join(';');
+    toast.innerHTML = `<span>${c.icon}</span><span>${String(msg)}</span>`;
+    container.appendChild(toast);
+
+    // Anima entrada
+    requestAnimationFrame(() => {
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateY(0)';
+    });
+
+    // Remove após duração
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(8px)';
+      setTimeout(() => toast.remove(), 280);
+    }, duration);
+  };
+
   // ── Módulo registry ────────────────────────────────────────────────────────
   // Cada módulo pode registrar um handler de onPageLoad.
   // Uso: ZD.registry.register('minha-pagina', () => minhaFuncao())

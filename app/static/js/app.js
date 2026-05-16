@@ -821,7 +821,11 @@
     if (page !== 'whatsapp') _pararRefreshWA();
     if (page !== 'arquivo') { clearTimeout(_arquivosRefreshTimer); _arquivosRefreshTimer = null; }
     if (page !== 'teste') _pararTestePoll();
-    if (page === 'dashboard') loadStats();
+    if (page === 'dashboard') {
+      // Módulo dashboard.js (modules/) tem prioridade; loadStats() como fallback legado
+      if (window.ZD && ZD.registry._handlers['dashboard']) ZD.registry.dispatch('dashboard');
+      else loadStats();
+    }
     else if (page === 'mensagem') { loadMensagem(); loadAvaliacaoCfg(); loadTesteMensagem(); }
     else if (page === 'config-envio') carregarConfigEnvio();
     else if (page === 'whatsapp') { loadSessoes(); _iniciarRefreshWA(); }

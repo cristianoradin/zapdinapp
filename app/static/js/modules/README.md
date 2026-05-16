@@ -5,8 +5,9 @@ Arquitetura vanilla JS modular. Cada arquivo é um módulo independente por tela
 ## Ordem de carregamento (index.html)
 
 ```html
-<script src="/static/js/modules/utils.js"></script>      <!-- 1. Utilitários base -->
+<script src="/static/js/modules/utils.js"></script>      <!-- 1. Utilitários base (api, showToast, escHtml, ZD.registry) -->
 <script src="/static/js/modules/avaliacao.js"></script>   <!-- 2. Tela Avaliações -->
+<script src="/static/js/modules/dashboard.js"></script>   <!-- 3. Dashboard (KPIs, recentes) -->
 <!-- futuros módulos aqui -->
 <script src="/static/js/app.js"></script>                 <!-- ÚLTIMO: orquestrador -->
 ```
@@ -40,9 +41,9 @@ Expõe apenas o necessário via `window.nomeFuncao` ou `ZD.registry`.
 
 | Arquivo | Tela | Status |
 |---|---|---|
-| `utils.js` | Utilitários compartilhados (api, escHtml, etc.) | ✅ Criado |
+| `utils.js` | Utilitários compartilhados (api, escHtml, showToast, ZD.registry) | ✅ Criado |
 | `avaliacao.js` | Gestão de Avaliação | ✅ Criado |
-| `dashboard.js` | Gestão de Envios (stats) | 🔲 Pendente |
+| `dashboard.js` | Gestão de Envios (KPIs, fila, recentes) | ✅ Criado |
 | `whatsapp.js` | Conectar WhatsApp | 🔲 Pendente |
 | `campanhas.js` | Campanhas e disparos | 🔲 Pendente |
 | `contatos.js` | Contatos e grupos | 🔲 Pendente |
