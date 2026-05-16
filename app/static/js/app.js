@@ -1603,17 +1603,7 @@
   // ═══════════════════════════════════════════════════════════════════════════
 
   let _campanhaCriadaId = null;
-  let _campanhaCriadaArquivos = [];
   let _campImagemDataUrl = null;
-
-  function _setTipoEnvio(value) {
-    document.querySelectorAll('.tipo-envio-card:not(.agend-card)').forEach(card => {
-      const isSelected = card.dataset.value === value;
-      card.classList.toggle('selected', isSelected);
-      card.querySelector('input[type="radio"]').checked = isSelected;
-    });
-    document.getElementById('secCampArquivos').style.display = value === 'file' ? 'block' : 'none';
-  }
 
   function toggleEmojiBank() {
     const bank = document.getElementById('emojiBank');
@@ -1635,12 +1625,7 @@
     // Reset form
     document.getElementById('inpCampNome').value = '';
     document.getElementById('inpCampMensagem').value = '';
-    _setTipoEnvio('text');
-    document.getElementById('listaCampArquivos').innerHTML = '';
     _campanhaCriadaId = null;
-    _campanhaCriadaArquivos = [];
-    const btnArq = document.getElementById('btnAddCampArquivo');
-    btnArq.disabled = true; btnArq.style.opacity = '0.45'; btnArq.style.cursor = 'not-allowed';
     // Reset emoji bank
     document.getElementById('emojiBank').style.display = 'none';
     // Reset scheduling
@@ -1661,12 +1646,6 @@
     _updateCampPreview();
   }
 
-  document.querySelectorAll('.tipo-envio-card:not(.agend-card)').forEach(card => {
-    card.addEventListener('click', () => {
-      _setTipoEnvio(card.dataset.value);
-    });
-  });
-
   function _setAgendamento(val) {
     document.querySelectorAll('.agend-card').forEach(c => c.classList.remove('selected'));
     const target = document.querySelector(`.agend-card[data-agend="${val}"]`);
@@ -1676,85 +1655,11 @@
     document.getElementById('secAgendamento').style.display = (val === 'agendar') ? 'block' : 'none';
   }
 
-  document.getElementById('btnAddCampArquivo').addEventListener('click', () => {
-    document.getElementById('inpCampArquivo').click();
-  });
-
-  document.getElementById('inpCampArquivo').addEventListener('change', async (e) => {
-    if (!_campanhaCriadaId) {
-      showAlert('alertCampanha', 'Crie a campanha primeiro antes de adicionar arquivos.', 'error');
-      e.target.value = '';
-      return;
-    }
-    for (const file of e.target.files) {
-      try {
-        const fd = new FormData();
-        fd.append('file', file);
-        showAlert('alertCampanha', `Enviando "${file.name}"…`);
-        const previewUrl = URL.createObjectURL(file);
-        const res = await fetch(`/api/campanha/${_campanhaCriadaId}/arquivo`, { method: 'POST', body: fd });
-        if (!res.ok) {
-          const txt = await res.text();
-          showAlert('alertCampanha', `Erro ao enviar "${file.name}": HTTP ${res.status} — ${txt.slice(0,100)}`, 'error');
-          URL.revokeObjectURL(previewUrl);
-          continue;
-        }
-        const data = await res.json();
-        if (data.ok) {
-          _campanhaCriadaArquivos.push({ ...data, previewUrl, fileType: file.type, fileSize: file.size });
-          showAlert('alertCampanha', `Arquivo "${file.name}" adicionado com sucesso!`);
-        } else {
-          showAlert('alertCampanha', `Falha ao adicionar "${file.name}".`, 'error');
-          URL.revokeObjectURL(previewUrl);
-        }
-      } catch (err) {
-        showAlert('alertCampanha', `Erro: ${err.message}`, 'error');
-      }
-    }
-    e.target.value = '';
-    renderCampArquivos(_campanhaCriadaArquivos);
-  });
-
   function _fmtSize(bytes) {
     if (!bytes) return '';
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
     return (bytes/(1024*1024)).toFixed(1) + ' MB';
-  }
-
-  function renderCampArquivos(lista) {
-    const div = document.getElementById('listaCampArquivos');
-    if (!lista.length) { div.innerHTML = ''; return; }
-    div.innerHTML = lista.map((a, i) => {
-      const isImg = a.fileType && a.fileType.startsWith('image/');
-      const isPdf = a.nome_original && a.nome_original.toLowerCase().endsWith('.pdf');
-      const nome = escHtml(a.nome_original || '');
-      const size = _fmtSize(a.fileSize);
-
-      let preview = '';
-      if (isImg && a.previewUrl) {
-        preview = `<img src="${a.previewUrl}" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--border-soft);flex-shrink:0" />`;
-      } else if (isPdf) {
-        preview = `<div style="width:64px;height:64px;background:#fee2e2;border-radius:6px;border:1px solid #fca5a5;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
-          <span style="font-size:.6rem;font-weight:700;color:#dc2626;margin-top:2px">PDF</span>
-        </div>`;
-      } else {
-        preview = `<div style="width:64px;height:64px;background:var(--accent-soft);border-radius:6px;border:1px solid var(--border-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
-        </div>`;
-      }
-
-      return `<div style="display:flex;align-items:center;gap:.75rem;padding:.625rem;background:var(--surface);border:1px solid var(--border-soft);border-radius:10px">
-        ${preview}
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:600;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nome}</div>
-          ${size ? `<div style="font-size:.75rem;color:var(--text-mid);margin-top:2px">${size}</div>` : ''}
-          <span class="chip chip-green" style="font-size:.7rem;margin-top:4px">✓ Adicionado</span>
-        </div>
-        ${a.previewUrl && isImg ? `<a href="${a.previewUrl}" target="_blank" style="font-size:.75rem;color:var(--accent);white-space:nowrap">Ver</a>` : ''}
-      </div>`;
-    }).join('');
   }
 
   function _updateCampPreview() {
@@ -1819,9 +1724,10 @@
   document.getElementById('btnCriarCampanha').addEventListener('click', async () => {
     const nome = document.getElementById('inpCampNome').value.trim();
     const mensagem = document.getElementById('inpCampMensagem').value.trim();
-    const tipo = document.querySelector('input[name="campTipo"]:checked').value;
+    // tipo automático: file se tiver imagem, text caso contrário
+    const tipo = _campImagemDataUrl ? 'file' : 'text';
     if (!nome) { showAlert('alertCampanha', 'Informe o nome da campanha.', 'error'); return; }
-    if (tipo === 'text' && !mensagem) { showAlert('alertCampanha', 'Informe a mensagem.', 'error'); return; }
+    if (!mensagem && !_campImagemDataUrl) { showAlert('alertCampanha', 'Informe a mensagem ou adicione uma imagem.', 'error'); return; }
     const agendamento = document.querySelector('input[name="campAgendamento"]:checked').value;
     let agendado_em = null;
     if (agendamento === 'agendar') {
@@ -1830,33 +1736,36 @@
       if (!data || !hora) { showAlert('alertCampanha', 'Informe data e hora para o agendamento.', 'error'); return; }
       agendado_em = new Date(`${data}T${hora}:00`).toISOString();
     }
+    const btnCriar = document.getElementById('btnCriarCampanha');
+    btnCriar.disabled = true;
+    btnCriar.textContent = 'Criando…';
     const res = await api('POST', '/api/campanha', { nome, tipo, mensagem, agendado_em });
-    if (!res.ok) { showAlert('alertCampanha', 'Erro ao criar campanha.', 'error'); return; }
+    if (!res.ok) {
+      showAlert('alertCampanha', 'Erro ao criar campanha.', 'error');
+      btnCriar.disabled = false;
+      btnCriar.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Criar Campanha';
+      return;
+    }
     _campanhaCriadaId = res.id;
-    // Auto-upload image if selected
+    // Upload da imagem se selecionada
     if (_campImagemDataUrl) {
       try {
+        btnCriar.textContent = 'Enviando imagem…';
         const resp = await fetch(_campImagemDataUrl);
         const blob = await resp.blob();
-        const ext = blob.type.split('/')[1] || 'jpg';
+        const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg','jpg');
         const fd = new FormData();
-        fd.append('file', blob, `campanha_imagem.${ext}`);
+        fd.append('file', blob, `imagem.${ext}`);
         await fetch(`/api/campanha/${_campanhaCriadaId}/arquivo`, { method: 'POST', body: fd });
-      } catch(e) { /* silently ignore image upload error */ }
+      } catch(e) { /* ignora erro de upload silenciosamente */ }
     }
-    if (tipo === 'file') {
-      const btn = document.getElementById('btnAddCampArquivo');
-      btn.disabled = false;
-      btn.style.opacity = '1';
-      btn.style.cursor = 'pointer';
-      showAlert('alertCampanha', `Campanha "${nome}" criada! Agora clique em "Selecionar arquivo" para adicionar o(s) arquivo(s).`);
-    } else {
-      const msg = agendado_em
-        ? `Campanha "${nome}" agendada para ${new Date(agendado_em).toLocaleString('pt-BR')}!`
-        : `Campanha "${nome}" criada! Vá em Gerenciar Campanhas para iniciar o disparo.`;
-      showAlert('alertCampanha', msg);
-      setTimeout(() => showPage('dm-historico'), 1500);
-    }
+    const msg = agendado_em
+      ? `Campanha "${nome}" agendada para ${new Date(agendado_em).toLocaleString('pt-BR')}!`
+      : `Campanha "${nome}" criada com sucesso! Vá em Gerenciar Campanhas para iniciar o disparo.`;
+    showAlert('alertCampanha', msg);
+    btnCriar.disabled = false;
+    btnCriar.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Criar Campanha';
+    setTimeout(() => showPage('dm-historico'), 1500);
   });
 
   // ═══════════════════════════════════════════════════════════════════════════

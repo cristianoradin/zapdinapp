@@ -1737,23 +1737,6 @@
           <input type="text" id="inpCampNome" placeholder="Ex: Promoção Maio 2025" />
         </div>
 
-        <div class="form-group">
-          <label>Tipo de Envio</label>
-          <div class="tipo-envio-options">
-            <label class="tipo-envio-card selected" data-value="text">
-              <input type="radio" name="campTipo" value="text" checked>
-              <div class="tec-icon">💬</div>
-              <div class="tec-label">Texto</div>
-              <div class="tec-desc">Mensagem de texto simples para todos os contatos</div>
-            </label>
-            <label class="tipo-envio-card" data-value="file">
-              <input type="radio" name="campTipo" value="file">
-              <div class="tec-icon">📎</div>
-              <div class="tec-label">Arquivo(s)</div>
-              <div class="tec-desc">PDF, imagem ou documento com legenda opcional</div>
-            </label>
-          </div>
-        </div>
 
         <div class="form-group" id="secCampImagem">
           <label>Imagem <span style="color:var(--text-mid);font-weight:400">(opcional)</span></label>
@@ -1893,21 +1876,6 @@
           </div>
         </div>
 
-        <div id="secCampArquivos" style="display:none">
-          <div class="form-group">
-            <label>Arquivos da Campanha</label>
-            <input type="file" id="inpCampArquivo" style="display:none" multiple>
-            <div id="listaCampArquivos" style="margin-bottom:.75rem;display:flex;flex-direction:column;gap:.4rem"></div>
-            <button class="btn btn-ghost btn-sm" id="btnAddCampArquivo" disabled style="display:inline-flex;align-items:center;gap:.35rem;opacity:.45;cursor:not-allowed">
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              Selecionar arquivo
-            </button>
-          </div>
-          <div class="info-banner info-banner-yellow" style="margin-bottom:1.25rem">
-            <span class="ib-icon">⚠️</span>
-            <div>Os arquivos são adicionados após criar a campanha. Clique em <strong>Criar Campanha</strong> primeiro, depois adicione os arquivos.</div>
-          </div>
-        </div>
 
         <div style="display:flex;justify-content:flex-end;padding-top:.25rem;border-top:1px solid var(--border)">
           <button class="btn btn-primary" id="btnCriarCampanha" style="display:inline-flex;align-items:center;gap:.4rem">
