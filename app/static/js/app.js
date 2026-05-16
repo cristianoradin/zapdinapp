@@ -17,9 +17,12 @@
     'avaliacoes': 'Gestão de Avaliação',
   };
   function _setTopbarPage(p) {
-    document.getElementById('pageTitle').textContent = pages[p] || p;
+    const title = document.getElementById('pageTitle');
+    if (title) title.textContent = pages[p] || p;
     const el = document.getElementById('pageIcon');
     if (el) el.style.display = 'none';
+    // Atualiza o título da aba do browser
+    document.title = 'ZapDin — ' + (pages[p] || p);
   }
 
   document.querySelectorAll('.nav-item').forEach(item => {

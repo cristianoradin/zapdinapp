@@ -146,54 +146,18 @@
       min-height: 100vh;
     }
 
-    .topbar {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 0 2rem;
-      height: 56px;
+    /* ─── Floating top-right (empresa + WA + usuário) ───────────────────── */
+    .floating-topbar-right {
+      position: fixed;
+      top: 1rem;
+      right: 1.25rem;
+      z-index: 100;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      box-shadow: 0 1px 10px rgba(0,0,0,.06);
+      gap: .5rem;
+      pointer-events: none; /* cliques passam pelo container mas os filhos reativam */
     }
-    .topbar::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 3px;
-      background: linear-gradient(90deg, var(--accent) 0%, #7cdc44 50%, #3b82f6 100%);
-    }
-
-    /* Left side: breadcrumb + page title */
-    .topbar-left { display: flex; align-items: center; gap: .5rem; }
-    .topbar-breadcrumb {
-      font-size: .8rem;
-      font-weight: 500;
-      color: var(--text-light);
-      letter-spacing: -.01em;
-    }
-    .topbar-sep {
-      color: var(--border);
-      font-size: 1rem;
-      line-height: 1;
-      font-weight: 300;
-    }
-    .topbar-page-icon {
-      font-size: 1rem;
-      line-height: 1;
-    }
-    .topbar-title {
-      font-size: .9rem;
-      font-weight: 700;
-      letter-spacing: -.02em;
-      color: var(--text);
-    }
-
-    /* Right side */
-    .topbar-right { display: flex; align-items: center; gap: .625rem; }
+    .floating-topbar-right > * { pointer-events: auto; }
 
     .topbar-status-pill {
       display: flex;
@@ -373,7 +337,7 @@
       background: var(--red-soft);
     }
 
-    .content { padding: 2rem; flex: 1; width: 100%; overflow-x: hidden; }
+    .content { padding: 2rem; padding-top: 4.5rem; flex: 1; width: 100%; overflow-x: hidden; }
 
     /* ─── Pages ───────────────────────────────────────────────────────────── */
     .page        { display: none; }
