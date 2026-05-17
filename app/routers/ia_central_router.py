@@ -174,12 +174,12 @@ _TOOLS = [
 
 def _date_filter(periodo: str) -> str:
     return {
-        "hoje":        "DATE(created_at) = DATE('now')",
-        "ontem":       "DATE(created_at) = DATE('now', '-1 day')",
-        "semana":      "created_at >= DATE('now', '-7 days')",
-        "mes":         "strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')",
-        "mes_passado": "strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now', '-1 month')",
-    }.get(periodo, "DATE(created_at) = DATE('now')")
+        "hoje":        "created_at::date = CURRENT_DATE",
+        "ontem":       "created_at::date = CURRENT_DATE - INTERVAL '1 day'",
+        "semana":      "created_at >= NOW() - INTERVAL '7 days'",
+        "mes":         "DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())",
+        "mes_passado": "DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW() - INTERVAL '1 month')",
+    }.get(periodo, "created_at::date = CURRENT_DATE")
 
 
 async def _exec_consultar_envios(db, empresa_id: int, periodo: str) -> dict:
@@ -199,13 +199,13 @@ async def _exec_consultar_envios(db, empresa_id: int, periodo: str) -> dict:
     breakdown = []
     if periodo in ("semana", "mes", "mes_passado"):
         async with db.execute(
-            f"""SELECT DATE(created_at) AS dia,
+            f"""SELECT created_at::date AS dia,
                        COUNT(*) AS total,
                        SUM(CASE WHEN status='sent' THEN 1 ELSE 0 END) AS enviados,
                        SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END) AS falhas
                 FROM campanha_envios
                 WHERE empresa_id=? AND {where}
-                GROUP BY DATE(created_at) ORDER BY dia""",
+                GROUP BY created_at::date ORDER BY dia""",
             (empresa_id,)
         ) as cur:
             rows = await cur.fetchall()
@@ -234,12 +234,12 @@ async def _exec_consultar_chatbot(db, empresa_id: int, periodo: str) -> dict:
     breakdown = []
     if periodo in ("semana", "mes", "mes_passado"):
         async with db.execute(
-            f"""SELECT DATE(created_at) AS dia,
+            f"""SELECT created_at::date AS dia,
                        COUNT(DISTINCT phone) AS contatos,
                        SUM(CASE WHEN role='user' THEN 1 ELSE 0 END) AS msgs_usuario
                 FROM chat_historico
                 WHERE empresa_id=? AND {where}
-                GROUP BY DATE(created_at) ORDER BY dia""",
+                GROUP BY created_at::date ORDER BY dia""",
             (empresa_id,)
         ) as cur:
             rows = await cur.fetchall()
@@ -297,8 +297,8 @@ async def _exec_consultar_contatos(db, empresa_id: int) -> dict:
     async with db.execute(
         """SELECT
              COUNT(*) AS total,
-             SUM(CASE WHEN ativo=1 THEN 1 ELSE 0 END) AS ativos,
-             SUM(CASE WHEN ativo=0 THEN 1 ELSE 0 END) AS inativos,
+             SUM(CASE WHEN ativo = TRUE THEN 1 ELSE 0 END) AS ativos,
+             SUM(CASE WHEN ativo = FALSE THEN 1 ELSE 0 END) AS inativos,
              SUM(CASE WHEN origem='manual' THEN 1 ELSE 0 END) AS manual,
              SUM(CASE WHEN origem='erp' THEN 1 ELSE 0 END) AS erp,
              SUM(CASE WHEN origem='chatbot' THEN 1 ELSE 0 END) AS chatbot
@@ -315,9 +315,9 @@ async def _exec_consultar_contatos(db, empresa_id: int) -> dict:
 async def _exec_consultar_memoria_ia(db, empresa_id: int) -> dict:
     async with db.execute(
         """SELECT COUNT(*) AS total,
-                  SUM(CASE WHEN aprovado=1 THEN 1 ELSE 0 END) AS aprovadas,
+                  SUM(CASE WHEN aprovado = TRUE THEN 1 ELSE 0 END) AS aprovadas,
                   SUM(CASE WHEN aprovado IS NULL THEN 1 ELSE 0 END) AS pendentes,
-                  SUM(CASE WHEN aprovado=0 THEN 1 ELSE 0 END) AS rejeitadas,
+                  SUM(CASE WHEN aprovado = FALSE THEN 1 ELSE 0 END) AS rejeitadas,
                   COALESCE(SUM(usos),0) AS total_usos
            FROM chatbot_memoria_ia WHERE empresa_id=?""",
         (empresa_id,)
@@ -496,7 +496,7 @@ async def ia_central_chat(
     except httpx.HTTPStatusError as e:
         logger.error("[ia_central] Groq HTTP error: %s", e.response.text)
         if e.response.status_code == 401:
-            raise HTTPException(401, "Chave Groq inválida.")
+            raise HTTPException(400, "Chave Groq inválida ou expirada. Verifique em Configurações → Integrações de IA → Groq.")
         raise HTTPException(502, f"Erro na IA: {e.response.status_code}")
     except Exception as e:
         logger.error("[ia_central] Erro geral: %s", e, exc_info=True)
