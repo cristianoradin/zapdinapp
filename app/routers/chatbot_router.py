@@ -30,6 +30,9 @@ class FaqBody(BaseModel):
 class AprendizadoAvalBody(BaseModel):
     aprovado: bool
 
+class ChatbotAtivoBody(BaseModel):
+    chatbot_ativo: bool
+
 
 # ── Config / Personalidade ────────────────────────────────────────────────────
 
@@ -225,26 +228,28 @@ async def list_conversas(
     async with db.execute(
         """SELECT
              h.phone,
-             e.nome AS empresa_nome,
+             COALESCE(c.nome, h.phone) AS contato_nome,
+             COALESCE(c.chatbot_ativo, TRUE) AS chatbot_ativo,
              COUNT(*) AS total_msgs,
              MAX(h.created_at) AS ultima_msg,
              (SELECT conteudo FROM chat_historico
               WHERE empresa_id = h.empresa_id AND phone = h.phone
               ORDER BY created_at DESC LIMIT 1) AS ultima_preview
            FROM chat_historico h
-           LEFT JOIN empresas_contabil e ON e.telefone = SUBSTRING(h.phone FROM 3)
-           WHERE h.empresa_id = ?
-           GROUP BY h.phone, e.nome
+           LEFT JOIN contatos c ON c.empresa_id = h.empresa_id AND c.phone = REGEXP_REPLACE(h.phone, '^55', '')
+           WHERE h.empresa_id = $1
+           GROUP BY h.phone, c.nome, c.chatbot_ativo
            ORDER BY ultima_msg DESC
            LIMIT 100""",
-        (empresa_id,)
+        empresa_id,
     ) as cur:
         rows = await cur.fetchall()
 
     return [
         {
             "phone": r["phone"],
-            "nome": r["empresa_nome"] or r["phone"],
+            "nome": r["contato_nome"],
+            "chatbot_ativo": bool(r["chatbot_ativo"]),
             "total_msgs": r["total_msgs"],
             "ultima_msg": r["ultima_msg"].isoformat() if r["ultima_msg"] else None,
             "ultima_preview": (r["ultima_preview"] or "")[:80],
@@ -277,6 +282,29 @@ async def get_historico(
         }
         for r in rows
     ]
+
+
+@router.patch("/contato/{phone}/chatbot-ativo")
+async def toggle_chatbot_ativo(
+    phone: str,
+    body: ChatbotAtivoBody,
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Ativa ou pausa o chatbot para um contato específico."""
+    empresa_id = user["empresa_id"]
+    # phone chega sem prefixo 55 (como guardado em contatos)
+    phone_local = phone.replace("@s.whatsapp.net", "").replace("@lid", "")
+    if phone_local.startswith("55") and len(phone_local) >= 12:
+        phone_local = phone_local[2:]
+    await db.execute(
+        """INSERT INTO contatos(empresa_id, phone, chatbot_ativo, origem)
+           VALUES($1,$2,$3,'chatbot')
+           ON CONFLICT(empresa_id, phone) DO UPDATE SET chatbot_ativo=$3""",
+        empresa_id, phone_local, body.chatbot_ativo,
+    )
+    await db.commit()
+    return {"ok": True}
 
 
 @router.delete("/historico/{phone}")

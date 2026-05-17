@@ -828,6 +828,7 @@ async def init_db() -> None:
             ("007_ctb_address_fields", "Campos CEP, numero_endereco e bairro em empresas_contabil"),
             ("008_chatbot",           "Tabelas chatbot_config e chat_historico"),
             ("009_chatbot_faq",       "Tabelas chatbot_faq, chatbot_aprendizado e campos boas-vindas"),
+            ("010_contatos_chatbot",  "Colunas chatbot_ativo e boas_vindas_enviada em contatos"),
         ]:
             await conn.execute(
                 "INSERT INTO schema_migrations(version, descricao) VALUES($1,$2) "
@@ -844,6 +845,18 @@ async def init_db() -> None:
             try:
                 await conn.execute(
                     f"ALTER TABLE empresas_contabil ADD COLUMN IF NOT EXISTS {_col} {_type}"
+                )
+            except Exception:
+                pass  # coluna já existe — ignorar
+
+        # ── Migration 010: adicionar colunas chatbot em contatos ─────────────────
+        for _col, _type, _default in [
+            ("chatbot_ativo",       "BOOLEAN", "DEFAULT FALSE"),
+            ("boas_vindas_enviada", "BOOLEAN", "DEFAULT FALSE"),
+        ]:
+            try:
+                await conn.execute(
+                    f"ALTER TABLE contatos ADD COLUMN IF NOT EXISTS {_col} {_type} {_default}"
                 )
             except Exception:
                 pass  # coluna já existe — ignorar

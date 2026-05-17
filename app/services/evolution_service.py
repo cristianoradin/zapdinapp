@@ -531,7 +531,7 @@ class EvoManager:
 
         elif event == "MESSAGES_UPSERT":
             # Nova mensagem recebida — rota para o módulo contábil se for mídia de cliente
-            asyncio.create_task(self._processar_mensagem_contabil(inst, data))
+            asyncio.create_task(self._processar_mensagem_contabil(inst, data, sess.empresa_id))
 
     # ─────────────────────────────────────────────────────────────────────────
     #  Provisiona instância + webhook na Evolution API
@@ -761,10 +761,11 @@ class EvoManager:
     def schedule_status_check(self, arquivo_id, session_id, empresa_id, phone):
         pass   # reservado para uso futuro
 
-    async def _processar_mensagem_contabil(self, inst: str, data: dict) -> None:
+    async def _processar_mensagem_contabil(self, inst: str, data: dict, tenant_id: int = 0) -> None:
         """
         Processa MESSAGES_UPSERT: se o remetente for cliente cadastrado em
         empresas_contabil e enviou mídia (imagem ou PDF), baixa e enfileira OCR.
+        tenant_id = empresas.id (ID do escritório contábil, dono da sessão WA)
         """
         import uuid as _uuid
         import base64 as _b64
@@ -858,8 +859,10 @@ class EvoManager:
                 # ── Roteamento: texto → chatbot, mídia → OCR ──────────────────────
                 if _ROTA_CHATBOT:
                     from ..services.chatbot_service import responder_mensagem
+                    # tenant_id = empresas.id (ID do escritório, dono da sessão)
+                    # empresa_id aqui é empresas_contabil.id — passamos tenant_id para o chatbot
                     asyncio.create_task(
-                        responder_mensagem(empresa_id, phone_full, _texto, inst, empresa_nome)
+                        responder_mensagem(tenant_id, phone_full, _texto, inst, empresa_nome)
                     )
                     return
 

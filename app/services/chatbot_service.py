@@ -187,12 +187,17 @@ async def responder_mensagem(
     from .evolution_service import evo_manager
 
     try:
+        # Normaliza phone para formato local (sem 55)
+        phone_local = phone.split("@")[0]
+        if phone_local.startswith("55") and len(phone_local) >= 12:
+            phone_local = phone_local[2:]
+
         async with get_db_direct() as db:
             # ── Verifica se chatbot está ativo para a empresa ──────────────────
             async with db.execute(
                 """SELECT ativo, system_prompt, boas_vindas_ativo, boas_vindas_msg
-                   FROM chatbot_config WHERE empresa_id=?""",
-                (empresa_id,)
+                   FROM chatbot_config WHERE empresa_id=$1""",
+                empresa_id,
             ) as cur:
                 cfg = await cur.fetchone()
 
@@ -205,6 +210,50 @@ async def responder_mensagem(
             boas_vindas_ativo = cfg["boas_vindas_ativo"] if cfg else False
             boas_vindas_msg   = cfg["boas_vindas_msg"]   if cfg else ""
 
+            # ── Lookup / upsert do contato na tabela contatos ─────────────────
+            # Tenta variantes de phone (10 ou 11 dígitos)
+            variantes = [phone_local]
+            if len(phone_local) == 10:
+                variantes.append(phone_local[:2] + "9" + phone_local[2:])
+            elif len(phone_local) == 11 and phone_local[2] == "9":
+                variantes.append(phone_local[:2] + phone_local[3:])
+
+            contato = None
+            phone_key = phone_local  # chave usada no upsert
+            for v in variantes:
+                async with db.execute(
+                    "SELECT id, nome, chatbot_ativo, boas_vindas_enviada "
+                    "FROM contatos WHERE empresa_id=$1 AND phone=$2",
+                    empresa_id, v,
+                ) as cur:
+                    contato = await cur.fetchone()
+                if contato:
+                    phone_key = v
+                    break
+
+            if not contato:
+                # Insere automaticamente com chatbot_ativo=TRUE
+                await db.execute(
+                    """INSERT INTO contatos(empresa_id, phone, nome, ativo, chatbot_ativo, origem)
+                       VALUES($1,$2,$3,TRUE,TRUE,'chatbot')
+                       ON CONFLICT(empresa_id, phone) DO UPDATE
+                         SET chatbot_ativo=TRUE""",
+                    empresa_id, phone_key, phone_local,
+                )
+                await db.commit()
+                nome_contato          = phone_local
+                chatbot_ativo_contato = True
+                boas_vindas_enviada   = False
+            else:
+                nome_contato          = contato["nome"] or phone_local
+                chatbot_ativo_contato = bool(contato["chatbot_ativo"])
+                boas_vindas_enviada   = bool(contato["boas_vindas_enviada"])
+
+            # Se bot pausado para este contato, silencia
+            if not chatbot_ativo_contato:
+                logger.debug("[chatbot] Bot pausado para %s (empresa %s)", phone_local, empresa_id)
+                return
+
             # Enriquece system prompt com nome da empresa
             system_prompt = (
                 f"Você é o assistente virtual de {empresa_nome}. "
@@ -213,8 +262,8 @@ async def responder_mensagem(
 
             # ── Busca FAQ para injetar como exemplos no prompt ─────────────────
             async with db.execute(
-                "SELECT pergunta, resposta FROM chatbot_faq WHERE empresa_id=? AND ativo=TRUE LIMIT 30",
-                (empresa_id,)
+                "SELECT pergunta, resposta FROM chatbot_faq WHERE empresa_id=$1 AND ativo=TRUE LIMIT 30",
+                empresa_id,
             ) as cur:
                 faq_rows = await cur.fetchall()
 
@@ -227,9 +276,9 @@ async def responder_mensagem(
             # ── Busca exemplos aprovados pelo aprendizado ──────────────────────
             async with db.execute(
                 """SELECT pergunta, resposta FROM chatbot_aprendizado
-                   WHERE empresa_id=? AND aprovado=TRUE
+                   WHERE empresa_id=$1 AND aprovado=TRUE
                    ORDER BY created_at DESC LIMIT 10""",
-                (empresa_id,)
+                empresa_id,
             ) as cur:
                 exemplos = await cur.fetchall()
 
@@ -239,27 +288,19 @@ async def responder_mensagem(
                     ex_text += f"P: {ex['pergunta']}\nR: {ex['resposta']}\n\n"
                 system_prompt += ex_text
 
-            # ── Verifica se é a primeira mensagem (boas-vindas) ────────────────
-            async with db.execute(
-                "SELECT COUNT(*) AS cnt FROM chat_historico WHERE empresa_id=? AND phone=?",
-                (empresa_id, phone)
-            ) as cur:
-                cnt_row = await cur.fetchone()
-            is_primeira_mensagem = (cnt_row["cnt"] == 0) if cnt_row else True
-
             # ── Salva mensagem do usuário no histórico ─────────────────────────
             await db.execute(
-                "INSERT INTO chat_historico(empresa_id, phone, role, conteudo) VALUES(?,?,?,?)",
-                (empresa_id, phone, "user", texto)
+                "INSERT INTO chat_historico(empresa_id, phone, role, conteudo) VALUES($1,$2,$3,$4)",
+                empresa_id, phone, "user", texto,
             )
             await db.commit()
 
             # ── Recupera histórico recente ─────────────────────────────────────
             async with db.execute(
                 """SELECT role, conteudo FROM chat_historico
-                   WHERE empresa_id=? AND phone=?
-                   ORDER BY created_at DESC LIMIT ?""",
-                (empresa_id, phone, _HIST_LIMIT)
+                   WHERE empresa_id=$1 AND phone=$2
+                   ORDER BY created_at DESC LIMIT $3""",
+                empresa_id, phone, _HIST_LIMIT,
             ) as cur:
                 rows = await cur.fetchall()
 
@@ -284,23 +325,30 @@ async def responder_mensagem(
         # ── Salva resposta no histórico + registro de aprendizado ─────────────
         async with get_db_direct() as db:
             await db.execute(
-                "INSERT INTO chat_historico(empresa_id, phone, role, conteudo) VALUES(?,?,?,?)",
-                (empresa_id, phone, "assistant", resposta)
+                "INSERT INTO chat_historico(empresa_id, phone, role, conteudo) VALUES($1,$2,$3,$4)",
+                empresa_id, phone, "assistant", resposta,
             )
             # Salva o par pergunta/resposta para revisão no painel de Aprendizado
             await db.execute(
                 """INSERT INTO chatbot_aprendizado(empresa_id, phone, pergunta, resposta)
-                   VALUES(?,?,?,?)""",
-                (empresa_id, phone, texto[:500], resposta[:1000])
+                   VALUES($1,$2,$3,$4)""",
+                empresa_id, phone, texto[:500], resposta[:1000],
             )
             await db.commit()
 
         # ── Envia boas-vindas na primeira mensagem ────────────────────────────
         jid = phone if "@" in phone else f"{phone}@s.whatsapp.net"
-        if is_primeira_mensagem and boas_vindas_ativo and boas_vindas_msg.strip():
-            msg_bv = boas_vindas_msg.replace("{nome}", empresa_nome)
+        if not boas_vindas_enviada and boas_vindas_ativo and boas_vindas_msg.strip():
+            msg_bv = boas_vindas_msg.replace("{nome}", nome_contato)
             await evo_manager.send_text(instance, jid, msg_bv)
             logger.info("[chatbot] Boas-vindas enviada para %s", phone)
+            # Marca flag no banco para não reenviar
+            async with get_db_direct() as db:
+                await db.execute(
+                    "UPDATE contatos SET boas_vindas_enviada=TRUE WHERE empresa_id=$1 AND phone=$2",
+                    empresa_id, phone_key,
+                )
+                await db.commit()
 
         # ── Envia resposta pelo WhatsApp ──────────────────────────────────────
         await evo_manager.send_text(instance, jid, resposta)
