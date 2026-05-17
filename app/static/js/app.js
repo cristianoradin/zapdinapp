@@ -895,6 +895,7 @@
     else if (page === 'ctb-dashboard') { if (window.ctbDashboard) ctbDashboard.reload(); }
     else if (page === 'ctb-empresas')  { if (window.ctbEmpresas)  ctbEmpresas.carregar(); }
     else if (page === 'ctb-arquivos')  { if (window.ctbArquivos)  ctbArquivos.carregar(); }
+    else if (page === 'chatbot') { chatbot.carregarConfig(); chatbot.carregarConversas(); }
   }
 
   // ── Telegram ──────────────────────────────────────────────────────────────────
@@ -2900,6 +2901,122 @@
       _aiDestacarCard(provider);
     }
   }
+
+  // ── Chatbot ───────────────────────────────────────────────────────────────────
+
+  const chatbot = (() => {
+    let _phoneAtual = null;
+
+    async function carregarConfig() {
+      try {
+        const r = await fetch('/api/chatbot/config');
+        if (!r.ok) return;
+        const d = await r.json();
+        const ck = document.getElementById('chatbotAtivo');
+        const pr = document.getElementById('chatbotPrompt');
+        if (ck) ck.checked = !!d.ativo;
+        if (pr) pr.value = d.system_prompt || '';
+      } catch {}
+    }
+
+    async function salvarConfig() {
+      const ativo  = document.getElementById('chatbotAtivo')?.checked ?? true;
+      const prompt = document.getElementById('chatbotPrompt')?.value.trim() ?? '';
+      const alerta = document.getElementById('chatbotConfigAlert');
+      try {
+        const r = await api('POST', '/api/chatbot/config', { ativo, system_prompt: prompt });
+        if (alerta) {
+          alerta.style.display = 'block';
+          if (r.ok) {
+            alerta.className = '';
+            alerta.style.cssText += ';background:#f0fdf4;color:#3d7f1f;border:1px solid #bbf7d0';
+            alerta.textContent = '✓ Configuração salva!';
+          } else {
+            alerta.className = '';
+            alerta.style.cssText += ';background:#fef2f2;color:#ef4444;border:1px solid #fecaca';
+            alerta.textContent = 'Erro ao salvar.';
+          }
+          setTimeout(() => { if (alerta) alerta.style.display = 'none'; }, 3000);
+        }
+      } catch {}
+    }
+
+    async function carregarConversas() {
+      const el = document.getElementById('chatbotConversasList');
+      if (!el) return;
+      try {
+        const r = await fetch('/api/chatbot/conversas');
+        if (!r.ok) { el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:.82rem">Erro ao carregar.</div>'; return; }
+        const lista = await r.json();
+        if (!lista.length) {
+          el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:.82rem">Nenhuma conversa ainda</div>';
+          return;
+        }
+        el.innerHTML = lista.map(c => {
+          const dt = c.ultima_msg ? new Date(c.ultima_msg).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '';
+          return `<div class="chatbot-conversa-item" onclick="chatbot.abrirConversa('${c.phone}','${(c.nome||c.phone).replace(/'/g,"\\'")}')">
+            <div style="display:flex;align-items:center;gap:.55rem">
+              <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#ede9fe,#ddd6fe);display:flex;align-items:center;justify-content:center;font-size:.95rem;flex-shrink:0">💬</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:600;font-size:.82rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.nome || c.phone}</div>
+                <div style="font-size:.72rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.ultima_preview || ''}</div>
+              </div>
+              <div style="font-size:.68rem;color:var(--text-muted);flex-shrink:0;text-align:right">
+                <div>${dt}</div>
+                <div style="color:#8b5cf6;font-weight:600">${c.total_msgs} msg</div>
+              </div>
+            </div>
+          </div>`;
+        }).join('');
+      } catch { el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:.82rem">Erro ao carregar.</div>'; }
+    }
+
+    async function abrirConversa(phone, nome) {
+      _phoneAtual = phone;
+      const card   = document.getElementById('chatbotHistoricoCard');
+      const nomeEl = document.getElementById('chatbotHistoricoNome');
+      const phEl   = document.getElementById('chatbotHistoricoPhone');
+      const msgsEl = document.getElementById('chatbotHistoricoMsgs');
+      if (!card) return;
+      if (nomeEl) nomeEl.textContent = nome || phone;
+      if (phEl)   phEl.textContent   = phone;
+      card.style.display = 'block';
+      msgsEl.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-muted)">Carregando…</div>';
+      try {
+        const r = await fetch('/api/chatbot/historico/' + encodeURIComponent(phone));
+        const msgs = await r.json();
+        if (!msgs.length) {
+          msgsEl.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-muted);font-size:.82rem">Sem mensagens</div>';
+          return;
+        }
+        msgsEl.innerHTML = msgs.map(m => {
+          const isBot = m.role === 'assistant';
+          const dt = m.created_at ? new Date(m.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+          return `<div style="display:flex;flex-direction:column;align-items:${isBot ? 'flex-start' : 'flex-end'}">
+            <div style="max-width:82%;background:${isBot ? 'linear-gradient(135deg,#f5f3ff,#ede9fe)' : 'linear-gradient(135deg,#f0fdf4,#dcfce7)'};
+              border:1px solid ${isBot ? '#ddd6fe' : '#bbf7d0'};border-radius:${isBot ? '4px 12px 12px 12px' : '12px 4px 12px 12px'};
+              padding:.45rem .75rem;font-size:.8rem;color:var(--text);line-height:1.5">
+              ${isBot ? '<span style="font-size:.65rem;font-weight:700;color:#8b5cf6;display:block;margin-bottom:.2rem">🤖 Bot</span>' : ''}
+              ${m.conteudo}
+            </div>
+            <div style="font-size:.65rem;color:var(--text-muted);margin-top:.15rem;padding:0 .25rem">${dt}</div>
+          </div>`;
+        }).join('');
+        msgsEl.scrollTop = msgsEl.scrollHeight;
+      } catch { msgsEl.innerHTML = '<div style="color:#ef4444;font-size:.8rem;padding:.5rem">Erro ao carregar histórico.</div>'; }
+    }
+
+    async function limparHistorico() {
+      if (!_phoneAtual) return;
+      if (!confirm('Apagar todo o histórico de ' + _phoneAtual + '?')) return;
+      await api('DELETE', `/api/chatbot/historico/${encodeURIComponent(_phoneAtual)}`);
+      document.getElementById('chatbotHistoricoCard').style.display = 'none';
+      _phoneAtual = null;
+      await carregarConversas();
+    }
+
+    return { carregarConfig, salvarConfig, carregarConversas, abrirConversa, limparHistorico };
+  })();
 
   // ── Sistema — navegação interna ───────────────────────────────────────────────
 

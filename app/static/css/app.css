@@ -1962,6 +1962,14 @@
     .ai-uso-pill.chat.on { background: #eff6ff; border-color: #3b82f6; color: #3b82f6; }
     .ai-uso-pill.chat.on .ai-uso-dot { background: #3b82f6; }
 
+    /* ── Chatbot ── */
+    .chatbot-conversa-item {
+      padding: .6rem .75rem; border-radius: 10px; cursor: pointer;
+      border: 1px solid var(--border); background: var(--surface2);
+      transition: background .12s, border-color .12s;
+    }
+    .chatbot-conversa-item:hover { background: #f5f3ff; border-color: #ddd6fe; }
+
     .ai-card-actions { display: flex; gap: .5rem; margin-top: .1rem; }
     .ai-card-actions .btn { font-size: .79rem; padding: .42rem .85rem; }
     .ai-card-alert { font-size: .74rem; padding: .35rem .7rem; border-radius: 7px; display: flex; align-items: center; gap: .4rem; }

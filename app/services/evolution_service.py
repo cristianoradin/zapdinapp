@@ -787,8 +787,28 @@ class EvoManager:
                 "imageMessage", "documentMessage",
                 "documentWithCaptionMessage", "ptvMessage",
             }
-            if msg_type not in _MEDIA_TYPES and not any(k in msg for k in _MEDIA_TYPES):
-                return  # mensagem de texto simples — ignora
+
+            # Tipos de mensagem de texto simples → chatbot
+            _TEXT_TYPES = {"conversation", "extendedTextMessage"}
+            _is_text = (
+                msg_type in _TEXT_TYPES
+                or (msg_type not in _MEDIA_TYPES
+                    and not any(k in msg for k in _MEDIA_TYPES))
+            )
+
+            if _is_text and msg_type not in _MEDIA_TYPES:
+                # Extrai o texto
+                _texto = (
+                    msg.get("conversation")
+                    or (msg.get("extendedTextMessage") or {}).get("text")
+                    or ""
+                ).strip()
+                if not _texto:
+                    return
+                # Será preenchido após lookup de empresa — tratado abaixo
+                _ROTA_CHATBOT = True
+            else:
+                _ROTA_CHATBOT = False
 
             # Extrai número do remetente
             # Evolution pode usar @lid (novo formato) ou @s.whatsapp.net (formato padrão)
@@ -834,6 +854,14 @@ class EvoManager:
 
                 empresa_id   = empresa["id"]
                 empresa_nome = empresa["nome"]
+
+                # ── Roteamento: texto → chatbot, mídia → OCR ──────────────────────
+                if _ROTA_CHATBOT:
+                    from ..services.chatbot_service import responder_mensagem
+                    asyncio.create_task(
+                        responder_mensagem(empresa_id, phone_full, _texto, inst, empresa_nome)
+                    )
+                    return
 
                 # ── Download da mídia via Evolution API ──────────────────────────
                 # O endpoint espera {"message": {"key": ..., "message": ...}}

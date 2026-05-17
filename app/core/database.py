@@ -766,6 +766,26 @@ async def init_db() -> None:
 
         # 4) Tabela de tracking de migrações aplicadas
         await conn.execute("""
+            -- ── Chatbot ───────────────────────────────────────────────────────
+            CREATE TABLE IF NOT EXISTS chatbot_config (
+                empresa_id    BIGINT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+                ativo         BOOLEAN DEFAULT TRUE,
+                system_prompt TEXT DEFAULT '',
+                PRIMARY KEY (empresa_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS chat_historico (
+                id         BIGSERIAL PRIMARY KEY,
+                empresa_id BIGINT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+                phone      TEXT NOT NULL,
+                role       TEXT NOT NULL CHECK (role IN ('user','assistant')),
+                conteudo   TEXT NOT NULL,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_chat_hist_empresa_phone
+                ON chat_historico(empresa_id, phone, created_at DESC);
+
             CREATE TABLE IF NOT EXISTS schema_migrations (
                 version    TEXT PRIMARY KEY,
                 applied_at TIMESTAMPTZ DEFAULT NOW(),
@@ -781,6 +801,7 @@ async def init_db() -> None:
             ("005_contabil",          "Módulo Contábil: empresas_contabil, documentos_fiscais, ocr_jobs, contabil_feed"),
             ("006_ctb_wa_pendentes",  "Fila de boas-vindas WA pendentes para empresas contábil"),
             ("007_ctb_address_fields", "Campos CEP, numero_endereco e bairro em empresas_contabil"),
+            ("008_chatbot",           "Tabelas chatbot_config e chat_historico"),
         ]:
             await conn.execute(
                 "INSERT INTO schema_migrations(version, descricao) VALUES($1,$2) "
