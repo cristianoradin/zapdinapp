@@ -295,10 +295,22 @@ async def evo_file_serve(token: str):
 @fastapi_app.post("/api/evo-webhook")
 async def evo_webhook(request: Request):
     """Recebe eventos da Evolution API em tempo real (QR, conexão, etc.)."""
+    import logging as _log
+    _wh_log = _log.getLogger("app.webhook")
     try:
         payload = await request.json()
     except Exception:
         return JSONResponse({"ok": False}, status_code=400)
+    # Log temporário de diagnóstico — remover após confirmar funcionamento
+    event = payload.get("event", "?")
+    inst  = payload.get("instance", "?")
+    data  = payload.get("data") or {}
+    key   = data.get("key") or {}
+    _wh_log.info("[webhook] event=%s inst=%s fromMe=%s jid=%s type=%s",
+                 event, inst,
+                 key.get("fromMe", "?"),
+                 key.get("remoteJid", "?"),
+                 data.get("messageType", "?"))
     wa_manager.handle_webhook(payload)
     return {"ok": True}
 

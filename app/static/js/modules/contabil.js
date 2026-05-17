@@ -75,6 +75,43 @@ function _btnAct(onclick, icon, title, cls='') {
 
 // ── Feed ──────────────────────────────────────────────────────────────────────
 
+const _feedMeta = {
+  aprovado:    { icon: '✅', label: 'Aprovado' },
+  manual:      { icon: '✏️', label: 'Revisão Manual' },
+  recebido:    { icon: '📥', label: 'Recebido via WhatsApp' },
+  ocr_ok:      { icon: '🔍', label: 'OCR Concluído' },
+  ocr_erro:    { icon: '⚠️', label: 'Erro OCR' },
+  ocr_pendente:{ icon: '⏳', label: 'Aguardando OCR' },
+  cadastro:    { icon: '🏢', label: 'Cadastro' },
+  boas_vindas: { icon: '👋', label: 'Boas-vindas' },
+  upload:      { icon: '📎', label: 'Upload' },
+};
+
+function _feedSimplificarDescricao(tipo, descricao) {
+  if (!descricao) return '—';
+  // Simplifica erros técnicos do asyncpg / OCR
+  if (tipo === 'ocr_erro') {
+    if (descricao.includes('rate limit')) return 'Rate limit atingido — retentando automaticamente';
+    if (descricao.includes('chave não configurada') || descricao.includes('Todos os providers')) {
+      return 'Nenhum provider OCR configurado — configure uma chave de API';
+    }
+    if (descricao.includes('toordinal') || descricao.includes('query argument')) {
+      return 'Erro interno ao salvar — documento reprocessado';
+    }
+    // Trunca outros erros técnicos longos
+    const clean = descricao.replace(/^Erro OCR:\s*/i, '');
+    return clean.length > 80 ? clean.slice(0, 80) + '…' : clean;
+  }
+  return descricao;
+}
+
+function _feedFmtTime(dt) {
+  if (!dt) return '';
+  const d = new Date(dt);
+  return d.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
+    .replace(',', ' ·');
+}
+
 async function _renderFeed() {
   try {
     const res = await fetch('/api/contabil/feed?limit=30');
@@ -86,15 +123,23 @@ async function _renderFeed() {
       list.innerHTML = '<div class="ctb-feed-empty">Sem atividade recente</div>';
       return;
     }
-    list.innerHTML = items.map(i => `
-      <div class="ctb-feed-item">
-        <span class="ctb-feed-dot ${i.tipo}"></span>
-        <span class="ctb-feed-text">
-          ${i.empresa_nome ? `<strong>${i.empresa_nome}</strong> — ` : ''}${i.descricao}
-        </span>
-        <span class="ctb-feed-time">${_ctbFmt(i.criado_em)}</span>
-      </div>
-    `).join('');
+    list.innerHTML = `<div class="ctb-timeline">${items.map(i => {
+      const meta = _feedMeta[i.tipo] || { icon: '•', label: i.tipo };
+      const desc = _feedSimplificarDescricao(i.tipo, i.descricao);
+      const empresa = i.empresa_nome ? `<strong>${i.empresa_nome}</strong> — ` : '';
+      return `
+        <div class="ctb-tl-item">
+          <div class="ctb-tl-dot ${i.tipo}"></div>
+          <div class="ctb-tl-card ${i.tipo}">
+            <div class="ctb-tl-top">
+              <span class="ctb-tl-icon">${meta.icon}</span>
+              <span class="ctb-tl-label">${meta.label}</span>
+              <span class="ctb-tl-time">${_feedFmtTime(i.criado_em)}</span>
+            </div>
+            <div class="ctb-tl-text">${empresa}${desc}</div>
+          </div>
+        </div>`;
+    }).join('')}</div>`;
   } catch (e) {
     console.error('[ctb] feed error', e);
   }
@@ -270,11 +315,14 @@ window.ctbEmpresas = (() => {
     const btn = document.getElementById('btnCtbSalvarEmpresa');
     if (btn) { btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Salvar e Enviar Boas-Vindas'; }
     ['ctbEmpNome','ctbEmpCnpj','ctbEmpIe','ctbEmpCpf','ctbEmpRg',
-     'ctbEmpEndereco','ctbEmpCidade','ctbEmpUf','ctbEmpTelefone','ctbEmpEmail']
+     'ctbEmpCep','ctbEmpEndereco','ctbEmpNumero','ctbEmpBairro',
+     'ctbEmpCidade','ctbEmpUf','ctbEmpTelefone','ctbEmpEmail']
       .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     document.getElementById('ctbEmpRegime').value = 'simples_nacional';
     const al = document.getElementById('alertCtbEmpForm');
     if (al) al.style.display = 'none';
+    const bv = document.getElementById('btnCtbReenviarBV');
+    if (bv) bv.style.display = 'none';
     _abrirModalEmpresa();
   }
 
@@ -289,17 +337,23 @@ window.ctbEmpresas = (() => {
       document.getElementById('ctbEmpIe').value   = e.ie || '';
       document.getElementById('ctbEmpCpf').value  = e.cpf || '';
       document.getElementById('ctbEmpRg').value   = e.rg || '';
-      document.getElementById('ctbEmpEndereco').value = e.endereco || '';
-      document.getElementById('ctbEmpCidade').value   = e.cidade || '';
-      document.getElementById('ctbEmpUf').value   = e.uf || '';
-      document.getElementById('ctbEmpTelefone').value = e.telefone || '';
-      document.getElementById('ctbEmpEmail').value    = e.email || '';
-      document.getElementById('ctbEmpRegime').value   = e.regime_tributario || 'simples_nacional';
+      document.getElementById('ctbEmpCep').value  = e.cep || '';
+      document.getElementById('ctbEmpEndereco').value    = e.endereco || '';
+      document.getElementById('ctbEmpNumero').value      = e.numero_endereco || '';
+      document.getElementById('ctbEmpBairro').value      = e.bairro || '';
+      document.getElementById('ctbEmpCidade').value      = e.cidade || '';
+      document.getElementById('ctbEmpUf').value          = e.uf || '';
+      document.getElementById('ctbEmpTelefone').value    = e.telefone || '';
+      document.getElementById('ctbEmpEmail').value       = e.email || '';
+      document.getElementById('ctbEmpRegime').value      = e.regime_tributario || 'simples_nacional';
       document.getElementById('ctbEmpFormTitulo').textContent = 'Editar Empresa';
       const btn = document.getElementById('btnCtbSalvarEmpresa');
       if (btn) { btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Salvar Alterações'; }
       const al = document.getElementById('alertCtbEmpForm');
       if (al) al.style.display = 'none';
+      // Mostra botão de reenviar boas-vindas só no modo edição
+      const bv = document.getElementById('btnCtbReenviarBV');
+      if (bv) bv.style.display = 'flex';
       _abrirModalEmpresa();
     } catch (e) {
       console.error('[ctb] editar empresa', e);
@@ -319,7 +373,10 @@ window.ctbEmpresas = (() => {
       ie:      document.getElementById('ctbEmpIe').value.trim() || null,
       cpf:     document.getElementById('ctbEmpCpf').value.trim() || null,
       rg:      document.getElementById('ctbEmpRg').value.trim() || null,
+      cep:     document.getElementById('ctbEmpCep').value.replace(/\D/g,'') || null,
       endereco: document.getElementById('ctbEmpEndereco').value.trim() || null,
+      numero_endereco: document.getElementById('ctbEmpNumero').value.trim() || null,
+      bairro:  document.getElementById('ctbEmpBairro').value.trim() || null,
       cidade:  document.getElementById('ctbEmpCidade').value.trim() || null,
       uf:      document.getElementById('ctbEmpUf').value.trim().toUpperCase() || null,
       telefone,
@@ -358,7 +415,85 @@ window.ctbEmpresas = (() => {
     }
   }
 
-  return { carregar, buscar, novaEmpresa, fecharModal, editar, salvar, excluir };
+  // ── Busca CEP via ViaCEP (gratuito, sem chave) ────────────────────────────
+  async function buscarCep() {
+    const raw = (document.getElementById('ctbEmpCep')?.value || '').replace(/\D/g, '');
+    if (raw.length !== 8) return;
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${raw}/json/`);
+      if (!res.ok) return;
+      const d = await res.json();
+      if (d.erro) { _ctbAlert('alertCtbEmpForm', 'CEP não encontrado.'); return; }
+      const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+      set('ctbEmpEndereco', d.logradouro);
+      set('ctbEmpBairro',   d.bairro);
+      set('ctbEmpCidade',   d.localidade);
+      set('ctbEmpUf',       d.uf?.toUpperCase());
+      // Focar no campo Número após auto-preenchimento
+      document.getElementById('ctbEmpNumero')?.focus();
+    } catch (e) {
+      console.warn('[ctb] ViaCEP erro', e);
+    }
+  }
+
+  // ── Busca CNPJ via BrasilAPI (gratuito, sem chave) ────────────────────────
+  async function buscarCnpj() {
+    const raw = (document.getElementById('ctbEmpCnpj')?.value || '').replace(/\D/g, '');
+    if (raw.length !== 14) { _ctbAlert('alertCtbEmpForm', 'Digite o CNPJ completo antes de buscar.'); return; }
+    try {
+      const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${raw}`);
+      if (!res.ok) { _ctbAlert('alertCtbEmpForm', 'CNPJ não encontrado na Receita Federal.'); return; }
+      const d = await res.json();
+      const set = (id, val) => { const el = document.getElementById(id); if (el && val != null && String(val).trim()) el.value = String(val).trim(); };
+      set('ctbEmpNome',     d.razao_social || d.nome_fantasia);
+      set('ctbEmpIe',       d.inscricao_estadual);
+      set('ctbEmpCep',      (d.cep || '').replace(/\D/g,''));
+      set('ctbEmpEndereco', d.logradouro);
+      set('ctbEmpNumero',   d.numero);
+      set('ctbEmpBairro',   d.bairro);
+      set('ctbEmpCidade',   d.municipio);
+      set('ctbEmpUf',       (d.uf || '').toUpperCase());
+      set('ctbEmpEmail',    d.email);
+      // Regime tributário
+      const natureza = (d.natureza_juridica || '').toLowerCase();
+      const porte = (d.porte || '').toLowerCase();
+      let regime = 'outro';
+      if (porte.includes('mei')) regime = 'mei';
+      else if (porte.includes('micro') || porte.includes('pequeno')) regime = 'simples_nacional';
+      const regimeEl = document.getElementById('ctbEmpRegime');
+      if (regimeEl && regime) regimeEl.value = regime;
+      _ctbAlert('alertCtbEmpForm', `Dados preenchidos: ${d.razao_social || ''}`, 'success');
+    } catch (e) {
+      _ctbAlert('alertCtbEmpForm', 'Erro ao consultar CNPJ. Tente novamente.');
+      console.warn('[ctb] BrasilAPI CNPJ erro', e);
+    }
+  }
+
+  // ── Reenviar boas-vindas ──────────────────────────────────────────────────
+  async function reenviarBoasVindas() {
+    const id = document.getElementById('ctbEmpId')?.value;
+    if (!id) return;
+    const btn = document.getElementById('btnCtbReenviarBV');
+    if (btn) { btn.disabled = true; btn.textContent = '...'; }
+    try {
+      const res = await fetch(`/api/contabil/empresas/${id}/reenviar-boasvindas`, { method: 'POST' });
+      const d = await res.json().catch(() => ({}));
+      if (res.ok) {
+        _ctbAlert('alertCtbEmpForm', '✅ Boas-vindas enviadas com sucesso!', 'success');
+      } else {
+        _ctbAlert('alertCtbEmpForm', d.detail || 'Erro ao reenviar boas-vindas.');
+      }
+    } catch (e) {
+      _ctbAlert('alertCtbEmpForm', 'Erro de conexão ao reenviar.');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Reenviar';
+      }
+    }
+  }
+
+  return { carregar, buscar, novaEmpresa, fecharModal, editar, salvar, excluir, buscarCep, buscarCnpj, reenviarBoasVindas };
 })();
 
 
@@ -540,14 +675,17 @@ window.ctbManual = (() => {
       if (d.arquivo_path && d.arquivo_mime) {
         const url = `/api/contabil/documentos/${docId}/arquivo`;
         if (d.arquivo_mime.startsWith('image/')) {
-          wrap.innerHTML = `<img src="${url}" style="max-width:100%;max-height:280px;border-radius:8px;object-fit:contain" alt="NF">`;
+          wrap.innerHTML = `<img src="${url}" style="max-width:100%;max-height:80vh;border-radius:6px;object-fit:contain;box-shadow:0 4px 20px rgba(0,0,0,.5)" alt="Documento fiscal">`;
         } else {
-          wrap.innerHTML = `<a href="${url}" target="_blank" class="btn btn-ghost btn-sm">
-            📄 Abrir arquivo (${d.arquivo_nome || 'documento'})
-          </a>`;
+          wrap.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;gap:1rem;padding:2rem">
+            <span style="font-size:3rem">📄</span>
+            <a href="${url}" target="_blank" class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)">
+              Abrir ${d.arquivo_nome || 'documento'}
+            </a>
+          </div>`;
         }
       } else {
-        wrap.innerHTML = `<span style="color:var(--text-light);font-size:.8rem">Arquivo não disponível</span>`;
+        wrap.innerHTML = `<span style="color:#888;font-size:.85rem">Arquivo não disponível</span>`;
       }
 
       // Popula a partir dos dados OCR ou manual
@@ -573,7 +711,8 @@ window.ctbManual = (() => {
       console.error('[ctb] abrir manual', e);
     }
 
-    openModal('modalCtbManual');
+    const m = document.getElementById('modalCtbManual');
+    if (m) m.classList.add('open');
   }
 
   function _set(id, val) {
@@ -607,38 +746,64 @@ window.ctbManual = (() => {
 
   async function salvar() {
     const docId = document.getElementById('ctbManualDocId').value;
+    if (!docId) return;
     const body = _coletarDados();
-    const res = await fetch(`/api/contabil/documentos/${docId}/manual`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (res.ok) {
-      closeModal('modalCtbManual');
-      ctbDashboard.reload();
-      ctbArquivos.filtrarDocs?.();
-    } else {
-      _ctbAlert('alertCtbManual', 'Erro ao salvar revisão.');
+    try {
+      const res = await fetch(`/api/contabil/documentos/${docId}/manual`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        fechar();
+        if (window.ctbDashboard) ctbDashboard.reload();
+        if (window.ctbArquivos) ctbArquivos.filtrarDocs?.();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        _ctbAlert('alertCtbManual', `Erro ao salvar: ${err.detail || res.status}`);
+      }
+    } catch (e) {
+      _ctbAlert('alertCtbManual', `Erro de conexão: ${e.message}`);
     }
   }
 
   async function aprovar() {
     const docId = document.getElementById('ctbManualDocId').value;
-    // Salva primeiro, depois aprova
+    if (!docId) return;
     const body = _coletarDados();
-    await fetch(`/api/contabil/documentos/${docId}/manual`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    const res = await fetch(`/api/contabil/documentos/${docId}/aprovar`, { method: 'PUT' });
-    if (res.ok) {
-      closeModal('modalCtbManual');
-      ctbDashboard.reload();
-    } else {
-      _ctbAlert('alertCtbManual', 'Erro ao aprovar documento.');
+    try {
+      const r1 = await fetch(`/api/contabil/documentos/${docId}/manual`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!r1.ok) {
+        const err = await r1.json().catch(() => ({}));
+        _ctbAlert('alertCtbManual', `Erro ao salvar: ${err.detail || r1.status}`);
+        return;
+      }
+      const r2 = await fetch(`/api/contabil/documentos/${docId}/aprovar`, { method: 'PUT' });
+      if (r2.ok) {
+        fechar();
+        if (window.ctbDashboard) ctbDashboard.reload();
+        if (window.ctbArquivos) ctbArquivos.filtrarDocs?.();
+      } else {
+        _ctbAlert('alertCtbManual', 'Erro ao aprovar documento.');
+      }
+    } catch (e) {
+      _ctbAlert('alertCtbManual', `Erro de conexão: ${e.message}`);
     }
   }
 
-  return { abrir, salvar, aprovar };
+  function fechar() {
+    const m = document.getElementById('modalCtbManual');
+    if (m) m.classList.remove('open');
+  }
+
+  // Fecha ao clicar fora do conteúdo
+  document.addEventListener('click', e => {
+    if (e.target && e.target.dataset && e.target.dataset.close === 'modalCtbManual') fechar();
+  });
+
+  return { abrir, fechar, salvar, aprovar };
 })();
 
 

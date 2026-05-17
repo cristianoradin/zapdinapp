@@ -52,6 +52,9 @@ class EmpresaContabilCreate(BaseModel):
     cpf: Optional[str] = None
     rg: Optional[str] = None
     endereco: Optional[str] = None
+    numero_endereco: Optional[str] = None
+    bairro: Optional[str] = None
+    cep: Optional[str] = None
     cidade: Optional[str] = None
     uf: Optional[str] = None
     telefone: str
@@ -80,7 +83,7 @@ class DadosManuaisNF(BaseModel):
     chave_acesso: Optional[str] = None
     numero_nf: Optional[str] = None
     serie: Optional[str] = None
-    data_emissao: Optional[str] = None
+    data_emissao: Optional[date] = None
     natureza_operacao: Optional[str] = None
     emitente_nome: Optional[str] = None
     emitente_cnpj: Optional[str] = None
@@ -113,7 +116,10 @@ async def _enviar_boas_vindas(empresa_id: int, telefone: str, nome: str, db) -> 
     try:
         from ..main import wa_manager
         sessoes = list(wa_manager._sessions.values())
-        if not sessoes:
+        # Prefere sessão conectada; qualquer sessão como fallback
+        sessao = next((s for s in sessoes if getattr(s, "status", "") == "connected"), None) \
+                 or (sessoes[0] if sessoes else None)
+        if not sessao:
             # Sem sessão WA: enfileirar para reenvio futuro
             await db.execute(
                 "INSERT INTO contabil_wa_pendentes(empresa_id, telefone, nome) VALUES(?,?,?)",
@@ -126,17 +132,20 @@ async def _enviar_boas_vindas(empresa_id: int, telefone: str, nome: str, db) -> 
             )
             return
 
-        await _entregar_boas_vindas(empresa_id, telefone, nome, db, sessoes[0])
+        await _entregar_boas_vindas(empresa_id, telefone, nome, db, wa_manager, sessao)
 
     except Exception as e:
         logger.error("[contabil] Erro ao enviar boas-vindas: %s", e)
 
 
-async def _entregar_boas_vindas(empresa_id: int, telefone: str, nome: str, db, sessao) -> None:
-    """Faz o envio real e marca no banco. Reutilizado pelo worker."""
+async def _entregar_boas_vindas(empresa_id: int, telefone: str, nome: str, db, wa_manager, sessao) -> None:
+    """Faz o envio real via wa_manager (compatível com Playwright e Evolution)."""
     phone_wa = "55" + telefone if not telefone.startswith("55") else telefone
     msg = _MSG_BOAS_VINDAS.format(nome=nome)
-    await sessao.send_text(phone_wa, msg)
+    # Usa wa_manager.send_text que funciona para ambos os backends
+    ok, err = await wa_manager.send_text(sessao.session_id, sessao.empresa_id, phone_wa, msg)
+    if not ok:
+        raise RuntimeError(f"Falha ao enviar WA: {err}")
 
     await db.execute(
         "UPDATE empresas_contabil SET boas_vindas_enviadas=TRUE WHERE id=?",
@@ -157,7 +166,8 @@ async def processar_boasvindas_pendentes(wa_manager, get_db_direct) -> int:
     if not sessoes:
         return 0  # ainda sem sessão, não faz nada
 
-    sessao = sessoes[0]
+    # Prefere sessão conectada
+    sessao = next((s for s in sessoes if getattr(s, "status", "") == "connected"), sessoes[0])
     enviados = 0
 
     async with get_db_direct() as db:
@@ -174,7 +184,7 @@ async def processar_boasvindas_pendentes(wa_manager, get_db_direct) -> int:
                 row["nome"], row["tentativas"],
             )
             try:
-                await _entregar_boas_vindas(empresa_id, telefone, nome, db, sessao)
+                await _entregar_boas_vindas(empresa_id, telefone, nome, db, wa_manager, sessao)
                 await db.execute(
                     "UPDATE contabil_wa_pendentes SET status='enviado', enviado_em=NOW() WHERE id=?",
                     (pid,),
@@ -242,10 +252,12 @@ async def criar_empresa(
 
     async with db.execute(
         """INSERT INTO empresas_contabil
-           (nome, cnpj, ie, cpf, rg, endereco, cidade, uf, telefone, email, regime_tributario)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+           (nome, cnpj, ie, cpf, rg, endereco, numero_endereco, bairro, cep,
+            cidade, uf, telefone, email, regime_tributario)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (body.nome, body.cnpj, body.ie, body.cpf, body.rg,
-         body.endereco, body.cidade, body.uf, body.telefone,
+         body.endereco, body.numero_endereco, body.bairro, body.cep,
+         body.cidade, body.uf, body.telefone,
          body.email, body.regime_tributario)
     ) as cur:
         empresa_id = cur.lastrowid
@@ -283,8 +295,8 @@ async def atualizar_empresa(
     user=Depends(get_current_user),
 ):
     fields, params = [], []
-    for f in ["nome", "cnpj", "ie", "cpf", "rg", "endereco", "cidade", "uf",
-              "telefone", "email", "regime_tributario"]:
+    for f in ["nome", "cnpj", "ie", "cpf", "rg", "endereco", "numero_endereco",
+              "bairro", "cep", "cidade", "uf", "telefone", "email", "regime_tributario"]:
         val = getattr(body, f, None)
         if val is not None:
             fields.append(f"{f}=?")
@@ -308,11 +320,39 @@ async def deletar_empresa(
     await db.commit()
 
 
+@router.post("/empresas/{empresa_id}/reenviar-boasvindas")
+async def reenviar_boasvindas(
+    empresa_id: int,
+    bg: BackgroundTasks,
+    db=Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Reenvia a mensagem de boas-vindas via WhatsApp para a empresa."""
+    async with db.execute(
+        "SELECT nome, telefone FROM empresas_contabil WHERE id=?", (empresa_id,)
+    ) as cur:
+        row = await cur.fetchone()
+    if not row:
+        raise HTTPException(404, "Empresa não encontrada.")
+
+    nome, telefone = row["nome"], row["telefone"]
+
+    # Reseta flag para que o reenvio seja registrado corretamente
+    await db.execute(
+        "UPDATE empresas_contabil SET boas_vindas_enviadas=FALSE WHERE id=?",
+        (empresa_id,),
+    )
+    await db.commit()
+
+    bg.add_task(_enviar_boas_vindas, empresa_id, telefone, nome, db)
+    return {"ok": True, "mensagem": f"Reenvio de boas-vindas agendado para {nome}."}
+
+
 # ── Dashboard (3 cards + tabela de docs recentes) ────────────────────────────
 
 @router.get("/dashboard")
 async def dashboard(db=Depends(get_db), user=Depends(get_current_user)):
-    hoje = date.today().isoformat()
+    hoje = date.today()  # asyncpg exige date object, não string isoformat
 
     async with db.execute(
         "SELECT COUNT(*) AS total FROM documentos_fiscais WHERE created_at::date = ?", (hoje,)
@@ -436,7 +476,10 @@ async def entrada_manual(
     dest_cnpj = dados.get("destinatario_cnpj")
     chave = dados.get("chave_acesso")
     numero = dados.get("numero_nf")
-    data_emis = dados.get("data_emissao")
+    data_emis = dados.get("data_emissao")  # já é date (do Pydantic)
+
+    # JSON não serializa date — converte para string antes de salvar como JSON
+    dados_json = {k: (v.isoformat() if isinstance(v, date) else v) for k, v in dados.items()}
 
     await db.execute(
         """UPDATE documentos_fiscais SET
@@ -444,10 +487,10 @@ async def entrada_manual(
             numero_nf=COALESCE(?,numero_nf), emitente_nome=COALESCE(?,emitente_nome),
             emitente_cnpj=COALESCE(?,emitente_cnpj), destinatario_nome=COALESCE(?,destinatario_nome),
             destinatario_cnpj=COALESCE(?,destinatario_cnpj),
-            valor_total=COALESCE(?,valor_total), data_emissao=COALESCE(?::date,data_emissao),
+            valor_total=COALESCE(?,valor_total), data_emissao=COALESCE(?,data_emissao),
             updated_at=NOW()
            WHERE id=?""",
-        (json.dumps(dados, ensure_ascii=False), chave, numero,
+        (json.dumps(dados_json, ensure_ascii=False), chave, numero,
          emitente_nome, emitente_cnpj, dest_nome, dest_cnpj,
          valor_total, data_emis, doc_id)
     )
@@ -621,21 +664,87 @@ async def feed_atividade(
 
 
 @router.get("/ai-status")
-async def ai_status(user=Depends(get_current_user)):
-    """Verifica se a IA (OpenAI) está configurada e acessível."""
+async def ai_status(provider: str = "openai", user=Depends(get_current_user)):
+    """Verifica se o provider de IA está configurado e acessível."""
     from ..core.config import settings
     import httpx
 
-    api_key = getattr(settings, "openai_api_key", "") or ""
-    if not api_key:
-        return {"ativa": False, "motivo": "OpenAI API key não configurada"}
+    provider = provider.lower().strip()
 
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            r = await client.get(
-                "https://api.openai.com/v1/models",
-                headers={"Authorization": f"Bearer {api_key}"},
-            )
-        return {"ativa": r.status_code == 200}
-    except Exception as e:
-        return {"ativa": False, "motivo": str(e)}
+    if provider == "openai":
+        api_key = getattr(settings, "openai_api_key", "") or ""
+        if not api_key:
+            return {"ativa": False, "motivo": "OpenAI API key não configurada"}
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                r = await client.get(
+                    "https://api.openai.com/v1/models",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                )
+            if r.status_code == 200:
+                return {"ativa": True}
+            return {"ativa": False, "motivo": f"HTTP {r.status_code}"}
+        except Exception as e:
+            return {"ativa": False, "motivo": str(e)}
+
+    elif provider == "gemini":
+        api_key = getattr(settings, "gemini_api_key", "") or ""
+        if not api_key:
+            return {"ativa": False, "motivo": "Gemini API key não configurada"}
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                r = await client.get(
+                    f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}",
+                )
+            if r.status_code == 200:
+                return {"ativa": True}
+            detail = r.json().get("error", {}).get("message", f"HTTP {r.status_code}")
+            return {"ativa": False, "motivo": detail}
+        except Exception as e:
+            return {"ativa": False, "motivo": str(e)}
+
+    elif provider == "anthropic":
+        api_key = getattr(settings, "anthropic_api_key", "") or ""
+        if not api_key:
+            return {"ativa": False, "motivo": "Anthropic API key não configurada"}
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                r = await client.post(
+                    "https://api.anthropic.com/v1/messages",
+                    headers={
+                        "x-api-key": api_key,
+                        "anthropic-version": "2023-06-01",
+                        "content-type": "application/json",
+                    },
+                    json={
+                        "model": "claude-haiku-4-5",
+                        "max_tokens": 1,
+                        "messages": [{"role": "user", "content": "hi"}],
+                    },
+                )
+            # 200 = ok, 400 com erro de validação ainda significa chave válida
+            if r.status_code in (200, 400):
+                return {"ativa": True}
+            detail = r.json().get("error", {}).get("message", f"HTTP {r.status_code}")
+            return {"ativa": False, "motivo": detail}
+        except Exception as e:
+            return {"ativa": False, "motivo": str(e)}
+
+    elif provider == "groq":
+        api_key = getattr(settings, "groq_api_key", "") or ""
+        if not api_key:
+            return {"ativa": False, "motivo": "Groq API key não configurada"}
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                r = await client.get(
+                    "https://api.groq.com/openai/v1/models",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                )
+            if r.status_code == 200:
+                return {"ativa": True}
+            detail = r.json().get("error", {}).get("message", f"HTTP {r.status_code}")
+            return {"ativa": False, "motivo": detail}
+        except Exception as e:
+            return {"ativa": False, "motivo": str(e)}
+
+    return {"ativa": False, "motivo": f"Provider desconhecido: {provider}"}

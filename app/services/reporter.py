@@ -325,6 +325,7 @@ async def _loop() -> None:
     _cleanup_tick = 0
     _CLEANUP_INTERVAL = 2880  # 30s × 2880 = 24 horas
     _SESSION_CLEANUP_INTERVAL = 720  # 30s × 720 = 6 horas
+    _OCR_INTERVAL = 2  # 30s × 2 = 1 minuto
 
     while True:
         await _send_heartbeat()
@@ -334,6 +335,13 @@ async def _loop() -> None:
             asyncio.create_task(_cleanup_old_files())  # roda em paralelo — não bloqueia heartbeat
         if _cleanup_tick % _SESSION_CLEANUP_INTERVAL == 0:
             asyncio.create_task(_cleanup_invalidated_sessions())  # M3: limpeza de sessões expiradas
+        if _cleanup_tick % _OCR_INTERVAL == 0:
+            # Processa fila OCR pendente a cada ~1 minuto
+            try:
+                from .ocr_service import processar_fila_ocr
+                asyncio.create_task(processar_fila_ocr())
+            except Exception:
+                pass
         await asyncio.sleep(30)
 
 

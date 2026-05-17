@@ -521,13 +521,17 @@ class EvoManager:
             elif state:
                 sess.on_connection_update(state, phone)
 
-        elif event in ("LOGGED_OUT", "LOGOUT"):
+        elif event in ("LOGGED_OUT", "LOGOUT", "LOGOUT_INSTANCE"):
             # Evento explícito de logout (algumas versões da Evolution API enviam assim)
             sess.on_logout()
 
         elif event == "DISCONNECTED":
             # Queda de rede — NÃO é logout real, tenta reconectar
             sess.on_connection_update("close")
+
+        elif event == "MESSAGES_UPSERT":
+            # Nova mensagem recebida — rota para o módulo contábil se for mídia de cliente
+            asyncio.create_task(self._processar_mensagem_contabil(inst, data))
 
     # ─────────────────────────────────────────────────────────────────────────
     #  Provisiona instância + webhook na Evolution API
@@ -547,8 +551,10 @@ class EvoManager:
             "events":   [
                 "QRCODE_UPDATED",
                 "CONNECTION_UPDATE",
-                "DISCONNECTED",
-                "LOGGED_OUT",
+                "LOGOUT_INSTANCE",
+                "MESSAGES_UPSERT",
+                "MESSAGES_UPDATE",
+                "SEND_MESSAGE",
             ],
         }
         try:
@@ -754,6 +760,159 @@ class EvoManager:
 
     def schedule_status_check(self, arquivo_id, session_id, empresa_id, phone):
         pass   # reservado para uso futuro
+
+    async def _processar_mensagem_contabil(self, inst: str, data: dict) -> None:
+        """
+        Processa MESSAGES_UPSERT: se o remetente for cliente cadastrado em
+        empresas_contabil e enviou mídia (imagem ou PDF), baixa e enfileira OCR.
+        """
+        import uuid as _uuid
+        import base64 as _b64
+        from pathlib import Path
+
+        try:
+            key = data.get("key") or {}
+            if key.get("fromMe"):
+                return  # ignora mensagens enviadas pelo próprio sistema
+
+            remote_jid = key.get("remoteJid") or ""
+            if "@g.us" in remote_jid:
+                return  # ignora grupos
+
+            msg_type = data.get("messageType") or ""
+            msg      = data.get("message") or {}
+
+            # Tipos de mídia aceitos como documento fiscal
+            _MEDIA_TYPES = {
+                "imageMessage", "documentMessage",
+                "documentWithCaptionMessage", "ptvMessage",
+            }
+            if msg_type not in _MEDIA_TYPES and not any(k in msg for k in _MEDIA_TYPES):
+                return  # mensagem de texto simples — ignora
+
+            # Extrai número do remetente
+            # Evolution pode usar @lid (novo formato) ou @s.whatsapp.net (formato padrão)
+            # Se for @lid, usa remoteJidAlt que contém o número real
+            if "@lid" in remote_jid:
+                alt_jid = key.get("remoteJidAlt") or ""
+                effective_jid = alt_jid if alt_jid else remote_jid
+            else:
+                effective_jid = remote_jid
+
+            phone_full  = effective_jid.split("@")[0]   # ex: "5544991099797"
+            phone_local = phone_full[2:] if phone_full.startswith("55") else phone_full
+
+            # Busca empresa pelo telefone — tenta 3 variantes de formato
+            # WA pode entregar em formato antigo (10 dig) ou novo (11 dig)
+            # DB pode ter qualquer um dos dois formatos
+            variantes = [phone_local]
+            if len(phone_local) == 10:
+                # formato antigo (DDD+8) → tenta novo (DDD+9+8)
+                variantes.append(phone_local[:2] + "9" + phone_local[2:])
+            elif len(phone_local) == 11 and phone_local[2] == "9":
+                # formato novo (DDD+9+8) → tenta antigo (DDD+8)
+                variantes.append(phone_local[:2] + phone_local[3:])
+
+            from ..core.database import get_db_direct
+            async with get_db_direct() as db:
+                empresa = None
+                for variante in variantes:
+                    async with db.execute(
+                        "SELECT id, nome FROM empresas_contabil WHERE telefone=? AND ativo=TRUE",
+                        (variante,)
+                    ) as cur:
+                        empresa = await cur.fetchone()
+                    if empresa:
+                        break
+
+                if not empresa:
+                    logger.debug(
+                        "[contabil] MESSAGES_UPSERT de %s — não é cliente contábil cadastrado",
+                        phone_local
+                    )
+                    return
+
+                empresa_id   = empresa["id"]
+                empresa_nome = empresa["nome"]
+
+                # ── Download da mídia via Evolution API ──────────────────────────
+                # O endpoint espera {"message": {"key": ..., "message": ...}}
+                async with httpx.AsyncClient(timeout=60.0) as client:
+                    r = await client.post(
+                        _url(f"chat/getBase64FromMediaMessage/{inst}"),
+                        json={"message": {"key": key, "message": msg}, "convertToMp4": False},
+                        headers=_h(),
+                    )
+
+                if r.status_code not in (200, 201):
+                    logger.warning(
+                        "[contabil] Falha ao baixar mídia (HTTP %s) de %s",
+                        r.status_code, phone_local
+                    )
+                    return
+
+                media_resp = r.json()
+                b64_data   = media_resp.get("base64") or media_resp.get("data") or ""
+                if not b64_data:
+                    logger.warning("[contabil] Mídia sem base64 de %s", phone_local)
+                    return
+
+                # ── Determina tipo e extensão ─────────────────────────────────────
+                if msg_type == "imageMessage":
+                    img_msg  = msg.get("imageMessage") or {}
+                    mime     = img_msg.get("mimetype") or "image/jpeg"
+                    ext      = ".jpg" if "jpeg" in mime else ".png"
+                    nome_arq = f"wa_{_uuid.uuid4().hex}{ext}"
+                else:
+                    doc_msg  = (msg.get("documentMessage")
+                                or (msg.get("documentWithCaptionMessage") or {})
+                                   .get("message", {}).get("documentMessage") or {})
+                    mime     = doc_msg.get("mimetype") or "application/octet-stream"
+                    title    = doc_msg.get("title") or doc_msg.get("fileName") or "doc"
+                    raw_ext  = os.path.splitext(title)[1]
+                    ext      = raw_ext if raw_ext else (".pdf" if "pdf" in mime else ".bin")
+                    nome_arq = f"wa_{_uuid.uuid4().hex}{ext}"
+
+                # ── Salva em disco ────────────────────────────────────────────────
+                upload_dir = Path("data/contabil_docs")
+                upload_dir.mkdir(parents=True, exist_ok=True)
+                dest_path  = str(upload_dir / nome_arq)
+                with open(dest_path, "wb") as fh:
+                    fh.write(_b64.b64decode(b64_data))
+
+                # ── Insere documento_fiscal e enfileira OCR ───────────────────────
+                async with db.execute(
+                    """INSERT INTO documentos_fiscais
+                       (empresa_id, status, origem_wa, arquivo_path, arquivo_mime, arquivo_nome)
+                       VALUES (?, 'ocr_pendente', ?, ?, ?, ?)""",
+                    (empresa_id, phone_full, dest_path, mime, nome_arq)
+                ) as cur:
+                    doc_id = cur.lastrowid
+                await db.commit()
+
+                await db.execute(
+                    "INSERT INTO ocr_jobs(documento_id) VALUES(?) ON CONFLICT DO NOTHING",
+                    (doc_id,)
+                )
+                await db.execute(
+                    "INSERT INTO contabil_feed(empresa_id, documento_id, tipo, descricao)"
+                    " VALUES(?,?,?,?)",
+                    (empresa_id, doc_id, "recebido",
+                     f"Documento recebido de {empresa_nome} via WhatsApp")
+                )
+                await db.commit()
+
+                logger.info(
+                    "[contabil] Documento #%s recebido de %s (%s) — OCR enfileirado",
+                    doc_id, empresa_nome, phone_local
+                )
+
+                # ── Dispara OCR em background ─────────────────────────────────────
+                from ..services.ocr_service import extrair_dados_fiscal
+                asyncio.create_task(extrair_dados_fiscal(doc_id, dest_path))
+
+        except Exception as exc:
+            logger.error("[contabil] Erro ao processar MESSAGES_UPSERT: %s", exc, exc_info=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

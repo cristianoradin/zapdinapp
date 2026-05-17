@@ -666,6 +666,9 @@ async def init_db() -> None:
                 cpf              TEXT,
                 rg               TEXT,
                 endereco         TEXT,
+                numero_endereco  TEXT,
+                bairro           TEXT,
+                cep              TEXT,
                 cidade           TEXT,
                 uf               TEXT,
                 telefone         TEXT NOT NULL,
@@ -777,11 +780,25 @@ async def init_db() -> None:
             ("004_dba_improvements",  "DBA: índices extras, CHECK constraints, updated_at"),
             ("005_contabil",          "Módulo Contábil: empresas_contabil, documentos_fiscais, ocr_jobs, contabil_feed"),
             ("006_ctb_wa_pendentes",  "Fila de boas-vindas WA pendentes para empresas contábil"),
+            ("007_ctb_address_fields", "Campos CEP, numero_endereco e bairro em empresas_contabil"),
         ]:
             await conn.execute(
                 "INSERT INTO schema_migrations(version, descricao) VALUES($1,$2) "
                 "ON CONFLICT(version) DO NOTHING",
                 _ver, _desc,
             )
+
+        # ── Migration 007: adicionar cep, numero_endereco, bairro em empresas_contabil ──
+        for _col, _type in [
+            ("cep",             "TEXT"),
+            ("numero_endereco", "TEXT"),
+            ("bairro",          "TEXT"),
+        ]:
+            try:
+                await conn.execute(
+                    f"ALTER TABLE empresas_contabil ADD COLUMN IF NOT EXISTS {_col} {_type}"
+                )
+            except Exception:
+                pass  # coluna já existe — ignorar
 
         logger.info("[db] Schema DBA inicializado — índices, constraints e migrations ok")

@@ -19,6 +19,7 @@
     'ctb-dashboard':  'Gestão de Documentos',
     'ctb-empresas':   'Cadastro de Empresas',
     'ctb-arquivos':   'Gestão de Arquivos',
+    'sistema':        'Sistema',
   };
   function _setTopbarPage(p) {
     const label = pages[p] || p;
@@ -68,18 +69,33 @@
     } catch { /* silencioso */ }
   }
 
-  // ── Status da IA (OpenAI) ─────────────────────────────────────────────────────
+  // ── Status da IA (provider ativo) ────────────────────────────────────────────
   async function _updateAiStatus() {
     const pill = document.getElementById('topbarAiPill');
     const txt  = document.getElementById('topbarAiText');
     if (!pill || !txt) return;
     try {
-      const res = await fetch('/api/contabil/ai-status');
+      // Descobre qual provider está ativo e se tem chave configurada
+      const keysRes = await fetch('/api/config/ai-keys');
+      if (!keysRes.ok) throw new Error('no keys');
+      const keys = await keysRes.json();
+      const provider = keys.provider_ativo || 'gemini';
+      const configurado = keys[provider]?.configurado;
+
+      if (!configurado) {
+        pill.classList.remove('active');
+        txt.textContent = 'IA sem chave';
+        return;
+      }
+
+      // Testa conectividade do provider ativo
+      const res = await fetch('/api/contabil/ai-status?provider=' + provider);
       if (res.ok) {
         const d = await res.json();
+        const nomes = { openai: 'OpenAI', gemini: 'Gemini', anthropic: 'Claude', groq: 'Groq' };
         if (d.ativa) {
           pill.classList.add('active');
-          txt.textContent = 'IA ativa';
+          txt.textContent = (nomes[provider] || provider) + ' ativo';
         } else {
           pill.classList.remove('active');
           txt.textContent = 'IA inativa';
@@ -90,7 +106,7 @@
       }
     } catch {
       pill.classList.remove('active');
-      txt.textContent = 'IA inativa';
+      txt.textContent = 'IA —';
     }
   }
 
@@ -876,6 +892,9 @@
     else if (page === 'dm-historico') { loadCampanhas(); loadWorkerStatus(); }
     else if (page === 'dm-enviadas') loadCampanhasEnviadas();
     else if (page === 'avaliacoes') loadAvaliacoes();
+    else if (page === 'ctb-dashboard') { if (window.ctbDashboard) ctbDashboard.reload(); }
+    else if (page === 'ctb-empresas')  { if (window.ctbEmpresas)  ctbEmpresas.carregar(); }
+    else if (page === 'ctb-arquivos')  { if (window.ctbArquivos)  ctbArquivos.carregar(); }
   }
 
   // ── Telegram ──────────────────────────────────────────────────────────────────
@@ -2754,7 +2773,7 @@
       _aiAtualizarTabs(d.provider_ativo || 'openai');
 
       // Carrega cada card
-      for (const p of ['openai', 'gemini', 'anthropic']) {
+      for (const p of ['openai', 'gemini', 'anthropic', 'groq']) {
         const info = d[p] || {};
         const inp  = document.getElementById('aiKey-' + p);
         if (!inp) continue;
@@ -2767,11 +2786,28 @@
           inp.setAttribute('data-preview', '0');
           _aiSetStatus(p, 'err', 'Não configurada');
         }
+        // Restaura pills de uso
+        const uso = info.uso || {};
+        _aiSetUsoPill(p, 'ocr',  uso.ocr  === true);
+        _aiSetUsoPill(p, 'chat', uso.chat === true);
       }
 
       // Destaca card do provedor ativo
       _aiDestacarCard(d.provider_ativo || 'openai');
     } catch {}
+  }
+
+  function _aiSetUsoPill(provider, uso, active) {
+    const el = document.getElementById('aiUso-' + provider + '-' + uso);
+    if (!el) return;
+    if (active) el.classList.add('on');
+    else        el.classList.remove('on');
+  }
+
+  function aiToggleUso(provider, uso) {
+    const el = document.getElementById('aiUso-' + provider + '-' + uso);
+    if (!el) return;
+    el.classList.toggle('on');
   }
 
   function _aiSetStatus(provider, type, text) {
@@ -2822,6 +2858,10 @@
     if (!key) { _aiShowAlert(provider, 'Digite a chave.', 'err'); return; }
     const r = await api('POST', '/api/config/ai-key', { provider, key });
     if (r.ok) {
+      // Salva também as preferências de uso
+      const ocr  = document.getElementById('aiUso-' + provider + '-ocr')?.classList.contains('on')  || false;
+      const chat = document.getElementById('aiUso-' + provider + '-chat')?.classList.contains('on') || false;
+      await api('POST', '/api/config/ai-uso', { provider, ocr, chat });
       _aiShowAlert(provider, '✓ Chave salva!', 'ok');
       inp.value = key.slice(0, 8) + '...' + key.slice(-4);
       inp.setAttribute('data-preview', '1');
@@ -2830,6 +2870,13 @@
     } else {
       _aiShowAlert(provider, r.detail || 'Erro ao salvar.', 'err');
     }
+  }
+
+  async function aiSalvarUso(provider) {
+    const ocr  = document.getElementById('aiUso-' + provider + '-ocr')?.classList.contains('on')  || false;
+    const chat = document.getElementById('aiUso-' + provider + '-chat')?.classList.contains('on') || false;
+    await api('POST', '/api/config/ai-uso', { provider, ocr, chat });
+    _aiShowAlert(provider, '✓ Preferência salva!', 'ok');
   }
 
   async function aiTestar(provider) {
@@ -2853,6 +2900,15 @@
       _aiDestacarCard(provider);
     }
   }
+
+  // ── Sistema — navegação interna ───────────────────────────────────────────────
+
+  function sysNav(el, panel) {
+    document.querySelectorAll('.sys-menu-item').forEach(i => i.classList.remove('active'));
+    document.querySelectorAll('.sys-panel').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    const target = document.getElementById('sys-panel-' + panel);
+    if (target) target.classList.add('active');
   }
 
   // ── Usuário ──────────────────────────────────────────────────────────────────

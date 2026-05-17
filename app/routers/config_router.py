@@ -66,6 +66,7 @@ _AI_PROVIDERS = {
     "openai":    {"env": "OPENAI_API_KEY",    "attr": "openai_api_key",    "prefix": "sk-"},
     "gemini":    {"env": "GEMINI_API_KEY",     "attr": "gemini_api_key",    "prefix": "AIza"},
     "anthropic": {"env": "ANTHROPIC_API_KEY",  "attr": "anthropic_api_key", "prefix": "sk-ant-"},
+    "groq":      {"env": "GROQ_API_KEY",       "attr": "groq_api_key",      "prefix": "gsk_"},
 }
 
 
@@ -106,14 +107,25 @@ class AIProviderBody(BaseModel):
     provider: str
 
 
+class AIUsoBody(BaseModel):
+    provider: str
+    ocr: bool = False
+    chat: bool = False
+
+
 @router.get("/ai-keys")
 async def get_ai_keys(user: dict = Depends(get_current_user)):
     """Retorna status de todos os provedores de IA + provedor ativo."""
+    def _uso(raw: str) -> dict:
+        parts = [p.strip() for p in (raw or "").split(",") if p.strip()]
+        return {"ocr": "ocr" in parts, "chat": "chat" in parts}
+
     return {
-        "provider_ativo": settings.ai_provider or "openai",
-        "openai":    _key_preview(settings.openai_api_key or ""),
-        "gemini":    _key_preview(settings.gemini_api_key or ""),
-        "anthropic": _key_preview(settings.anthropic_api_key or ""),
+        "provider_ativo": settings.ai_provider or "gemini",
+        "openai":    {**_key_preview(settings.openai_api_key or ""),    "uso": _uso(settings.ai_uso_openai)},
+        "gemini":    {**_key_preview(settings.gemini_api_key or ""),    "uso": _uso(settings.ai_uso_gemini)},
+        "anthropic": {**_key_preview(settings.anthropic_api_key or ""), "uso": _uso(settings.ai_uso_anthropic)},
+        "groq":      {**_key_preview(settings.groq_api_key or ""),      "uso": _uso(settings.ai_uso_groq)},
     }
 
 
@@ -138,6 +150,23 @@ async def set_ai_provider(body: AIProviderBody, user: dict = Depends(get_current
         raise HTTPException(400, f"Provedor inválido: {provider}")
     _update_env_key("AI_PROVIDER", provider)
     settings.ai_provider = provider
+    return {"ok": True}
+
+
+@router.post("/ai-uso")
+async def set_ai_uso(body: AIUsoBody, user: dict = Depends(get_current_user)):
+    """Salva para que uso cada provedor de IA é destinado (OCR / Chatbot)."""
+    provider = body.provider.strip().lower()
+    if provider not in _AI_PROVIDERS:
+        raise HTTPException(400, f"Provedor inválido: {provider}")
+    parts = []
+    if body.ocr:  parts.append("ocr")
+    if body.chat: parts.append("chat")
+    uso_str = ",".join(parts)
+    env_key = f"AI_USO_{provider.upper()}"
+    attr    = f"ai_uso_{provider}"
+    _update_env_key(env_key, uso_str)
+    setattr(settings, attr, uso_str)
     return {"ok": True}
 
 
