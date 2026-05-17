@@ -236,13 +236,13 @@ async def list_conversas(
              COALESCE(c.chatbot_ativo, TRUE) AS chatbot_ativo,
              COUNT(*) AS total_msgs,
              MAX(h.created_at) AS ultima_msg,
-             (SELECT conteudo FROM chat_historico
-              WHERE empresa_id = h.empresa_id AND phone = h.phone
-              ORDER BY created_at DESC LIMIT 1) AS ultima_preview
+             (SELECT conteudo FROM chat_historico ch2
+              WHERE ch2.empresa_id = h.empresa_id AND ch2.phone = h.phone
+              ORDER BY ch2.created_at DESC LIMIT 1) AS ultima_preview
            FROM chat_historico h
            LEFT JOIN contatos c ON c.empresa_id = h.empresa_id AND c.phone = REGEXP_REPLACE(h.phone, '^55', '')
-           WHERE h.empresa_id = $1
-           GROUP BY h.phone, c.nome, c.chatbot_ativo
+           WHERE h.empresa_id = ?
+           GROUP BY h.phone, h.empresa_id, c.nome, c.chatbot_ativo
            ORDER BY ultima_msg DESC
            LIMIT 100""",
         (empresa_id,),
