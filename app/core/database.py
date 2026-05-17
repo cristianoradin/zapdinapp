@@ -768,11 +768,36 @@ async def init_db() -> None:
         await conn.execute("""
             -- ── Chatbot ───────────────────────────────────────────────────────
             CREATE TABLE IF NOT EXISTS chatbot_config (
-                empresa_id    BIGINT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
-                ativo         BOOLEAN DEFAULT TRUE,
-                system_prompt TEXT DEFAULT '',
+                empresa_id          BIGINT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+                ativo               BOOLEAN DEFAULT TRUE,
+                system_prompt       TEXT DEFAULT '',
+                boas_vindas_ativo   BOOLEAN DEFAULT FALSE,
+                boas_vindas_msg     TEXT DEFAULT '',
                 PRIMARY KEY (empresa_id)
             );
+
+            CREATE TABLE IF NOT EXISTS chatbot_faq (
+                id         BIGSERIAL PRIMARY KEY,
+                empresa_id BIGINT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+                pergunta   TEXT NOT NULL,
+                resposta   TEXT NOT NULL,
+                ativo      BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_chatbot_faq_empresa
+                ON chatbot_faq(empresa_id) WHERE ativo = TRUE;
+
+            CREATE TABLE IF NOT EXISTS chatbot_aprendizado (
+                id         BIGSERIAL PRIMARY KEY,
+                empresa_id BIGINT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+                phone      TEXT NOT NULL,
+                pergunta   TEXT NOT NULL,
+                resposta   TEXT NOT NULL,
+                aprovado   BOOLEAN DEFAULT NULL,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_chatbot_aprendizado_empresa
+                ON chatbot_aprendizado(empresa_id, aprovado);
 
             CREATE TABLE IF NOT EXISTS chat_historico (
                 id         BIGSERIAL PRIMARY KEY,
@@ -802,6 +827,7 @@ async def init_db() -> None:
             ("006_ctb_wa_pendentes",  "Fila de boas-vindas WA pendentes para empresas contábil"),
             ("007_ctb_address_fields", "Campos CEP, numero_endereco e bairro em empresas_contabil"),
             ("008_chatbot",           "Tabelas chatbot_config e chat_historico"),
+            ("009_chatbot_faq",       "Tabelas chatbot_faq, chatbot_aprendizado e campos boas-vindas"),
         ]:
             await conn.execute(
                 "INSERT INTO schema_migrations(version, descricao) VALUES($1,$2) "
@@ -818,6 +844,18 @@ async def init_db() -> None:
             try:
                 await conn.execute(
                     f"ALTER TABLE empresas_contabil ADD COLUMN IF NOT EXISTS {_col} {_type}"
+                )
+            except Exception:
+                pass  # coluna já existe — ignorar
+
+        # ── Migration 009: adicionar colunas boas-vindas em chatbot_config ─────
+        for _col, _type, _default in [
+            ("boas_vindas_ativo", "BOOLEAN", "DEFAULT FALSE"),
+            ("boas_vindas_msg",   "TEXT",    "DEFAULT ''"),
+        ]:
+            try:
+                await conn.execute(
+                    f"ALTER TABLE chatbot_config ADD COLUMN IF NOT EXISTS {_col} {_type} {_default}"
                 )
             except Exception:
                 pass  # coluna já existe — ignorar

@@ -190,7 +190,8 @@ async def responder_mensagem(
         async with get_db_direct() as db:
             # ── Verifica se chatbot está ativo para a empresa ──────────────────
             async with db.execute(
-                "SELECT ativo, system_prompt FROM chatbot_config WHERE empresa_id=?",
+                """SELECT ativo, system_prompt, boas_vindas_ativo, boas_vindas_msg
+                   FROM chatbot_config WHERE empresa_id=?""",
                 (empresa_id,)
             ) as cur:
                 cfg = await cur.fetchone()
@@ -201,12 +202,50 @@ async def responder_mensagem(
 
             system_prompt = (cfg["system_prompt"] if cfg and cfg["system_prompt"]
                              else _DEFAULT_SYSTEM)
+            boas_vindas_ativo = cfg["boas_vindas_ativo"] if cfg else False
+            boas_vindas_msg   = cfg["boas_vindas_msg"]   if cfg else ""
 
             # Enriquece system prompt com nome da empresa
             system_prompt = (
                 f"Você é o assistente virtual de {empresa_nome}. "
                 + system_prompt
             )
+
+            # ── Busca FAQ para injetar como exemplos no prompt ─────────────────
+            async with db.execute(
+                "SELECT pergunta, resposta FROM chatbot_faq WHERE empresa_id=? AND ativo=TRUE LIMIT 30",
+                (empresa_id,)
+            ) as cur:
+                faq_rows = await cur.fetchall()
+
+            if faq_rows:
+                faq_text = "\n\nExemplos de perguntas e respostas aprovadas:\n"
+                for faq in faq_rows:
+                    faq_text += f"P: {faq['pergunta']}\nR: {faq['resposta']}\n\n"
+                system_prompt += faq_text
+
+            # ── Busca exemplos aprovados pelo aprendizado ──────────────────────
+            async with db.execute(
+                """SELECT pergunta, resposta FROM chatbot_aprendizado
+                   WHERE empresa_id=? AND aprovado=TRUE
+                   ORDER BY created_at DESC LIMIT 10""",
+                (empresa_id,)
+            ) as cur:
+                exemplos = await cur.fetchall()
+
+            if exemplos:
+                ex_text = "\n\nExemplos aprovados de conversas anteriores:\n"
+                for ex in exemplos:
+                    ex_text += f"P: {ex['pergunta']}\nR: {ex['resposta']}\n\n"
+                system_prompt += ex_text
+
+            # ── Verifica se é a primeira mensagem (boas-vindas) ────────────────
+            async with db.execute(
+                "SELECT COUNT(*) AS cnt FROM chat_historico WHERE empresa_id=? AND phone=?",
+                (empresa_id, phone)
+            ) as cur:
+                cnt_row = await cur.fetchone()
+            is_primeira_mensagem = (cnt_row["cnt"] == 0) if cnt_row else True
 
             # ── Salva mensagem do usuário no histórico ─────────────────────────
             await db.execute(
@@ -242,17 +281,28 @@ async def responder_mensagem(
         if not resposta:
             return
 
-        # ── Salva resposta no histórico ────────────────────────────────────────
+        # ── Salva resposta no histórico + registro de aprendizado ─────────────
         async with get_db_direct() as db:
             await db.execute(
                 "INSERT INTO chat_historico(empresa_id, phone, role, conteudo) VALUES(?,?,?,?)",
                 (empresa_id, phone, "assistant", resposta)
             )
+            # Salva o par pergunta/resposta para revisão no painel de Aprendizado
+            await db.execute(
+                """INSERT INTO chatbot_aprendizado(empresa_id, phone, pergunta, resposta)
+                   VALUES(?,?,?,?)""",
+                (empresa_id, phone, texto[:500], resposta[:1000])
+            )
             await db.commit()
 
-        # ── Envia resposta pelo WhatsApp ──────────────────────────────────────
-        # Monta o JID completo (adiciona @s.whatsapp.net se necessário)
+        # ── Envia boas-vindas na primeira mensagem ────────────────────────────
         jid = phone if "@" in phone else f"{phone}@s.whatsapp.net"
+        if is_primeira_mensagem and boas_vindas_ativo and boas_vindas_msg.strip():
+            msg_bv = boas_vindas_msg.replace("{nome}", empresa_nome)
+            await evo_manager.send_text(instance, jid, msg_bv)
+            logger.info("[chatbot] Boas-vindas enviada para %s", phone)
+
+        # ── Envia resposta pelo WhatsApp ──────────────────────────────────────
         await evo_manager.send_text(instance, jid, resposta)
 
         logger.info("[chatbot] Resposta enviada para %s via %s (%d chars)",

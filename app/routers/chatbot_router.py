@@ -1,16 +1,10 @@
 """
 app/routers/chatbot_router.py — API do módulo Chatbot.
-
-Endpoints:
-  GET  /api/chatbot/config           → config do chatbot da empresa
-  POST /api/chatbot/config           → salva config (ativo, system_prompt)
-  GET  /api/chatbot/conversas        → lista de contatos com histórico recente
-  GET  /api/chatbot/historico/{phone}→ histórico completo de um contato
-  DELETE /api/chatbot/historico/{phone} → apaga histórico de um contato
 """
 from __future__ import annotations
+from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from ..core.database import get_db
@@ -25,8 +19,19 @@ class ChatbotConfigBody(BaseModel):
     ativo: bool = True
     system_prompt: str = ""
 
+class BoasVindasBody(BaseModel):
+    ativo: bool = False
+    msg: str = ""
 
-# ── Endpoints ────────────────────────────────────────────────────────────────
+class FaqBody(BaseModel):
+    pergunta: str
+    resposta: str
+
+class AprendizadoAvalBody(BaseModel):
+    aprovado: bool
+
+
+# ── Config / Personalidade ────────────────────────────────────────────────────
 
 @router.get("/config")
 async def get_chatbot_config(
@@ -35,15 +40,22 @@ async def get_chatbot_config(
 ):
     empresa_id = user["empresa_id"]
     async with db.execute(
-        "SELECT ativo, system_prompt FROM chatbot_config WHERE empresa_id=?",
+        """SELECT ativo, system_prompt, boas_vindas_ativo, boas_vindas_msg
+           FROM chatbot_config WHERE empresa_id=?""",
         (empresa_id,)
     ) as cur:
         row = await cur.fetchone()
 
     if not row:
-        return {"ativo": True, "system_prompt": ""}
+        return {"ativo": True, "system_prompt": "",
+                "boas_vindas_ativo": False, "boas_vindas_msg": ""}
 
-    return {"ativo": bool(row["ativo"]), "system_prompt": row["system_prompt"] or ""}
+    return {
+        "ativo":             bool(row["ativo"]),
+        "system_prompt":     row["system_prompt"] or "",
+        "boas_vindas_ativo": bool(row["boas_vindas_ativo"]),
+        "boas_vindas_msg":   row["boas_vindas_msg"] or "",
+    }
 
 
 @router.post("/config")
@@ -64,12 +76,151 @@ async def set_chatbot_config(
     return {"ok": True}
 
 
+# ── Boas-vindas ───────────────────────────────────────────────────────────────
+
+@router.post("/boas-vindas")
+async def set_boas_vindas(
+    body: BoasVindasBody,
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    empresa_id = user["empresa_id"]
+    await db.execute(
+        """INSERT INTO chatbot_config(empresa_id, boas_vindas_ativo, boas_vindas_msg)
+           VALUES(?, ?, ?)
+           ON CONFLICT(empresa_id) DO UPDATE
+             SET boas_vindas_ativo=excluded.boas_vindas_ativo,
+                 boas_vindas_msg=excluded.boas_vindas_msg""",
+        (empresa_id, body.ativo, body.msg.strip())
+    )
+    await db.commit()
+    return {"ok": True}
+
+
+# ── FAQ ───────────────────────────────────────────────────────────────────────
+
+@router.get("/faq")
+async def list_faq(
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    empresa_id = user["empresa_id"]
+    async with db.execute(
+        "SELECT id, pergunta, resposta FROM chatbot_faq WHERE empresa_id=? AND ativo=TRUE ORDER BY id ASC",
+        (empresa_id,)
+    ) as cur:
+        rows = await cur.fetchall()
+    return [{"id": r["id"], "pergunta": r["pergunta"], "resposta": r["resposta"]} for r in rows]
+
+
+@router.post("/faq")
+async def add_faq(
+    body: FaqBody,
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    empresa_id = user["empresa_id"]
+    if not body.pergunta.strip() or not body.resposta.strip():
+        from fastapi import HTTPException
+        raise HTTPException(400, "Pergunta e resposta são obrigatórias")
+    await db.execute(
+        "INSERT INTO chatbot_faq(empresa_id, pergunta, resposta) VALUES(?, ?, ?)",
+        (empresa_id, body.pergunta.strip(), body.resposta.strip())
+    )
+    await db.commit()
+    return {"ok": True}
+
+
+@router.delete("/faq/{faq_id}")
+async def delete_faq(
+    faq_id: int,
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    empresa_id = user["empresa_id"]
+    await db.execute(
+        "UPDATE chatbot_faq SET ativo=FALSE WHERE id=? AND empresa_id=?",
+        (faq_id, empresa_id)
+    )
+    await db.commit()
+    return {"ok": True}
+
+
+# ── Aprendizado ───────────────────────────────────────────────────────────────
+
+@router.get("/aprendizado")
+async def list_aprendizado(
+    filtro: Optional[str] = Query(None),
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    empresa_id = user["empresa_id"]
+    where = "WHERE empresa_id=?"
+    params = [empresa_id]
+    if filtro == "aprovados":
+        where += " AND aprovado=TRUE"
+    elif filtro == "pendentes":
+        where += " AND aprovado IS NULL"
+
+    async with db.execute(
+        f"""SELECT id, phone, pergunta, resposta, aprovado, created_at
+            FROM chatbot_aprendizado {where}
+            ORDER BY created_at DESC LIMIT 200""",
+        tuple(params)
+    ) as cur:
+        rows = await cur.fetchall()
+
+    return [
+        {
+            "id": r["id"],
+            "phone": r["phone"],
+            "pergunta": r["pergunta"],
+            "resposta": r["resposta"],
+            "aprovado": r["aprovado"],
+            "created_at": r["created_at"].isoformat() if r["created_at"] else None,
+        }
+        for r in rows
+    ]
+
+
+@router.patch("/aprendizado/{item_id}")
+async def avaliar_aprendizado(
+    item_id: int,
+    body: AprendizadoAvalBody,
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    empresa_id = user["empresa_id"]
+    await db.execute(
+        "UPDATE chatbot_aprendizado SET aprovado=? WHERE id=? AND empresa_id=?",
+        (body.aprovado, item_id, empresa_id)
+    )
+    await db.commit()
+    return {"ok": True}
+
+
+@router.delete("/aprendizado/{item_id}")
+async def delete_aprendizado(
+    item_id: int,
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    empresa_id = user["empresa_id"]
+    await db.execute(
+        "DELETE FROM chatbot_aprendizado WHERE id=? AND empresa_id=?",
+        (item_id, empresa_id)
+    )
+    await db.commit()
+    return {"ok": True}
+
+
+# ── Conversas / Histórico ─────────────────────────────────────────────────────
+
 @router.get("/conversas")
 async def list_conversas(
     db=Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
-    """Lista de contatos com histórico, ordenados pela última mensagem."""
     empresa_id = user["empresa_id"]
     async with db.execute(
         """SELECT
@@ -90,16 +241,16 @@ async def list_conversas(
     ) as cur:
         rows = await cur.fetchall()
 
-    result = []
-    for r in rows:
-        result.append({
+    return [
+        {
             "phone": r["phone"],
             "nome": r["empresa_nome"] or r["phone"],
             "total_msgs": r["total_msgs"],
             "ultima_msg": r["ultima_msg"].isoformat() if r["ultima_msg"] else None,
             "ultima_preview": (r["ultima_preview"] or "")[:80],
-        })
-    return result
+        }
+        for r in rows
+    ]
 
 
 @router.get("/historico/{phone}")
@@ -108,14 +259,12 @@ async def get_historico(
     db=Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
-    """Retorna histórico completo de um contato (últimas 100 mensagens)."""
     empresa_id = user["empresa_id"]
     async with db.execute(
         """SELECT role, conteudo, created_at
            FROM chat_historico
            WHERE empresa_id=? AND phone=?
-           ORDER BY created_at ASC
-           LIMIT 100""",
+           ORDER BY created_at ASC LIMIT 100""",
         (empresa_id, phone)
     ) as cur:
         rows = await cur.fetchall()
@@ -136,7 +285,6 @@ async def delete_historico(
     db=Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
-    """Apaga todo o histórico de um contato."""
     empresa_id = user["empresa_id"]
     await db.execute(
         "DELETE FROM chat_historico WHERE empresa_id=? AND phone=?",

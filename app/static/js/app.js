@@ -895,7 +895,7 @@
     else if (page === 'ctb-dashboard') { if (window.ctbDashboard) ctbDashboard.reload(); }
     else if (page === 'ctb-empresas')  { if (window.ctbEmpresas)  ctbEmpresas.carregar(); }
     else if (page === 'ctb-arquivos')  { if (window.ctbArquivos)  ctbArquivos.carregar(); }
-    else if (page === 'chatbot') { chatbot.carregarConfig(); chatbot.carregarConversas(); }
+    else if (page === 'chatbot') { chatbot.carregarConversas(); }
   }
 
   // ── Telegram ──────────────────────────────────────────────────────────────────
@@ -2904,9 +2904,37 @@
 
   // ── Chatbot ───────────────────────────────────────────────────────────────────
 
+  function chatbotNav(el, panel) {
+    document.querySelectorAll('[id^="cbMenu-"]').forEach(i => i.classList.remove('active'));
+    document.querySelectorAll('[id^="cb-panel-"]').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    const target = document.getElementById('cb-panel-' + panel);
+    if (target) target.classList.add('active');
+    // Carrega dados do painel ao abrir
+    if (panel === 'conversas')   chatbot.carregarConversas();
+    if (panel === 'personalidade') chatbot.carregarConfig();
+    if (panel === 'boasvindas') chatbot.carregarBoasVindas();
+    if (panel === 'faq')         chatbot.carregarFaq();
+    if (panel === 'aprendizado') chatbot.carregarAprendizado();
+  }
+
   const chatbot = (() => {
     let _phoneAtual = null;
+    let _filtroAprendizado = 'todos';
 
+    // ── Alert helper ─────────────────────────────────────────────────────────
+    function _alert(id, msg, tipo) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.style.display = 'block';
+      el.style.background  = tipo === 'ok' ? '#f0fdf4' : '#fef2f2';
+      el.style.color       = tipo === 'ok' ? '#3d7f1f' : '#ef4444';
+      el.style.border      = tipo === 'ok' ? '1px solid #bbf7d0' : '1px solid #fecaca';
+      el.textContent = msg;
+      setTimeout(() => { el.style.display = 'none'; }, 3200);
+    }
+
+    // ── Config / Personalidade ────────────────────────────────────────────────
     async function carregarConfig() {
       try {
         const r = await fetch('/api/chatbot/config');
@@ -2922,25 +2950,151 @@
     async function salvarConfig() {
       const ativo  = document.getElementById('chatbotAtivo')?.checked ?? true;
       const prompt = document.getElementById('chatbotPrompt')?.value.trim() ?? '';
-      const alerta = document.getElementById('chatbotConfigAlert');
       try {
         const r = await api('POST', '/api/chatbot/config', { ativo, system_prompt: prompt });
-        if (alerta) {
-          alerta.style.display = 'block';
-          if (r.ok) {
-            alerta.className = '';
-            alerta.style.cssText += ';background:#f0fdf4;color:#3d7f1f;border:1px solid #bbf7d0';
-            alerta.textContent = '✓ Configuração salva!';
-          } else {
-            alerta.className = '';
-            alerta.style.cssText += ';background:#fef2f2;color:#ef4444;border:1px solid #fecaca';
-            alerta.textContent = 'Erro ao salvar.';
-          }
-          setTimeout(() => { if (alerta) alerta.style.display = 'none'; }, 3000);
-        }
+        _alert('chatbotConfigAlert', r.ok ? '✓ Salvo!' : 'Erro ao salvar.', r.ok ? 'ok' : 'err');
+      } catch { _alert('chatbotConfigAlert', 'Erro ao salvar.', 'err'); }
+    }
+
+    // ── Boas-vindas ───────────────────────────────────────────────────────────
+    async function carregarBoasVindas() {
+      try {
+        const r = await fetch('/api/chatbot/config');
+        if (!r.ok) return;
+        const d = await r.json();
+        const ck  = document.getElementById('chatbotBoasVindasAtivo');
+        const txt = document.getElementById('chatbotBoasVindasMsg');
+        if (ck)  ck.checked  = !!d.boas_vindas_ativo;
+        if (txt) txt.value   = d.boas_vindas_msg || '';
+        _atualizarPreview();
       } catch {}
     }
 
+    function _atualizarPreview() {
+      const txt = document.getElementById('chatbotBoasVindasMsg')?.value || '';
+      const prev = document.getElementById('chatbotBoasVindasPreview');
+      if (prev) prev.textContent = txt.replace('{nome}', 'João Silva');
+    }
+
+    async function salvarBoasVindas() {
+      const ativo = document.getElementById('chatbotBoasVindasAtivo')?.checked ?? false;
+      const msg   = document.getElementById('chatbotBoasVindasMsg')?.value.trim() ?? '';
+      try {
+        const r = await api('POST', '/api/chatbot/boas-vindas', { ativo, msg });
+        _alert('chatbotBoasVindasAlert', r.ok ? '✓ Salvo!' : 'Erro ao salvar.', r.ok ? 'ok' : 'err');
+      } catch { _alert('chatbotBoasVindasAlert', 'Erro ao salvar.', 'err'); }
+    }
+
+    // ── FAQ ───────────────────────────────────────────────────────────────────
+    async function carregarFaq() {
+      const el = document.getElementById('faqLista');
+      if (!el) return;
+      try {
+        const r = await fetch('/api/chatbot/faq');
+        if (!r.ok) { el.innerHTML = '<div style="color:#ef4444;font-size:.8rem">Erro ao carregar.</div>'; return; }
+        const lista = await r.json();
+        if (!lista.length) {
+          el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:.82rem">Nenhuma pergunta cadastrada ainda</div>';
+          return;
+        }
+        el.innerHTML = lista.map(f => `
+          <div style="border:1px solid var(--border);border-radius:10px;padding:.8rem 1rem;background:var(--surface2)">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem">
+              <div style="flex:1;min-width:0">
+                <div style="font-size:.8rem;font-weight:600;color:var(--text);margin-bottom:.3rem">❓ ${f.pergunta}</div>
+                <div style="font-size:.78rem;color:var(--text-muted);line-height:1.5">💬 ${f.resposta}</div>
+              </div>
+              <button onclick="chatbot.removerFaq(${f.id})" style="background:none;border:none;cursor:pointer;color:#9ca3af;padding:.2rem;flex-shrink:0" title="Remover">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+              </button>
+            </div>
+          </div>`).join('');
+      } catch { el.innerHTML = '<div style="color:#ef4444;font-size:.8rem">Erro ao carregar.</div>'; }
+    }
+
+    async function adicionarFaq() {
+      const pergunta = document.getElementById('faqPergunta')?.value.trim();
+      const resposta = document.getElementById('faqResposta')?.value.trim();
+      if (!pergunta || !resposta) { _alert('faqAlert', 'Preencha pergunta e resposta.', 'err'); return; }
+      const r = await api('POST', '/api/chatbot/faq', { pergunta, resposta });
+      if (r.ok) {
+        document.getElementById('faqPergunta').value = '';
+        document.getElementById('faqResposta').value = '';
+        _alert('faqAlert', '✓ Pergunta adicionada!', 'ok');
+        await carregarFaq();
+      } else {
+        _alert('faqAlert', 'Erro ao adicionar.', 'err');
+      }
+    }
+
+    async function removerFaq(id) {
+      if (!confirm('Remover esta pergunta?')) return;
+      await api('DELETE', '/api/chatbot/faq/' + id);
+      await carregarFaq();
+    }
+
+    // ── Aprendizado ───────────────────────────────────────────────────────────
+    async function carregarAprendizado() {
+      const el = document.getElementById('aprendizadoLista');
+      if (!el) return;
+      el.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text-muted)">Carregando…</div>';
+      try {
+        const url = '/api/chatbot/aprendizado' + (_filtroAprendizado !== 'todos' ? '?filtro=' + _filtroAprendizado : '');
+        const r = await fetch(url);
+        if (!r.ok) { el.innerHTML = '<div style="color:#ef4444;font-size:.8rem">Erro ao carregar.</div>'; return; }
+        const lista = await r.json();
+        if (!lista.length) {
+          el.innerHTML = '<div style="text-align:center;padding:2.5rem;color:var(--text-muted);font-size:.82rem">Nenhum item para revisar</div>';
+          return;
+        }
+        el.innerHTML = lista.map(item => {
+          const aprovado = item.aprovado === true;
+          const rejeitado = item.aprovado === false;
+          const badge = aprovado
+            ? '<span style="background:#f0fdf4;color:#3d7f1f;border:1px solid #bbf7d0;border-radius:20px;font-size:.65rem;font-weight:700;padding:.15rem .5rem">✅ Aprovado</span>'
+            : rejeitado
+            ? '<span style="background:#fef2f2;color:#ef4444;border:1px solid #fecaca;border-radius:20px;font-size:.65rem;font-weight:700;padding:.15rem .5rem">👎 Rejeitado</span>'
+            : '<span style="background:#fffbeb;color:#d97706;border:1px solid #fde68a;border-radius:20px;font-size:.65rem;font-weight:700;padding:.15rem .5rem">⏳ Pendente</span>';
+          return `<div style="border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;background:var(--surface2)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+              <div style="font-size:.72rem;color:var(--text-muted)">${item.phone} · ${item.created_at ? new Date(item.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : ''}</div>
+              ${badge}
+            </div>
+            <div style="margin-bottom:.3rem"><span style="font-size:.72rem;font-weight:700;color:#6b7280">Cliente:</span> <span style="font-size:.8rem;color:var(--text)">${item.pergunta}</span></div>
+            <div style="margin-bottom:.65rem"><span style="font-size:.72rem;font-weight:700;color:#8b5cf6">Bot:</span> <span style="font-size:.8rem;color:var(--text)">${item.resposta}</span></div>
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+              ${!aprovado ? `<button class="btn btn-sm" onclick="chatbot.avaliarAprendizado(${item.id},true)" style="background:#f0fdf4;color:#3d7f1f;border:1px solid #bbf7d0;font-size:.72rem">👍 Aprovar</button>` : ''}
+              ${!rejeitado ? `<button class="btn btn-sm" onclick="chatbot.avaliarAprendizado(${item.id},false)" style="background:#fef2f2;color:#ef4444;border:1px solid #fecaca;font-size:.72rem">👎 Rejeitar</button>` : ''}
+              <button class="btn btn-ghost btn-sm" onclick="chatbot.removerAprendizado(${item.id})" style="font-size:.72rem">🗑 Remover</button>
+            </div>
+          </div>`;
+        }).join('');
+      } catch { el.innerHTML = '<div style="color:#ef4444;font-size:.8rem">Erro ao carregar.</div>'; }
+    }
+
+    function filtrarAprendizado(filtro) {
+      _filtroAprendizado = filtro;
+      // Atualiza botões de filtro
+      ['todos','aprovados','pendentes'].forEach(f => {
+        const btn = document.getElementById('aprendFiltro' + f.charAt(0).toUpperCase() + f.slice(1));
+        if (!btn) return;
+        if (f === filtro) { btn.style.background = 'var(--accent)'; btn.style.color = '#fff'; btn.style.border = 'none'; }
+        else { btn.style.background = 'transparent'; btn.style.color = 'var(--text-mid)'; btn.style.border = '1px solid var(--border)'; }
+      });
+      carregarAprendizado();
+    }
+
+    async function avaliarAprendizado(id, aprovado) {
+      await api('PATCH', '/api/chatbot/aprendizado/' + id, { aprovado });
+      await carregarAprendizado();
+    }
+
+    async function removerAprendizado(id) {
+      await api('DELETE', '/api/chatbot/aprendizado/' + id);
+      await carregarAprendizado();
+    }
+
+    // ── Conversas ─────────────────────────────────────────────────────────────
     async function carregarConversas() {
       const el = document.getElementById('chatbotConversasList');
       if (!el) return;
@@ -2949,19 +3103,21 @@
         if (!r.ok) { el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:.82rem">Erro ao carregar.</div>'; return; }
         const lista = await r.json();
         if (!lista.length) {
-          el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:.82rem">Nenhuma conversa ainda</div>';
+          el.innerHTML = '<div style="text-align:center;padding:2.5rem 1rem;color:var(--text-muted);font-size:.82rem">Nenhuma conversa ainda</div>';
           return;
         }
         el.innerHTML = lista.map(c => {
           const dt = c.ultima_msg ? new Date(c.ultima_msg).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '';
-          return `<div class="chatbot-conversa-item" onclick="chatbot.abrirConversa('${c.phone}','${(c.nome||c.phone).replace(/'/g,"\\'")}')">
+          const ph = (c.phone||'').replace(/'/g,"\\'");
+          const nm = (c.nome||c.phone||'').replace(/'/g,"\\'");
+          return `<div class="chatbot-conversa-item" onclick="chatbot.abrirConversa('${ph}','${nm}')">
             <div style="display:flex;align-items:center;gap:.55rem">
-              <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#ede9fe,#ddd6fe);display:flex;align-items:center;justify-content:center;font-size:.95rem;flex-shrink:0">💬</div>
+              <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#ede9fe,#ddd6fe);display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0">💬</div>
               <div style="flex:1;min-width:0">
-                <div style="font-weight:600;font-size:.82rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.nome || c.phone}</div>
-                <div style="font-size:.72rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.ultima_preview || ''}</div>
+                <div style="font-weight:600;font-size:.8rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.nome || c.phone}</div>
+                <div style="font-size:.7rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.ultima_preview || ''}</div>
               </div>
-              <div style="font-size:.68rem;color:var(--text-muted);flex-shrink:0;text-align:right">
+              <div style="font-size:.67rem;color:var(--text-muted);flex-shrink:0;text-align:right">
                 <div>${dt}</div>
                 <div style="color:#8b5cf6;font-weight:600">${c.total_msgs} msg</div>
               </div>
@@ -2974,12 +3130,14 @@
     async function abrirConversa(phone, nome) {
       _phoneAtual = phone;
       const card   = document.getElementById('chatbotHistoricoCard');
+      const vazio  = document.getElementById('chatbotHistoricoVazio');
       const nomeEl = document.getElementById('chatbotHistoricoNome');
       const phEl   = document.getElementById('chatbotHistoricoPhone');
       const msgsEl = document.getElementById('chatbotHistoricoMsgs');
       if (!card) return;
       if (nomeEl) nomeEl.textContent = nome || phone;
       if (phEl)   phEl.textContent   = phone;
+      if (vazio) vazio.style.display = 'none';
       card.style.display = 'block';
       msgsEl.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-muted)">Carregando…</div>';
       try {
@@ -2993,13 +3151,13 @@
           const isBot = m.role === 'assistant';
           const dt = m.created_at ? new Date(m.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
           return `<div style="display:flex;flex-direction:column;align-items:${isBot ? 'flex-start' : 'flex-end'}">
-            <div style="max-width:82%;background:${isBot ? 'linear-gradient(135deg,#f5f3ff,#ede9fe)' : 'linear-gradient(135deg,#f0fdf4,#dcfce7)'};
+            <div style="max-width:84%;background:${isBot ? 'linear-gradient(135deg,#f5f3ff,#ede9fe)' : 'linear-gradient(135deg,#f0fdf4,#dcfce7)'};
               border:1px solid ${isBot ? '#ddd6fe' : '#bbf7d0'};border-radius:${isBot ? '4px 12px 12px 12px' : '12px 4px 12px 12px'};
-              padding:.45rem .75rem;font-size:.8rem;color:var(--text);line-height:1.5">
-              ${isBot ? '<span style="font-size:.65rem;font-weight:700;color:#8b5cf6;display:block;margin-bottom:.2rem">🤖 Bot</span>' : ''}
+              padding:.5rem .8rem;font-size:.8rem;color:var(--text);line-height:1.5">
+              ${isBot ? '<span style="font-size:.63rem;font-weight:700;color:#8b5cf6;display:block;margin-bottom:.2rem">🤖 Bot</span>' : ''}
               ${m.conteudo}
             </div>
-            <div style="font-size:.65rem;color:var(--text-muted);margin-top:.15rem;padding:0 .25rem">${dt}</div>
+            <div style="font-size:.63rem;color:var(--text-muted);margin-top:.1rem;padding:0 .3rem">${dt}</div>
           </div>`;
         }).join('');
         msgsEl.scrollTop = msgsEl.scrollHeight;
@@ -3010,12 +3168,26 @@
       if (!_phoneAtual) return;
       if (!confirm('Apagar todo o histórico de ' + _phoneAtual + '?')) return;
       await api('DELETE', `/api/chatbot/historico/${encodeURIComponent(_phoneAtual)}`);
-      document.getElementById('chatbotHistoricoCard').style.display = 'none';
+      const card = document.getElementById('chatbotHistoricoCard');
+      const vazio = document.getElementById('chatbotHistoricoVazio');
+      if (card) card.style.display = 'none';
+      if (vazio) vazio.style.display = 'flex';
       _phoneAtual = null;
       await carregarConversas();
     }
 
-    return { carregarConfig, salvarConfig, carregarConversas, abrirConversa, limparHistorico };
+    // Adiciona listener para preview de boas-vindas em tempo real
+    document.addEventListener('input', e => {
+      if (e.target && e.target.id === 'chatbotBoasVindasMsg') _atualizarPreview();
+    });
+
+    return {
+      carregarConfig, salvarConfig,
+      carregarBoasVindas, salvarBoasVindas,
+      carregarFaq, adicionarFaq, removerFaq,
+      carregarAprendizado, filtrarAprendizado, avaliarAprendizado, removerAprendizado,
+      carregarConversas, abrirConversa, limparHistorico,
+    };
   })();
 
   // ── Sistema — navegação interna ───────────────────────────────────────────────
