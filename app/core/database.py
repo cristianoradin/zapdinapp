@@ -874,6 +874,40 @@ async def init_db() -> None:
             except Exception:
                 pass  # coluna já existe — ignorar
 
+        # ── Migration 012: chatbot_memoria_ia ────────────────────────────────
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS chatbot_memoria_ia (
+                id            SERIAL PRIMARY KEY,
+                empresa_id    INTEGER NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+                intencao      TEXT NOT NULL DEFAULT '',
+                variacoes     TEXT NOT NULL DEFAULT '[]',
+                resposta_ideal TEXT NOT NULL DEFAULT '',
+                confianca     INTEGER DEFAULT 50,
+                usos          INTEGER DEFAULT 1,
+                aprovado      BOOLEAN DEFAULT NULL,
+                fonte         TEXT DEFAULT 'ia',
+                created_at    TIMESTAMPTZ DEFAULT NOW(),
+                updated_at    TIMESTAMPTZ DEFAULT NOW()
+            )
+        """)
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_memoria_ia_empresa ON chatbot_memoria_ia(empresa_id)"
+        )
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_memoria_ia_aprovado ON chatbot_memoria_ia(empresa_id, aprovado)"
+        )
+        # Adiciona coluna memoria_ia_ativa em chatbot_config (migração segura)
+        await conn.execute("""
+            DO $$ BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'chatbot_config' AND column_name = 'memoria_ia_ativa'
+                ) THEN
+                    ALTER TABLE chatbot_config ADD COLUMN memoria_ia_ativa BOOLEAN DEFAULT TRUE;
+                END IF;
+            END $$;
+        """)
+
         # ── Migration 011: system_logs — log centralizado do sistema ─────────
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS system_logs (

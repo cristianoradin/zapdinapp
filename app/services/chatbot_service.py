@@ -172,6 +172,80 @@ async def _chamar_ia(provider: str, messages: list[dict]) -> str:
     raise ValueError(f"Provider desconhecido: {provider}")
 
 
+# ── Extração assíncrona de memória ───────────────────────────────────────────
+
+async def _extrair_memoria(empresa_id: int, pergunta: str, resposta: str, provider: str) -> None:
+    """
+    Extrai conhecimento estruturado da conversa e salva na memória IA.
+    Roda como task assíncrona sem bloquear o fluxo principal.
+    """
+    if not pergunta.strip() or not resposta.strip() or len(pergunta) < 8:
+        return
+    try:
+        extraction_prompt = [
+            {"role": "system", "content": (
+                "Você é um extrator de conhecimento. Analise a pergunta e resposta "
+                "e retorne APENAS um JSON válido (sem markdown, sem explicação) com:\n"
+                '{"intencao": "nome_curto_da_intencao_sem_espacos_em_snake_case", '
+                '"variacoes": ["como o cliente pode perguntar isso de outras formas (3 a 5 variações)"], '
+                '"resposta_ideal": "a melhor resposta resumida para esta intenção"}'
+            )},
+            {"role": "user", "content": f"Pergunta do cliente: {pergunta}\nResposta do assistente: {resposta}"}
+        ]
+        raw = await _chamar_ia(provider, extraction_prompt)
+        if not raw:
+            return
+        import json as _json
+        # Remove markdown code blocks if present
+        raw = raw.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        raw = raw.strip()
+        data = _json.loads(raw)
+        intencao = str(data.get("intencao", ""))[:100]
+        variacoes = data.get("variacoes", [])
+        if not isinstance(variacoes, list):
+            variacoes = []
+        resposta_ideal = str(data.get("resposta_ideal", resposta))[:2000]
+        if not intencao:
+            return
+
+        from ..core.database import get_db_direct
+
+        async with get_db_direct() as db:
+            # Verifica se já existe entrada com mesma intenção para esta empresa
+            async with db.execute(
+                "SELECT id, usos FROM chatbot_memoria_ia WHERE empresa_id=$1 AND intencao=$2",
+                (empresa_id, intencao),
+            ) as cur:
+                existing = await cur.fetchone()
+
+            if existing:
+                # Incrementa usos e atualiza confiança
+                await db.execute(
+                    """UPDATE chatbot_memoria_ia
+                       SET usos=usos+1, updated_at=NOW(),
+                           confianca=LEAST(100, confianca+5)
+                       WHERE id=$1""",
+                    (existing["id"],),
+                )
+            else:
+                import json as _json2
+                await db.execute(
+                    """INSERT INTO chatbot_memoria_ia
+                       (empresa_id, intencao, variacoes, resposta_ideal, confianca, usos, fonte)
+                       VALUES($1,$2,$3,$4,$5,$6,'ia')""",
+                    (empresa_id, intencao, _json2.dumps(variacoes, ensure_ascii=False),
+                     resposta_ideal, 50, 1),
+                )
+            await db.commit()
+        logger.info("[memoria_ia] Entrada '%s' salva/atualizada para empresa %s", intencao, empresa_id)
+    except Exception as e:
+        logger.warning("[memoria_ia] Falha ao extrair memória: %s", e)
+
+
 # ── Função principal ──────────────────────────────────────────────────────────
 
 async def responder_mensagem(
@@ -294,6 +368,28 @@ async def responder_mensagem(
                     ex_text += f"P: {ex['pergunta']}\nR: {ex['resposta']}\n\n"
                 system_prompt += ex_text
 
+            # ── Busca Memória IA aprovada para injetar no contexto ────────────
+            if cfg and cfg.get("memoria_ia_ativa", True):
+                async with db.execute(
+                    """SELECT intencao, variacoes, resposta_ideal FROM chatbot_memoria_ia
+                       WHERE empresa_id=$1 AND aprovado=TRUE
+                       ORDER BY usos DESC LIMIT 20""",
+                    (empresa_id,),
+                ) as cur:
+                    mem_rows = await cur.fetchall()
+
+                if mem_rows:
+                    import json as _json
+                    mem_text = "\n\nBase de conhecimento acumulada (use como referência):\n"
+                    for m in mem_rows:
+                        try:
+                            vars_list = _json.loads(m["variacoes"]) if m["variacoes"] else []
+                        except Exception:
+                            vars_list = []
+                        vars_str = " | ".join(vars_list[:3]) if vars_list else m["intencao"]
+                        mem_text += f"Assunto: {m['intencao']}\nVariações: {vars_str}\nResposta: {m['resposta_ideal']}\n\n"
+                    system_prompt += mem_text
+
             # ── Salva mensagem do usuário no histórico ─────────────────────────
             await db.execute(
                 "INSERT INTO chat_historico(empresa_id, phone, role, conteudo) VALUES($1,$2,$3,$4)",
@@ -358,6 +454,11 @@ async def responder_mensagem(
                 (empresa_id, phone, texto[:500], resposta[:1000]),
             )
             await db.commit()
+
+        # ── Extrai conhecimento para Memória IA (async, não bloqueia) ─────────
+        asyncio.create_task(
+            _extrair_memoria(empresa_id, texto, resposta, provider)
+        )
 
         # ── Envia boas-vindas na primeira mensagem ────────────────────────────
         jid = phone if "@" in phone else f"{phone}@s.whatsapp.net"

@@ -47,7 +47,7 @@ async def get_chatbot_config(
 ):
     empresa_id = user["empresa_id"]
     async with db.execute(
-        """SELECT ativo, system_prompt, boas_vindas_ativo, boas_vindas_msg
+        """SELECT ativo, system_prompt, boas_vindas_ativo, boas_vindas_msg, memoria_ia_ativa
            FROM chatbot_config WHERE empresa_id=?""",
         (empresa_id,)
     ) as cur:
@@ -55,13 +55,15 @@ async def get_chatbot_config(
 
     if not row:
         return {"ativo": True, "system_prompt": "",
-                "boas_vindas_ativo": False, "boas_vindas_msg": ""}
+                "boas_vindas_ativo": False, "boas_vindas_msg": "",
+                "memoria_ia_ativa": True}
 
     return {
         "ativo":             bool(row["ativo"]),
         "system_prompt":     row["system_prompt"] or "",
         "boas_vindas_ativo": bool(row["boas_vindas_ativo"]),
         "boas_vindas_msg":   row["boas_vindas_msg"] or "",
+        "memoria_ia_ativa":  row["memoria_ia_ativa"] if row["memoria_ia_ativa"] is not None else True,
     }
 
 
@@ -309,7 +311,9 @@ async def enviar_mensagem_manual(
     if not session_id:
         raise HTTPException(503, "Nenhuma sessão WhatsApp ativa")
 
-    await evo_manager.send_text(session_id, empresa_id, jid, mensagem)
+    ok, err = await evo_manager.send_text(session_id, empresa_id, jid, mensagem)
+    if not ok:
+        raise HTTPException(502, f"Falha ao enviar pelo WhatsApp: {err}")
 
     # Salva no histórico como 'assistant' para manter o contexto
     await db.execute(
@@ -353,6 +357,168 @@ async def delete_historico(
     await db.execute(
         "DELETE FROM chat_historico WHERE empresa_id=? AND phone=?",
         (empresa_id, phone)
+    )
+    await db.commit()
+    return {"ok": True}
+
+
+# ── Memória IA ────────────────────────────────────────────────────────────────
+
+class MemoriaIaBody(BaseModel):
+    intencao: str
+    variacoes: str = "[]"
+    resposta_ideal: str
+    aprovado: Optional[bool] = None
+
+class MemoriaIaAtivaBody(BaseModel):
+    memoria_ia_ativa: bool
+
+
+@router.get("/memoria-ia")
+async def list_memoria_ia(
+    filtro: Optional[str] = Query(None),
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    empresa_id = user["empresa_id"]
+    where = "WHERE empresa_id=?"
+    params = [empresa_id]
+    if filtro == "aprovadas":
+        where += " AND aprovado=TRUE"
+    elif filtro == "pendentes":
+        where += " AND aprovado IS NULL"
+    elif filtro == "rejeitadas":
+        where += " AND aprovado=FALSE"
+    async with db.execute(
+        f"""SELECT id, intencao, variacoes, resposta_ideal, confianca, usos,
+                   aprovado, fonte, created_at, updated_at
+            FROM chatbot_memoria_ia {where}
+            ORDER BY usos DESC, created_at DESC LIMIT 200""",
+        tuple(params),
+    ) as cur:
+        rows = await cur.fetchall()
+    return [
+        {
+            "id": r["id"],
+            "intencao": r["intencao"],
+            "variacoes": r["variacoes"],
+            "resposta_ideal": r["resposta_ideal"],
+            "confianca": r["confianca"],
+            "usos": r["usos"],
+            "aprovado": r["aprovado"],
+            "fonte": r["fonte"],
+            "created_at": r["created_at"].isoformat() if r["created_at"] else None,
+        }
+        for r in rows
+    ]
+
+
+@router.get("/memoria-ia/stats")
+async def stats_memoria_ia(
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    empresa_id = user["empresa_id"]
+    async with db.execute(
+        """SELECT
+             COUNT(*) AS total,
+             COUNT(*) FILTER (WHERE aprovado=TRUE) AS aprovadas,
+             COUNT(*) FILTER (WHERE aprovado IS NULL) AS pendentes,
+             COUNT(*) FILTER (WHERE aprovado=FALSE) AS rejeitadas,
+             COALESCE(SUM(usos),0) AS total_usos
+           FROM chatbot_memoria_ia WHERE empresa_id=?""",
+        (empresa_id,),
+    ) as cur:
+        r = await cur.fetchone()
+    return {
+        "total": r["total"],
+        "aprovadas": r["aprovadas"],
+        "pendentes": r["pendentes"],
+        "rejeitadas": r["rejeitadas"],
+        "total_usos": r["total_usos"],
+    }
+
+
+@router.post("/memoria-ia")
+async def add_memoria_ia(
+    body: MemoriaIaBody,
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    empresa_id = user["empresa_id"]
+    from fastapi import HTTPException
+    if not body.intencao.strip() or not body.resposta_ideal.strip():
+        raise HTTPException(400, "intencao e resposta_ideal são obrigatórios")
+    await db.execute(
+        """INSERT INTO chatbot_memoria_ia(empresa_id, intencao, variacoes, resposta_ideal, fonte, aprovado)
+           VALUES(?,?,?,?,'manual',?)""",
+        (empresa_id, body.intencao.strip(), body.variacoes, body.resposta_ideal.strip(), body.aprovado),
+    )
+    await db.commit()
+    return {"ok": True}
+
+
+@router.patch("/memoria-ia/{item_id}")
+async def update_memoria_ia(
+    item_id: int,
+    body: MemoriaIaBody,
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    empresa_id = user["empresa_id"]
+    await db.execute(
+        """UPDATE chatbot_memoria_ia
+           SET intencao=?, variacoes=?, resposta_ideal=?, aprovado=?, updated_at=NOW()
+           WHERE id=? AND empresa_id=?""",
+        (body.intencao.strip(), body.variacoes, body.resposta_ideal.strip(), body.aprovado, item_id, empresa_id),
+    )
+    await db.commit()
+    return {"ok": True}
+
+
+@router.patch("/memoria-ia/{item_id}/aprovar")
+async def aprovar_memoria_ia(
+    item_id: int,
+    body: AprendizadoAvalBody,
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    empresa_id = user["empresa_id"]
+    await db.execute(
+        "UPDATE chatbot_memoria_ia SET aprovado=?, updated_at=NOW() WHERE id=? AND empresa_id=?",
+        (body.aprovado, item_id, empresa_id),
+    )
+    await db.commit()
+    return {"ok": True}
+
+
+@router.delete("/memoria-ia/{item_id}")
+async def delete_memoria_ia(
+    item_id: int,
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    empresa_id = user["empresa_id"]
+    await db.execute(
+        "DELETE FROM chatbot_memoria_ia WHERE id=? AND empresa_id=?",
+        (item_id, empresa_id),
+    )
+    await db.commit()
+    return {"ok": True}
+
+
+@router.post("/config/memoria-ia-ativa")
+async def set_memoria_ia_ativa(
+    body: MemoriaIaAtivaBody,
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    empresa_id = user["empresa_id"]
+    await db.execute(
+        """INSERT INTO chatbot_config(empresa_id, memoria_ia_ativa)
+           VALUES(?,?)
+           ON CONFLICT(empresa_id) DO UPDATE SET memoria_ia_ativa=excluded.memoria_ia_ativa""",
+        (empresa_id, body.memoria_ia_ativa),
     )
     await db.commit()
     return {"ok": True}
