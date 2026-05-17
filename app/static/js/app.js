@@ -20,6 +20,7 @@
     'ctb-empresas':   'Cadastro de Empresas',
     'ctb-arquivos':   'Gestão de Arquivos',
     'sistema':        'Sistema',
+    'ia-central':     'IA Central',
   };
   function _setTopbarPage(p) {
     const label = pages[p] || p;
@@ -69,41 +70,26 @@
     } catch { /* silencioso */ }
   }
 
-  // ── Status da IA (provider ativo) ────────────────────────────────────────────
+  // ── Status da IA (providers ativos) ─────────────────────────────────────────
   async function _updateAiStatus() {
     const pill = document.getElementById('topbarAiPill');
     const txt  = document.getElementById('topbarAiText');
     if (!pill || !txt) return;
     try {
-      // Verifica se algum provider com OCR habilitado está configurado
       const keysRes = await fetch('/api/config/ai-keys');
       if (!keysRes.ok) throw new Error('no keys');
       const keys = await keysRes.json();
-      const algumOcrAtivo = ['openai','gemini','anthropic','groq'].some(
-        p => keys[p]?.configurado && keys[p]?.uso?.ocr
+      const nomes = { openai: 'OpenAI', gemini: 'Gemini', anthropic: 'Claude', groq: 'Groq' };
+      // Providers com chave configurada E habilitados para OCR ou Chat
+      const ativos = ['openai','gemini','anthropic','groq'].filter(
+        p => keys[p]?.configurado && (keys[p]?.uso?.ocr || keys[p]?.uso?.chat)
       );
-
-      if (!algumOcrAtivo) {
+      if (ativos.length === 0) {
         pill.classList.remove('active');
         txt.textContent = 'IA sem chave';
-        return;
-      }
-
-      // Testa conectividade do provider ativo
-      const res = await fetch('/api/contabil/ai-status?provider=' + provider);
-      if (res.ok) {
-        const d = await res.json();
-        const nomes = { openai: 'OpenAI', gemini: 'Gemini', anthropic: 'Claude', groq: 'Groq' };
-        if (d.ativa) {
-          pill.classList.add('active');
-          txt.textContent = (nomes[provider] || provider) + ' ativo';
-        } else {
-          pill.classList.remove('active');
-          txt.textContent = 'IA inativa';
-        }
       } else {
-        pill.classList.remove('active');
-        txt.textContent = 'IA inativa';
+        pill.classList.add('active');
+        txt.textContent = ativos.map(p => nomes[p] || p).join(' + ') + ' ativo';
       }
     } catch {
       pill.classList.remove('active');
@@ -918,6 +904,7 @@
     else if (page === 'ctb-empresas')  { if (window.ctbEmpresas)  ctbEmpresas.carregar(); }
     else if (page === 'ctb-arquivos')  { if (window.ctbArquivos)  ctbArquivos.carregar(); }
     else if (page === 'chatbot') { chatbot.carregarConversas(); }
+    else if (page === 'ia-central') { iaCentral.init(); }
   }
 
   // ── Telegram ──────────────────────────────────────────────────────────────────
@@ -2920,6 +2907,7 @@
     if (panel === 'boasvindas') chatbot.carregarBoasVindas();
     if (panel === 'faq')         chatbot.carregarFaq();
     if (panel === 'aprendizado') chatbot.carregarAprendizado();
+    if (panel === 'memoria') chatbot.carregarMemoria();
   }
 
   const chatbot = (() => {
@@ -3113,6 +3101,18 @@
     async function carregarConversas() {
       const el = document.getElementById('chatbotConversasList');
       if (!el) return;
+      // Event delegation — registra UMA vez no container
+      if (!el._cbDelegated) {
+        el._cbDelegated = true;
+        el.addEventListener('click', function(ev) {
+          const card = ev.target.closest('.cb-wa-contact');
+          if (!card) return;
+          const phone = card.dataset.phone;
+          const nome  = card.dataset.nome  || '';
+          const ativo = card.dataset.ativo !== '0';
+          abrirConversa(phone, nome, ativo);
+        });
+      }
       el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-mid);font-size:.8rem">Carregando…</div>';
       try {
         const r = await fetch('/api/chatbot/conversas');
@@ -3151,7 +3151,7 @@
         const pausado = c.chatbot_ativo === false;
         const isAtivo = c.phone === _phoneAtual;
         return `<div class="cb-wa-contact${isAtivo ? ' active' : ''}" id="cbContact-${CSS.escape(c.phone)}"
-            onclick="chatbot.abrirConversa(${JSON.stringify(c.phone)}, ${JSON.stringify(nm)}, ${!!c.chatbot_ativo})">
+            data-phone="${c.phone.replace(/"/g,'&quot;')}" data-nome="${nm.replace(/"/g,'&quot;')}" data-ativo="${c.chatbot_ativo ? '1' : '0'}">
           <div class="cb-wa-avatar" style="${pausado ? 'background:linear-gradient(135deg,#9ca3af,#6b7280)' : ''}">${ini}</div>
           <div class="cb-wa-contact-info">
             <div class="cb-wa-contact-name">${nm}</div>
@@ -3279,25 +3279,43 @@
       const ta = document.getElementById('cbMsgTexto');
       const texto = (ta?.value || '').trim();
       if (!texto) return;
+
+      const msgsEl = document.getElementById('cbChatMsgs');
+      const agora  = new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+
+      // Limpa campo antes de aguardar resposta
       ta.value = '';
       ta.style.height = 'auto';
 
-      // Adiciona bolha otimista
-      const msgsEl = document.getElementById('cbChatMsgs');
-      const agora  = new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-      msgsEl.insertAdjacentHTML('beforeend', `
-        <div class="cb-bubble-wrap-bot">
-          <div class="cb-bubble cb-bubble-bot">
-            <span class="cb-bubble-label bot">🖊 Manual</span>
-            ${_escHtml(texto)}
-            <span class="cb-bubble-time">${agora}</span>
-          </div>
-        </div>`);
-      msgsEl.scrollTop = msgsEl.scrollHeight;
-
       try {
-        await api('POST', '/api/chatbot/enviar', { phone: _phoneAtual, mensagem: texto });
-      } catch(e) { console.error('[chatbot] enviarMensagem:', e); }
+        const res = await api('POST', '/api/chatbot/enviar', { phone: _phoneAtual, mensagem: texto });
+        if (!res.ok || res._status >= 400) {
+          // Mostra erro sem adicionar bolha fantasma
+          msgsEl.insertAdjacentHTML('beforeend', `
+            <div style="text-align:center;padding:.5rem 1rem">
+              <span style="font-size:.75rem;color:#ef4444;background:#fef2f2;padding:.25rem .7rem;border-radius:20px">
+                ⚠️ Falha ao enviar: ${res.detail || 'erro desconhecido'}
+              </span>
+            </div>`);
+          msgsEl.scrollTop = msgsEl.scrollHeight;
+          // Restaura o texto no campo para o usuário tentar novamente
+          ta.value = texto;
+          return;
+        }
+        // Adiciona bolha apenas se o envio foi confirmado
+        msgsEl.insertAdjacentHTML('beforeend', `
+          <div class="cb-bubble-wrap-bot">
+            <div class="cb-bubble cb-bubble-bot">
+              <span class="cb-bubble-label bot">🖊 Manual</span>
+              ${_escHtml(texto)}
+              <span class="cb-bubble-time">${agora}</span>
+            </div>
+          </div>`);
+        msgsEl.scrollTop = msgsEl.scrollHeight;
+      } catch(e) {
+        console.error('[chatbot] enviarMensagem:', e);
+        ta.value = texto; // restaura texto
+      }
     }
 
     async function limparHistorico() {
@@ -3318,6 +3336,151 @@
       if (e.target && e.target.id === 'chatbotBoasVindasMsg') _atualizarPreview();
     });
 
+    // ── Memória IA ────────────────────────────────────────────────────────────
+    let _memoriaFiltro = '';
+
+    async function carregarMemoria() {
+      // Carrega stats
+      const stats = await api('GET', '/api/chatbot/memoria-ia/stats');
+      const statsEl = document.getElementById('memoriaIaStats');
+      if (statsEl && stats._status === 200) {
+        statsEl.innerHTML = `
+          <span class="mem-stat-chip" style="background:#f0fdf4;color:#166534">✅ ${stats.aprovadas} aprovadas</span>
+          <span class="mem-stat-chip" style="background:#fefce8;color:#854d0e">⏳ ${stats.pendentes} pendentes</span>
+          <span class="mem-stat-chip" style="background:#fef2f2;color:#991b1b">❌ ${stats.rejeitadas} rejeitadas</span>
+          <span class="mem-stat-chip" style="background:#f5f3ff;color:#5b21b6">🔄 ${stats.total_usos} usos totais</span>`;
+      }
+      // Carrega config (memoria_ia_ativa)
+      const cfg = await api('GET', '/api/chatbot/config');
+      const chk = document.getElementById('memoriaIaAtiva');
+      if (chk && cfg) chk.checked = cfg.memoria_ia_ativa !== false;
+      // Carrega lista
+      await _renderMemoria(_memoriaFiltro);
+    }
+
+    async function _renderMemoria(filtro) {
+      const el = document.getElementById('memoriaIaLista');
+      if (!el) return;
+      el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-mid);font-size:.8rem">Carregando…</div>';
+      const url = '/api/chatbot/memoria-ia' + (filtro ? '?filtro=' + filtro : '');
+      const r = await api('GET', url);
+      if (!r || r._status >= 400 || !Array.isArray(r)) {
+        el.innerHTML = '<div style="text-align:center;padding:2rem;color:#ef4444;font-size:.8rem">Erro ao carregar</div>';
+        return;
+      }
+      if (!r.length) {
+        el.innerHTML = '<div style="text-align:center;padding:3rem 1rem;color:var(--text-mid);font-size:.8rem">' +
+          (filtro ? 'Nenhuma entrada ' + filtro : 'Nenhuma entrada ainda — a IA vai alimentar esta base automaticamente') + '</div>';
+        return;
+      }
+      el.innerHTML = r.map(m => {
+        const vars = (() => { try { return JSON.parse(m.variacoes || '[]'); } catch { return []; } })();
+        const statusBadge = m.aprovado === true ? '<span class="mem-badge mem-badge-aprovado">✅ Aprovada</span>'
+          : m.aprovado === false ? '<span class="mem-badge mem-badge-rejeitado">❌ Rejeitada</span>'
+          : '<span class="mem-badge mem-badge-pendente">⏳ Pendente</span>';
+        const fonteBadge = `<span class="mem-badge mem-badge-${m.fonte || 'ia'}">${m.fonte === 'manual' ? '✏️ Manual' : '🤖 IA'}</span>`;
+        return `<div class="mem-card" id="mem-card-${m.id}">
+          <div class="mem-card-header">
+            <span class="mem-intencao">${_escHtml(m.intencao)}</span>
+            ${statusBadge} ${fonteBadge}
+            <span style="margin-left:auto;font-size:.68rem;color:var(--text-light)">${m.usos} uso${m.usos !== 1 ? 's' : ''}</span>
+          </div>
+          <div class="mem-confianca-bar"><div class="mem-confianca-fill" style="width:${m.confianca || 0}%"></div></div>
+          ${vars.length ? `<div class="mem-variacoes">📌 ${vars.slice(0,4).map(v => _escHtml(v)).join(' &nbsp;·&nbsp; ')}</div>` : ''}
+          <div class="mem-resposta">${_escHtml(m.resposta_ideal)}</div>
+          <div class="mem-actions">
+            ${m.aprovado !== true  ? `<button class="btn btn-sm" style="background:#dcfce7;color:#166534;border:none" onclick="chatbot.aprovarMemoria(${m.id},true)">✅ Aprovar</button>` : ''}
+            ${m.aprovado !== false ? `<button class="btn btn-sm" style="background:#fee2e2;color:#991b1b;border:none" onclick="chatbot.aprovarMemoria(${m.id},false)">❌ Rejeitar</button>` : ''}
+            <button class="btn btn-sm btn-ghost" onclick="chatbot.editarMemoria(${m.id})">✏️ Editar</button>
+            <button class="btn btn-sm btn-ghost" style="color:#ef4444" onclick="chatbot.deletarMemoria(${m.id})">🗑</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    async function filtrarMemoria(btn, filtro) {
+      _memoriaFiltro = filtro;
+      document.querySelectorAll('.mem-filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      await _renderMemoria(filtro);
+    }
+
+    async function aprovarMemoria(id, aprovado) {
+      await api('PATCH', `/api/chatbot/memoria-ia/${id}/aprovar`, { aprovado });
+      await carregarMemoria();
+    }
+
+    async function deletarMemoria(id) {
+      if (!confirm('Apagar esta entrada da memória?')) return;
+      await api('DELETE', `/api/chatbot/memoria-ia/${id}`);
+      await carregarMemoria();
+    }
+
+    function editarMemoria(id) {
+      const card = document.getElementById('mem-card-' + id);
+      if (!card) return;
+      const intencaoEl  = card.querySelector('.mem-intencao');
+      const respostaEl  = card.querySelector('.mem-resposta');
+      const actionsEl   = card.querySelector('.mem-actions');
+      const intAtual    = intencaoEl.textContent.trim();
+      const respAtual   = respostaEl.textContent.trim();
+      actionsEl.innerHTML = `
+        <div style="width:100%;display:flex;flex-direction:column;gap:.5rem">
+          <input id="memEditInt-${id}" value="${intAtual.replace(/"/g,'&quot;')}" placeholder="Intenção"
+            style="padding:.4rem .65rem;border:1px solid var(--border);border-radius:7px;font-size:.8rem;font-family:monospace;width:100%">
+          <textarea id="memEditResp-${id}" rows="4"
+            style="padding:.4rem .65rem;border:1px solid var(--border);border-radius:7px;font-size:.8rem;resize:vertical;width:100%;font-family:inherit">${respAtual}</textarea>
+          <div style="display:flex;gap:.4rem">
+            <button class="btn btn-sm btn-primary" onclick="chatbot._salvarEdicaoMemoria(${id})">Salvar</button>
+            <button class="btn btn-sm btn-ghost" onclick="chatbot.carregarMemoria()">Cancelar</button>
+          </div>
+        </div>`;
+    }
+
+    async function _salvarEdicaoMemoria(id) {
+      const intVal  = document.getElementById('memEditInt-'  + id)?.value.trim() || '';
+      const respVal = document.getElementById('memEditResp-' + id)?.value.trim() || '';
+      if (!intVal || !respVal) return;
+      await api('PATCH', `/api/chatbot/memoria-ia/${id}`, {
+        intencao: intVal, variacoes: '[]', resposta_ideal: respVal, aprovado: null
+      });
+      await carregarMemoria();
+    }
+
+    async function abrirNovaMemoria() {
+      const el = document.getElementById('memoriaIaLista');
+      if (!el) return;
+      const formHtml = `<div class="mem-card" style="border-color:var(--accent)">
+        <div style="font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:.75rem">Nova entrada manual</div>
+        <div style="display:flex;flex-direction:column;gap:.5rem">
+          <input id="memNovaInt" placeholder="Intenção (ex: consulta_preco)"
+            style="padding:.4rem .65rem;border:1px solid var(--border);border-radius:7px;font-size:.8rem;font-family:monospace">
+          <textarea id="memNovaResp" rows="3" placeholder="Resposta ideal para esta intenção"
+            style="padding:.4rem .65rem;border:1px solid var(--border);border-radius:7px;font-size:.8rem;resize:vertical;font-family:inherit"></textarea>
+          <div style="display:flex;gap:.4rem">
+            <button class="btn btn-sm btn-primary" onclick="chatbot._salvarNovaMemoria()">Salvar</button>
+            <button class="btn btn-sm btn-ghost" onclick="chatbot.carregarMemoria()">Cancelar</button>
+          </div>
+        </div>
+      </div>`;
+      el.insertAdjacentHTML('afterbegin', formHtml);
+      document.getElementById('memNovaInt')?.focus();
+    }
+
+    async function _salvarNovaMemoria() {
+      const intVal  = document.getElementById('memNovaInt')?.value.trim() || '';
+      const respVal = document.getElementById('memNovaResp')?.value.trim() || '';
+      if (!intVal || !respVal) return;
+      await api('POST', '/api/chatbot/memoria-ia', {
+        intencao: intVal, variacoes: '[]', resposta_ideal: respVal, aprovado: true
+      });
+      await carregarMemoria();
+    }
+
+    async function toggleMemoriaIaAtiva(ativo) {
+      await api('POST', '/api/chatbot/config/memoria-ia-ativa', { memoria_ia_ativa: ativo });
+    }
+
     return {
       carregarConfig, salvarConfig,
       carregarBoasVindas, salvarBoasVindas,
@@ -3325,8 +3488,154 @@
       carregarAprendizado, filtrarAprendizado, avaliarAprendizado, removerAprendizado,
       carregarConversas, filtrarContatos, abrirConversa,
       toggleChatbotAtivo, enviarMensagem, limparHistorico,
+      carregarMemoria, filtrarMemoria, aprovarMemoria, deletarMemoria,
+      editarMemoria, _salvarEdicaoMemoria, abrirNovaMemoria, _salvarNovaMemoria,
+      toggleMemoriaIaAtiva,
     };
   })();
+  window.chatbot = chatbot;
+
+  // ── IA Central ───────────────────────────────────────────────────────────────
+
+  const iaCentral = (() => {
+    let _historico = [];  // [{role, content}]
+    let _sending = false;
+    let _chartCount = 0;
+    let _initialized = false;
+
+    function _escH(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function _addMsg(role, content, chartData) {
+      const msgsEl = document.getElementById('iaMsgs');
+      if (!msgsEl) return;
+
+      // Esconde sugestões após primeira mensagem do usuário
+      if (role === 'user') {
+        const sug = document.getElementById('iaSugestoes');
+        if (sug) sug.style.display = 'none';
+      }
+
+      if (role === 'user') {
+        msgsEl.insertAdjacentHTML('beforeend', `
+          <div class="ia-msg-user">
+            <div class="ia-bubble">${_escH(content)}</div>
+          </div>`);
+      } else {
+        // Formata negrito simples e quebras de linha
+        const html = _escH(content)
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\n/g, '<br>');
+        msgsEl.insertAdjacentHTML('beforeend', `
+          <div class="ia-msg-ia">
+            <div class="ia-avatar">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+            </div>
+            <div class="ia-bubble">${html}</div>
+          </div>`);
+
+        // Renderiza gráfico se houver
+        if (chartData) {
+          _chartCount++;
+          const cid = 'iaChart' + _chartCount;
+          msgsEl.insertAdjacentHTML('beforeend', `
+            <div class="ia-chart-wrap">
+              <canvas id="${cid}"></canvas>
+            </div>`);
+          setTimeout(() => {
+            const ctx = document.getElementById(cid);
+            if (ctx && window.Chart) {
+              new Chart(ctx, chartData);
+            }
+          }, 50);
+        }
+      }
+      msgsEl.scrollTop = msgsEl.scrollHeight;
+    }
+
+    function _setLoading(on) {
+      _sending = on;
+      const ld = document.getElementById('iaLoading');
+      const btn = document.querySelector('.ia-send-btn');
+      const ta = document.getElementById('iaInput');
+      if (ld) ld.style.display = on ? 'flex' : 'none';
+      if (btn) btn.disabled = on;
+      if (ta) ta.disabled = on;
+    }
+
+    async function enviar(texto) {
+      if (_sending) return;
+      const ta = document.getElementById('iaInput');
+      const msg = (texto || ta?.value || '').trim();
+      if (!msg) return;
+      if (ta) { ta.value = ''; ta.style.height = 'auto'; }
+
+      _addMsg('user', msg);
+      _historico.push({ role: 'user', content: msg });
+      _setLoading(true);
+
+      try {
+        const res = await fetch('/api/ia-central/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mensagem: msg, historico: _historico.slice(-12) }),
+        });
+
+        if (res.status === 401) { window.location.href = '/login'; return; }
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          const errMsg = data.detail || 'Erro desconhecido';
+          const msgsEl = document.getElementById('iaMsgs');
+          if (msgsEl) msgsEl.insertAdjacentHTML('beforeend',
+            `<div class="ia-erro">⚠️ ${_escH(errMsg)}</div>`);
+          return;
+        }
+
+        const resposta = data.resposta || '';
+        _addMsg('ia', resposta, data.chart || null);
+        _historico.push({ role: 'assistant', content: resposta });
+
+        // Limita histórico a 40 entradas
+        if (_historico.length > 40) _historico = _historico.slice(-40);
+
+      } catch(e) {
+        console.error('[ia-central]', e);
+        const msgsEl = document.getElementById('iaMsgs');
+        if (msgsEl) msgsEl.insertAdjacentHTML('beforeend',
+          `<div class="ia-erro">⚠️ Falha de conexão. Tente novamente.</div>`);
+      } finally {
+        _setLoading(false);
+        document.getElementById('iaMsgs')?.scrollTo(0, 999999);
+      }
+    }
+
+    function sugerir(texto) { enviar(texto); }
+
+    function limpar() {
+      _historico = [];
+      _chartCount = 0;
+      _initialized = false;
+      const msgsEl = document.getElementById('iaMsgs');
+      if (msgsEl) msgsEl.innerHTML = '';
+      const sug = document.getElementById('iaSugestoes');
+      if (sug) sug.style.display = '';
+      init();
+    }
+
+    function init() {
+      const msgsEl = document.getElementById('iaMsgs');
+      if (!msgsEl) return;
+      if (_initialized) return;
+      _initialized = true;
+      _addMsg('ia', 'Olá! Sou a IA Central do ZapDin. Posso responder perguntas sobre envios, campanhas, chatbot, sessões WhatsApp e muito mais. Como posso ajudar?');
+    }
+
+    return { enviar, sugerir, limpar, init };
+  })();
+  window.iaCentral = iaCentral;
 
   // ── Sistema — navegação interna ───────────────────────────────────────────────
 
