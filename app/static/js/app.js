@@ -2919,7 +2919,10 @@
   }
 
   const chatbot = (() => {
-    let _phoneAtual = null;
+    let _phoneAtual       = null;
+    let _nomeAtual        = null;
+    let _chatbotAtivoAtual = true;
+    let _conversasCache   = [];
     let _filtroAprendizado = 'todos';
 
     // ── Alert helper ─────────────────────────────────────────────────────────
@@ -3094,84 +3097,202 @@
       await carregarAprendizado();
     }
 
-    // ── Conversas ─────────────────────────────────────────────────────────────
+    // ── Helpers de avatar ─────────────────────────────────────────────────────
+    function _initials(nome) {
+      if (!nome) return '?';
+      const parts = nome.trim().split(/\s+/);
+      if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+
+    // ── Conversas — lista ─────────────────────────────────────────────────────
     async function carregarConversas() {
       const el = document.getElementById('chatbotConversasList');
       if (!el) return;
+      el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-mid);font-size:.8rem">Carregando…</div>';
       try {
         const r = await fetch('/api/chatbot/conversas');
-        if (!r.ok) { el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:.82rem">Erro ao carregar.</div>'; return; }
-        const lista = await r.json();
-        if (!lista.length) {
-          el.innerHTML = '<div style="text-align:center;padding:2.5rem 1rem;color:var(--text-muted);font-size:.82rem">Nenhuma conversa ainda</div>';
-          return;
-        }
-        el.innerHTML = lista.map(c => {
-          const dt = c.ultima_msg ? new Date(c.ultima_msg).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '';
-          const ph = (c.phone||'').replace(/'/g,"\\'");
-          const nm = (c.nome||c.phone||'').replace(/'/g,"\\'");
-          return `<div class="chatbot-conversa-item" onclick="chatbot.abrirConversa('${ph}','${nm}')">
-            <div style="display:flex;align-items:center;gap:.55rem">
-              <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#ede9fe,#ddd6fe);display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0">💬</div>
-              <div style="flex:1;min-width:0">
-                <div style="font-weight:600;font-size:.8rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.nome || c.phone}</div>
-                <div style="font-size:.7rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.ultima_preview || ''}</div>
-              </div>
-              <div style="font-size:.67rem;color:var(--text-muted);flex-shrink:0;text-align:right">
-                <div>${dt}</div>
-                <div style="color:#8b5cf6;font-weight:600">${c.total_msgs} msg</div>
-              </div>
-            </div>
-          </div>`;
-        }).join('');
-      } catch { el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:.82rem">Erro ao carregar.</div>'; }
+        if (!r.ok) throw new Error('status ' + r.status);
+        _conversasCache = await r.json();
+        _renderContatos(_conversasCache);
+      } catch(e) {
+        el.innerHTML = '<div style="text-align:center;padding:2rem;color:#ef4444;font-size:.8rem">Erro ao carregar conversas.</div>';
+        console.error('[chatbot] carregarConversas:', e);
+      }
     }
 
-    async function abrirConversa(phone, nome) {
-      _phoneAtual = phone;
-      const card   = document.getElementById('chatbotHistoricoCard');
-      const vazio  = document.getElementById('chatbotHistoricoVazio');
-      const nomeEl = document.getElementById('chatbotHistoricoNome');
-      const phEl   = document.getElementById('chatbotHistoricoPhone');
-      const msgsEl = document.getElementById('chatbotHistoricoMsgs');
-      if (!card) return;
-      if (nomeEl) nomeEl.textContent = nome || phone;
-      if (phEl)   phEl.textContent   = phone;
-      if (vazio) vazio.style.display = 'none';
-      card.style.display = 'block';
-      msgsEl.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-muted)">Carregando…</div>';
+    function _renderContatos(lista) {
+      const el = document.getElementById('chatbotConversasList');
+      if (!el) return;
+      if (!lista.length) {
+        el.innerHTML = '<div style="text-align:center;padding:3rem 1rem;color:var(--text-mid);font-size:.8rem">Nenhuma conversa ainda</div>';
+        return;
+      }
+      el.innerHTML = lista.map(c => {
+        const dt  = c.ultima_msg ? new Date(c.ultima_msg).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+        const nm  = c.nome || c.phone || '';
+        const ini = _initials(nm);
+        const pausado = c.chatbot_ativo === false;
+        const isAtivo = c.phone === _phoneAtual;
+        return `<div class="cb-wa-contact${isAtivo ? ' active' : ''}" id="cbContact-${CSS.escape(c.phone)}"
+            onclick="chatbot.abrirConversa(${JSON.stringify(c.phone)}, ${JSON.stringify(nm)}, ${!!c.chatbot_ativo})">
+          <div class="cb-wa-avatar" style="${pausado ? 'background:linear-gradient(135deg,#9ca3af,#6b7280)' : ''}">${ini}</div>
+          <div class="cb-wa-contact-info">
+            <div class="cb-wa-contact-name">${nm}</div>
+            <div class="cb-wa-contact-preview">${c.ultima_preview || '...'}</div>
+          </div>
+          <div class="cb-wa-contact-meta">
+            <div class="cb-wa-contact-time">${dt}</div>
+            ${pausado ? '<div class="cb-wa-paused-badge">⏸ Pausado</div>' : ''}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function filtrarContatos(q) {
+      if (!q.trim()) { _renderContatos(_conversasCache); return; }
+      const ql = q.toLowerCase();
+      _renderContatos(_conversasCache.filter(c =>
+        (c.nome || '').toLowerCase().includes(ql) ||
+        (c.phone || '').includes(ql)
+      ));
+    }
+
+    // ── Conversas — abrir ─────────────────────────────────────────────────────
+    async function abrirConversa(phone, nome, chatbotAtivo = true) {
+      _phoneAtual        = phone;
+      _nomeAtual         = nome;
+      _chatbotAtivoAtual = chatbotAtivo;
+
+      // Destaca na lista
+      document.querySelectorAll('.cb-wa-contact').forEach(el => el.classList.remove('active'));
+      const item = document.getElementById('cbContact-' + CSS.escape(phone));
+      if (item) item.classList.add('active');
+
+      // Atualiza header
+      const header  = document.getElementById('cbChatHeader');
+      const vazio   = document.getElementById('cbChatVazio');
+      const msgsEl  = document.getElementById('cbChatMsgs');
+      const inputEl = document.getElementById('cbChatInput');
+      if (!header) return;
+
+      document.getElementById('cbChatNome').textContent  = nome || phone;
+      document.getElementById('cbChatPhone').textContent = phone;
+      document.getElementById('cbChatAvatar').textContent = _initials(nome || phone);
+
+      _updatePausarToggle();
+
+      header.style.display  = 'flex';
+      vazio.style.display   = 'none';
+      msgsEl.style.display  = 'flex';
+      inputEl.style.display = 'flex';
+      msgsEl.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text-mid);font-size:.8rem">Carregando…</div>';
+
       try {
         const r = await fetch('/api/chatbot/historico/' + encodeURIComponent(phone));
+        if (!r.ok) throw new Error('status ' + r.status);
         const msgs = await r.json();
         if (!msgs.length) {
-          msgsEl.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-muted);font-size:.82rem">Sem mensagens</div>';
+          msgsEl.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-mid);font-size:.8rem">Sem mensagens nesta conversa</div>';
           return;
         }
         msgsEl.innerHTML = msgs.map(m => {
           const isBot = m.role === 'assistant';
           const dt = m.created_at ? new Date(m.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
-          return `<div style="display:flex;flex-direction:column;align-items:${isBot ? 'flex-start' : 'flex-end'}">
-            <div style="max-width:84%;background:${isBot ? 'linear-gradient(135deg,#f5f3ff,#ede9fe)' : 'linear-gradient(135deg,#f0fdf4,#dcfce7)'};
-              border:1px solid ${isBot ? '#ddd6fe' : '#bbf7d0'};border-radius:${isBot ? '4px 12px 12px 12px' : '12px 4px 12px 12px'};
-              padding:.5rem .8rem;font-size:.8rem;color:var(--text);line-height:1.5">
-              ${isBot ? '<span style="font-size:.63rem;font-weight:700;color:#8b5cf6;display:block;margin-bottom:.2rem">🤖 Bot</span>' : ''}
-              ${m.conteudo}
+          return `<div class="cb-bubble-wrap-${isBot ? 'bot' : 'user'}">
+            <div class="cb-bubble cb-bubble-${isBot ? 'bot' : 'user'}">
+              <span class="cb-bubble-label ${isBot ? 'bot' : 'user'}">${isBot ? '🤖 Bot' : '👤 Cliente'}</span>
+              ${_escHtml(m.conteudo)}
+              <span class="cb-bubble-time">${dt}</span>
             </div>
-            <div style="font-size:.63rem;color:var(--text-muted);margin-top:.1rem;padding:0 .3rem">${dt}</div>
           </div>`;
         }).join('');
         msgsEl.scrollTop = msgsEl.scrollHeight;
-      } catch { msgsEl.innerHTML = '<div style="color:#ef4444;font-size:.8rem;padding:.5rem">Erro ao carregar histórico.</div>'; }
+      } catch(e) {
+        msgsEl.innerHTML = '<div style="text-align:center;padding:1rem;color:#ef4444;font-size:.8rem">Erro ao carregar histórico.</div>';
+        console.error('[chatbot] abrirConversa:', e);
+      }
+    }
+
+    function _escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    }
+
+    function _updatePausarToggle() {
+      const btn   = document.getElementById('cbPausarToggle');
+      const label = document.getElementById('cbPausarLabel');
+      if (!btn) return;
+      if (_chatbotAtivoAtual) {
+        btn.classList.remove('pausado');
+        if (label) label.textContent = 'Bot ativo';
+      } else {
+        btn.classList.add('pausado');
+        if (label) label.textContent = 'Bot pausado';
+      }
+    }
+
+    async function toggleChatbotAtivo() {
+      if (!_phoneAtual) return;
+      _chatbotAtivoAtual = !_chatbotAtivoAtual;
+      _updatePausarToggle();
+      // Atualiza badge na lista
+      const item = document.getElementById('cbContact-' + CSS.escape(_phoneAtual));
+      if (item) {
+        const badge = item.querySelector('.cb-wa-paused-badge');
+        if (_chatbotAtivoAtual && badge) badge.remove();
+        else if (!_chatbotAtivoAtual && !badge) {
+          const meta = item.querySelector('.cb-wa-contact-meta');
+          if (meta) meta.insertAdjacentHTML('beforeend','<div class="cb-wa-paused-badge">⏸ Pausado</div>');
+        }
+        const av = item.querySelector('.cb-wa-avatar');
+        if (av) av.style.background = _chatbotAtivoAtual ? '' : 'linear-gradient(135deg,#9ca3af,#6b7280)';
+      }
+      // Também atualiza cache
+      const cached = _conversasCache.find(c => c.phone === _phoneAtual);
+      if (cached) cached.chatbot_ativo = _chatbotAtivoAtual;
+      try {
+        const phoneLocal = _phoneAtual.replace('@s.whatsapp.net','').replace('@lid','').replace(/^55/,'');
+        await api('PATCH', '/api/chatbot/contato/' + encodeURIComponent(phoneLocal) + '/chatbot-ativo',
+          { chatbot_ativo: _chatbotAtivoAtual });
+      } catch(e) { console.error('[chatbot] toggleChatbotAtivo:', e); }
+    }
+
+    // ── Envio manual ──────────────────────────────────────────────────────────
+    async function enviarMensagem() {
+      if (!_phoneAtual) return;
+      const ta = document.getElementById('cbMsgTexto');
+      const texto = (ta?.value || '').trim();
+      if (!texto) return;
+      ta.value = '';
+      ta.style.height = 'auto';
+
+      // Adiciona bolha otimista
+      const msgsEl = document.getElementById('cbChatMsgs');
+      const agora  = new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      msgsEl.insertAdjacentHTML('beforeend', `
+        <div class="cb-bubble-wrap-bot">
+          <div class="cb-bubble cb-bubble-bot">
+            <span class="cb-bubble-label bot">🖊 Manual</span>
+            ${_escHtml(texto)}
+            <span class="cb-bubble-time">${agora}</span>
+          </div>
+        </div>`);
+      msgsEl.scrollTop = msgsEl.scrollHeight;
+
+      try {
+        await api('POST', '/api/chatbot/enviar', { phone: _phoneAtual, mensagem: texto });
+      } catch(e) { console.error('[chatbot] enviarMensagem:', e); }
     }
 
     async function limparHistorico() {
       if (!_phoneAtual) return;
-      if (!confirm('Apagar todo o histórico de ' + _phoneAtual + '?')) return;
+      if (!confirm('Apagar todo o histórico de ' + (_nomeAtual || _phoneAtual) + '?')) return;
       await api('DELETE', `/api/chatbot/historico/${encodeURIComponent(_phoneAtual)}`);
-      const card = document.getElementById('chatbotHistoricoCard');
-      const vazio = document.getElementById('chatbotHistoricoVazio');
-      if (card) card.style.display = 'none';
-      if (vazio) vazio.style.display = 'flex';
+      // Reseta painel
+      document.getElementById('cbChatHeader').style.display  = 'none';
+      document.getElementById('cbChatMsgs').style.display    = 'none';
+      document.getElementById('cbChatInput').style.display   = 'none';
+      document.getElementById('cbChatVazio').style.display   = 'flex';
       _phoneAtual = null;
       await carregarConversas();
     }
@@ -3186,7 +3307,8 @@
       carregarBoasVindas, salvarBoasVindas,
       carregarFaq, adicionarFaq, removerFaq,
       carregarAprendizado, filtrarAprendizado, avaliarAprendizado, removerAprendizado,
-      carregarConversas, abrirConversa, limparHistorico,
+      carregarConversas, filtrarContatos, abrirConversa,
+      toggleChatbotAtivo, enviarMensagem, limparHistorico,
     };
   })();
 

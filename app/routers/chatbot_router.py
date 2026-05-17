@@ -33,6 +33,10 @@ class AprendizadoAvalBody(BaseModel):
 class ChatbotAtivoBody(BaseModel):
     chatbot_ativo: bool
 
+class EnviarMsgBody(BaseModel):
+    phone: str
+    mensagem: str
+
 
 # ── Config / Personalidade ────────────────────────────────────────────────────
 
@@ -282,6 +286,38 @@ async def get_historico(
         }
         for r in rows
     ]
+
+
+@router.post("/enviar")
+async def enviar_mensagem_manual(
+    body: EnviarMsgBody,
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Envia mensagem manual pelo WhatsApp e salva no histórico."""
+    from fastapi import HTTPException
+    from ..services.evolution_service import evo_manager
+
+    empresa_id = user["empresa_id"]
+    phone = body.phone.strip()
+    mensagem = body.mensagem.strip()
+    if not phone or not mensagem:
+        raise HTTPException(400, "phone e mensagem obrigatórios")
+
+    jid = phone if "@" in phone else f"{phone}@s.whatsapp.net"
+    session_id = evo_manager.pick_session(empresa_id)
+    if not session_id:
+        raise HTTPException(503, "Nenhuma sessão WhatsApp ativa")
+
+    await evo_manager.send_text(session_id, empresa_id, jid, mensagem)
+
+    # Salva no histórico como 'assistant' para manter o contexto
+    await db.execute(
+        "INSERT INTO chat_historico(empresa_id, phone, role, conteudo) VALUES($1,$2,$3,$4)",
+        empresa_id, phone, "assistant", mensagem,
+    )
+    await db.commit()
+    return {"ok": True}
 
 
 @router.patch("/contato/{phone}/chatbot-ativo")

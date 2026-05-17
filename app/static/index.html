@@ -2533,45 +2533,72 @@
         <div class="sys-content">
 
           <!-- ── Painel: Conversas ── -->
-          <div class="sys-panel active" id="cb-panel-conversas">
-            <div class="sys-panel-header">
-              <div class="sys-panel-title">Conversas</div>
-              <div class="sys-panel-sub">Histórico de todas as conversas dos clientes com o chatbot.</div>
-            </div>
+          <div class="sys-panel active" id="cb-panel-conversas" style="padding:0;overflow:hidden;border-radius:12px">
 
-            <div style="display:grid;grid-template-columns:320px 1fr;gap:1.25rem;align-items:start">
+            <div class="cb-wa-layout">
 
-              <!-- Lista de conversas -->
-              <div>
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
-                  <span style="font-size:.8rem;font-weight:600;color:var(--text)">Contatos</span>
-                  <button class="btn btn-ghost btn-sm" onclick="chatbot.carregarConversas()" style="display:inline-flex;align-items:center;gap:.3rem;font-size:.72rem">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                    Atualizar
+              <!-- ── Coluna esquerda: lista de contatos ── -->
+              <div class="cb-wa-sidebar">
+
+                <div class="cb-wa-sidebar-header">
+                  <span style="font-size:.82rem;font-weight:700;color:var(--text)">Conversas</span>
+                  <button class="btn btn-ghost btn-sm" onclick="chatbot.carregarConversas()" title="Atualizar" style="padding:.25rem .45rem">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                   </button>
                 </div>
-                <div id="chatbotConversasList" style="display:flex;flex-direction:column;gap:.35rem;max-height:520px;overflow-y:auto">
-                  <div style="text-align:center;padding:2.5rem 1rem;color:var(--text-muted);font-size:.82rem">Nenhuma conversa ainda</div>
+
+                <div class="cb-wa-search">
+                  <input type="text" id="cbSearch" placeholder="🔍  Buscar contato…" oninput="chatbot.filtrarContatos(this.value)">
                 </div>
+
+                <div class="cb-wa-contacts" id="chatbotConversasList">
+                  <div style="text-align:center;padding:3rem 1rem;color:var(--text-mid);font-size:.8rem">Nenhuma conversa ainda</div>
+                </div>
+
               </div>
 
-              <!-- Histórico da conversa -->
-              <div id="chatbotHistoricoCard" style="display:none">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
-                  <div>
-                    <div style="font-weight:700;font-size:.88rem;color:var(--text)" id="chatbotHistoricoNome">Conversa</div>
-                    <div style="font-size:.7rem;color:var(--text-muted)" id="chatbotHistoricoPhone"></div>
+              <!-- ── Coluna direita: área de chat ── -->
+              <div class="cb-wa-chat">
+
+                <!-- Header (aparece ao selecionar contato) -->
+                <div class="cb-wa-chat-header" id="cbChatHeader" style="display:none">
+                  <div class="cb-wa-avatar" id="cbChatAvatar">?</div>
+                  <div class="cb-wa-chat-info">
+                    <div class="cb-wa-chat-name" id="cbChatNome">—</div>
+                    <div class="cb-wa-chat-phone" id="cbChatPhone"></div>
                   </div>
-                  <button class="btn btn-ghost btn-sm" onclick="chatbot.limparHistorico()" style="color:#ef4444;font-size:.72rem">🗑 Limpar</button>
+                  <div class="cb-wa-chat-actions">
+                    <!-- Toggle Pausar Bot -->
+                    <div class="cb-pausar-wrap">
+                      <span class="cb-pausar-label" id="cbPausarLabel">Bot ativo</span>
+                      <button class="cb-pausar-toggle" id="cbPausarToggle" onclick="chatbot.toggleChatbotAtivo()" title="Pausar/Ativar bot para este contato"></button>
+                    </div>
+                    <!-- Limpar -->
+                    <button class="btn btn-ghost btn-sm" onclick="chatbot.limparHistorico()" title="Limpar histórico" style="color:#ef4444;padding:.3rem .5rem">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                    </button>
+                  </div>
                 </div>
-                <div id="chatbotHistoricoMsgs"
-                  style="display:flex;flex-direction:column;gap:.5rem;max-height:520px;overflow-y:auto;
-                         background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:.75rem">
+
+                <!-- Estado vazio -->
+                <div class="cb-wa-empty" id="cbChatVazio">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="opacity:.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  <span>Selecione uma conversa</span>
                 </div>
-              </div>
-              <div id="chatbotHistoricoVazio" style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--text-muted);font-size:.85rem;flex-direction:column;gap:.5rem">
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:.3"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                Selecione um contato
+
+                <!-- Mensagens -->
+                <div class="cb-wa-messages" id="cbChatMsgs" style="display:none"></div>
+
+                <!-- Input de intervenção manual -->
+                <div class="cb-wa-input" id="cbChatInput" style="display:none">
+                  <textarea id="cbMsgTexto" rows="1" placeholder="Intervir manualmente…"
+                    onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();chatbot.enviarMensagem()}"
+                    oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
+                  <button class="cb-wa-send" onclick="chatbot.enviarMensagem()" title="Enviar">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  </button>
+                </div>
+
               </div>
             </div>
           </div>

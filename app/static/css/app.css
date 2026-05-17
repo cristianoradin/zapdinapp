@@ -1962,7 +1962,145 @@
     .ai-uso-pill.chat.on { background: #eff6ff; border-color: #3b82f6; color: #3b82f6; }
     .ai-uso-pill.chat.on .ai-uso-dot { background: #3b82f6; }
 
-    /* ── Chatbot ── */
+    /* ── Chatbot — WhatsApp layout ── */
+    .cb-wa-layout {
+      display: flex; height: 600px; border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden; background: var(--surface);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Coluna esquerda — lista de contatos */
+    .cb-wa-sidebar {
+      width: 300px; min-width: 280px; display: flex; flex-direction: column;
+      border-right: 1px solid var(--border); background: var(--surface);
+    }
+    .cb-wa-sidebar-header {
+      padding: .85rem 1rem; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--surface2);
+    }
+    .cb-wa-search {
+      padding: .6rem 1rem; border-bottom: 1px solid var(--border);
+    }
+    .cb-wa-search input {
+      width: 100%; padding: .45rem .75rem; border: 1px solid var(--border);
+      border-radius: 20px; font-size: .8rem; background: var(--surface2);
+      color: var(--text); outline: none;
+    }
+    .cb-wa-search input:focus { border-color: var(--accent); background: #fff; }
+    .cb-wa-contacts { flex: 1; overflow-y: auto; }
+    .cb-wa-contact {
+      padding: .7rem 1rem; cursor: pointer; display: flex; align-items: center;
+      gap: .75rem; border-bottom: 1px solid var(--border-soft);
+      transition: background .1s;
+    }
+    .cb-wa-contact:hover  { background: var(--surface2); }
+    .cb-wa-contact.active { background: var(--accent-soft); }
+    .cb-wa-avatar {
+      width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .85rem; font-weight: 700; color: #fff;
+      background: linear-gradient(135deg, #3d7f1f, #7cdc44);
+    }
+    .cb-wa-contact-info { flex: 1; min-width: 0; }
+    .cb-wa-contact-name {
+      font-size: .82rem; font-weight: 600; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .cb-wa-contact-preview {
+      font-size: .72rem; color: var(--text-mid);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: .1rem;
+    }
+    .cb-wa-contact-meta { text-align: right; flex-shrink: 0; }
+    .cb-wa-contact-time { font-size: .65rem; color: var(--text-light); }
+    .cb-wa-paused-badge {
+      font-size: .6rem; background: #fef9c3; color: #92400e; border: 1px solid #fde68a;
+      border-radius: 20px; padding: .1rem .4rem; margin-top: .2rem; white-space: nowrap;
+    }
+
+    /* Coluna direita — chat */
+    .cb-wa-chat {
+      flex: 1; display: flex; flex-direction: column; min-width: 0;
+      background: #f0f4f8;
+    }
+    .cb-wa-chat-header {
+      padding: .7rem 1rem; background: var(--surface); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: .75rem; flex-shrink: 0;
+    }
+    .cb-wa-chat-info { flex: 1; min-width: 0; }
+    .cb-wa-chat-name { font-size: .88rem; font-weight: 700; color: var(--text); }
+    .cb-wa-chat-phone { font-size: .72rem; color: var(--text-mid); }
+    .cb-wa-chat-actions { display: flex; align-items: center; gap: .5rem; flex-shrink: 0; }
+
+    /* Toggle Pausar Bot */
+    .cb-pausar-wrap { display: flex; align-items: center; gap: .4rem; }
+    .cb-pausar-label { font-size: .72rem; color: var(--text-mid); white-space: nowrap; }
+    .cb-pausar-toggle {
+      width: 36px; height: 20px; border-radius: 20px; border: none; cursor: pointer;
+      position: relative; transition: background .2s; flex-shrink: 0;
+      background: var(--accent);
+    }
+    .cb-pausar-toggle::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 14px; height: 14px; border-radius: 50%; background: #fff;
+      transition: left .2s;
+    }
+    .cb-pausar-toggle.pausado { background: #d1d5db; }
+    .cb-pausar-toggle.pausado::after { left: 19px; }
+
+    /* Mensagens */
+    .cb-wa-messages {
+      flex: 1; overflow-y: auto; padding: 1rem;
+      display: flex; flex-direction: column; gap: .5rem;
+    }
+    .cb-bubble-wrap-user  { display: flex; justify-content: flex-end; }
+    .cb-bubble-wrap-bot   { display: flex; justify-content: flex-start; }
+    .cb-bubble {
+      max-width: 72%; padding: .5rem .85rem; border-radius: 10px;
+      font-size: .82rem; line-height: 1.5; color: var(--text); position: relative;
+    }
+    .cb-bubble-user {
+      background: #dcf8c6; border-radius: 10px 2px 10px 10px;
+    }
+    .cb-bubble-bot {
+      background: #ffffff; border-radius: 2px 10px 10px 10px;
+      box-shadow: 0 1px 2px rgba(0,0,0,.08);
+    }
+    .cb-bubble-label {
+      font-size: .62rem; font-weight: 700; margin-bottom: .2rem;
+      display: block;
+    }
+    .cb-bubble-label.bot  { color: #7c3aed; }
+    .cb-bubble-label.user { color: #3d7f1f; }
+    .cb-bubble-time {
+      font-size: .6rem; color: var(--text-light); margin-top: .25rem;
+      text-align: right; display: block;
+    }
+
+    /* Input de intervenção manual */
+    .cb-wa-input {
+      padding: .65rem 1rem; background: var(--surface);
+      border-top: 1px solid var(--border); display: flex; gap: .5rem; align-items: flex-end;
+    }
+    .cb-wa-input textarea {
+      flex: 1; resize: none; border: 1px solid var(--border); border-radius: 20px;
+      padding: .55rem 1rem; font-size: .82rem; font-family: inherit;
+      background: var(--surface2); color: var(--text); outline: none;
+      max-height: 120px; min-height: 38px; line-height: 1.4;
+    }
+    .cb-wa-input textarea:focus { border-color: var(--accent); background: #fff; }
+    .cb-wa-send {
+      width: 38px; height: 38px; border-radius: 50%; border: none; cursor: pointer;
+      background: var(--accent); color: #fff; display: flex; align-items: center;
+      justify-content: center; flex-shrink: 0; transition: background .15s;
+    }
+    .cb-wa-send:hover { background: #2e6217; }
+    .cb-wa-empty {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: .75rem; color: var(--text-mid); font-size: .85rem;
+    }
+
+    /* Chatbot ativo/pausado na lista de contatos */
     .chatbot-conversa-item {
       padding: .6rem .75rem; border-radius: 10px; cursor: pointer;
       border: 1px solid var(--border); background: var(--surface2);

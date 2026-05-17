@@ -338,9 +338,12 @@ async def responder_mensagem(
 
         # ── Envia boas-vindas na primeira mensagem ────────────────────────────
         jid = phone if "@" in phone else f"{phone}@s.whatsapp.net"
+        # Extrai session_id do nome completo da instância (formato: e{empresa_id}_{session_id})
+        session_id = instance.split("_", 1)[1] if "_" in instance else instance
+
         if not boas_vindas_enviada and boas_vindas_ativo and boas_vindas_msg.strip():
             msg_bv = boas_vindas_msg.replace("{nome}", nome_contato)
-            await evo_manager.send_text(instance, jid, msg_bv)
+            await evo_manager.send_text(session_id, empresa_id, jid, msg_bv)
             logger.info("[chatbot] Boas-vindas enviada para %s", phone)
             # Marca flag no banco para não reenviar
             async with get_db_direct() as db:
@@ -351,7 +354,7 @@ async def responder_mensagem(
                 await db.commit()
 
         # ── Envia resposta pelo WhatsApp ──────────────────────────────────────
-        await evo_manager.send_text(instance, jid, resposta)
+        await evo_manager.send_text(session_id, empresa_id, jid, resposta)
 
         logger.info("[chatbot] Resposta enviada para %s via %s (%d chars)",
                     phone, provider, len(resposta))
