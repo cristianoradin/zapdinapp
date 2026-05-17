@@ -245,7 +245,7 @@ async def list_conversas(
            GROUP BY h.phone, c.nome, c.chatbot_ativo
            ORDER BY ultima_msg DESC
            LIMIT 100""",
-        empresa_id,
+        (empresa_id,),
     ) as cur:
         rows = await cur.fetchall()
 
@@ -313,8 +313,8 @@ async def enviar_mensagem_manual(
 
     # Salva no histórico como 'assistant' para manter o contexto
     await db.execute(
-        "INSERT INTO chat_historico(empresa_id, phone, role, conteudo) VALUES($1,$2,$3,$4)",
-        empresa_id, phone, "assistant", mensagem,
+        "INSERT INTO chat_historico(empresa_id, phone, role, conteudo) VALUES(?,?,?,?)",
+        (empresa_id, phone, "assistant", mensagem),
     )
     await db.commit()
     return {"ok": True}
@@ -335,9 +335,9 @@ async def toggle_chatbot_ativo(
         phone_local = phone_local[2:]
     await db.execute(
         """INSERT INTO contatos(empresa_id, phone, chatbot_ativo, origem)
-           VALUES($1,$2,$3,'chatbot')
-           ON CONFLICT(empresa_id, phone) DO UPDATE SET chatbot_ativo=$3""",
-        empresa_id, phone_local, body.chatbot_ativo,
+           VALUES(?,?,?,'chatbot')
+           ON CONFLICT(empresa_id, phone) DO UPDATE SET chatbot_ativo=excluded.chatbot_ativo""",
+        (empresa_id, phone_local, body.chatbot_ativo),
     )
     await db.commit()
     return {"ok": True}
