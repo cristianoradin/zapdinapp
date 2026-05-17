@@ -30,14 +30,14 @@ _DEFAULT_SYSTEM = (
 
 # ── Seleciona provider de chat ────────────────────────────────────────────────
 
-def _chat_provider() -> Optional[str]:
+def _chat_providers() -> list[str]:
     """
-    Retorna o primeiro provider configurado EXPLICITAMENTE com uso contendo 'chat'.
-    Ordem de preferência: openai → gemini → anthropic → groq.
+    Retorna TODOS os providers habilitados para chatbot, em ordem de preferência.
+    Critério: possuem chave API E 'chat' em ai_uso_* (USAR PARA Chatbot ativado).
+    Ordem: openai → gemini → anthropic → groq.
 
-    NÃO usa fallback — providers configurados só para 'ocr' não devem ser
-    usados para chat, para evitar conflito de roteamento.
-    Configure AI_USO_GEMINI=ocr,chat (ou chat) no .env para habilitar.
+    Providers marcados APENAS para 'ocr' são ignorados.
+    Se múltiplos estiverem habilitados, o chatbot tenta em sequência (fallback).
     """
     from ..core.config import settings
 
@@ -55,13 +55,10 @@ def _chat_provider() -> Optional[str]:
         "groq":      settings.groq_api_key,
     }
 
-    for p in ordem:
-        uso = uso_map.get(p) or ""
-        key = key_map.get(p) or ""
-        if "chat" in uso.split(",") and key.strip():
-            return p
-
-    return None
+    return [
+        p for p in ordem
+        if "chat" in (uso_map.get(p) or "").split(",") and (key_map.get(p) or "").strip()
+    ]
 
 
 # ── Chamadas por provider ─────────────────────────────────────────────────────
@@ -106,18 +103,16 @@ async def _call_gemini(messages: list[dict]) -> str:
         "contents": contents,
         "generationConfig": {"maxOutputTokens": 500},
     }
-    # Retry com backoff exponencial em caso de 429 (rate limit)
-    for tentativa in range(3):
+    # 1 retry rápido em caso de 429 — se ainda falhar, o fallback externo tenta outro provider
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        r = await client.post(url, json=payload)
+    if r.status_code == 429:
+        logger.warning("[chatbot] Gemini rate limit (429) — aguardando 8s e tentando 1x mais…")
+        await asyncio.sleep(8)
         async with httpx.AsyncClient(timeout=30.0) as client:
             r = await client.post(url, json=payload)
-        if r.status_code == 429:
-            wait = 10 * (2 ** tentativa)  # 10s, 20s, 40s
-            logger.warning("[chatbot] Gemini rate limit (429) — aguardando %ds (tentativa %d/3)", wait, tentativa + 1)
-            await asyncio.sleep(wait)
-            continue
-        r.raise_for_status()
-        return r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-    raise RuntimeError("Gemini retornou 429 após 3 tentativas — tente novamente mais tarde")
+    r.raise_for_status()
+    return r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
 
 
 async def _call_anthropic(messages: list[dict]) -> str:
@@ -321,16 +316,33 @@ async def responder_mensagem(
             for row in historico:
                 messages.append({"role": row["role"], "content": row["conteudo"]})
 
-        # ── Seleciona provider e chama IA ─────────────────────────────────────
-        provider = _chat_provider()
-        if not provider:
-            logger.warning("[chatbot] Nenhum provider de IA configurado para chat")
+        # ── Seleciona providers e chama IA com fallback ───────────────────────
+        providers = _chat_providers()
+        if not providers:
+            logger.warning(
+                "[chatbot] Nenhum provider habilitado para chatbot. "
+                "Ative 'USAR PARA Chatbot' em pelo menos um provider com chave configurada."
+            )
             return
 
-        logger.info("[chatbot] Chamando %s para %s (empresa %s)", provider, phone, empresa_id)
-        resposta = await _chamar_ia(provider, messages)
+        logger.info("[chatbot] Providers disponíveis para chat: %s", providers)
+        resposta = None
+        provider = None
+        erros_chat: list[str] = []
+
+        for p in providers:
+            try:
+                logger.info("[chatbot] Tentando %s para %s (empresa %s)…", p, phone, empresa_id)
+                resposta = await _chamar_ia(p, messages)
+                if resposta:
+                    provider = p
+                    break
+            except Exception as e_ia:
+                erros_chat.append(f"{p}: {e_ia}")
+                logger.warning("[chatbot] %s falhou — %s | tentando próximo…", p, e_ia)
 
         if not resposta:
+            logger.error("[chatbot] Todos os providers falharam: %s", " | ".join(erros_chat))
             return
 
         # ── Salva resposta no histórico + registro de aprendizado ─────────────
