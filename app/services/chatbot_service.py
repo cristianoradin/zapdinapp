@@ -32,8 +32,12 @@ _DEFAULT_SYSTEM = (
 
 def _chat_provider() -> Optional[str]:
     """
-    Retorna o primeiro provider configurado com uso='chat'.
+    Retorna o primeiro provider configurado EXPLICITAMENTE com uso contendo 'chat'.
     Ordem de preferência: openai → gemini → anthropic → groq.
+
+    NÃO usa fallback — providers configurados só para 'ocr' não devem ser
+    usados para chat, para evitar conflito de roteamento.
+    Configure AI_USO_GEMINI=ocr,chat (ou chat) no .env para habilitar.
     """
     from ..core.config import settings
 
@@ -54,12 +58,7 @@ def _chat_provider() -> Optional[str]:
     for p in ordem:
         uso = uso_map.get(p) or ""
         key = key_map.get(p) or ""
-        if "chat" in uso and key.strip():
-            return p
-
-    # Fallback: qualquer provider com chave configurada
-    for p in ordem:
-        if key_map.get(p, "").strip():
+        if "chat" in uso.split(",") and key.strip():
             return p
 
     return None
