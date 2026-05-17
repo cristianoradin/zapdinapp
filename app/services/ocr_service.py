@@ -334,25 +334,68 @@ async def _call_groq(path: str, b64: str = None, mime: str = None) -> str:
 
 # ── Roteador principal ────────────────────────────────────────────────────────
 
+def _ocr_providers_habilitados() -> list[str]:
+    """
+    Retorna providers disponíveis para OCR respeitando:
+      1. Possuem chave API configurada
+      2. Estão marcados com 'ocr' no ai_uso_* (USAR PARA OCR toggle)
+    O provider ativo (ai_provider) vem sempre primeiro.
+    """
+    uso_map = {
+        "openai":    settings.ai_uso_openai,
+        "gemini":    settings.ai_uso_gemini,
+        "anthropic": settings.ai_uso_anthropic,
+        "groq":      settings.ai_uso_groq,
+    }
+    key_map = {
+        "openai":    settings.openai_api_key,
+        "gemini":    settings.gemini_api_key,
+        "anthropic": settings.anthropic_api_key,
+        "groq":      settings.groq_api_key,
+    }
+    ativo = (settings.ai_provider or "gemini").lower()
+    habilitados = [
+        p for p in ["gemini", "openai", "anthropic", "groq"]
+        if "ocr" in (uso_map.get(p) or "").split(",") and (key_map.get(p) or "").strip()
+    ]
+    # Provider ativo sempre na frente (mesmo que não tenha chave — vai falhar e dar fallback)
+    if ativo in habilitados:
+        habilitados = [ativo] + [p for p in habilitados if p != ativo]
+    elif ativo not in habilitados:
+        # Ativo não habilitado para OCR — só loga, não força
+        logger.warning("[ocr] Provider ativo '%s' não habilitado para OCR no USAR PARA — usando apenas habilitados", ativo)
+    return habilitados
+
+
 async def _rodar_com_fallback(path: str) -> tuple[str, str]:
     """
     Tenta extrair o documento percorrendo a cadeia de providers.
     Retorna (json_texto, provider_usado).
 
     Lógica de roteamento:
-      PDF  → [gemini, anthropic] nativos primeiro
-             → se ambos falharem, converte para imagem → [openai, groq]
-      Foto → provider ativo primeiro → demais em ordem
+      PDF  → [nativos com OCR habilitado: gemini, anthropic] primeiro
+             → se falharem, converte para imagem → [demais com OCR habilitado]
+      Foto → provider ativo primeiro → demais habilitados em ordem
+    Respeita 'USAR PARA OCR' e 'PROVEDOR ATIVO PARA OCR' da configuração.
     """
     is_pdf = _is_pdf(path)
     ativo = (settings.ai_provider or "gemini").lower()
+    todos_habilitados = _ocr_providers_habilitados()
+
+    if not todos_habilitados:
+        raise RuntimeError(
+            "Nenhum provider habilitado para OCR. "
+            "Configure a chave API e ative 'USAR PARA OCR' em pelo menos um provider."
+        )
 
     erros: list[str] = []
+    logger.info("[ocr] Providers habilitados para OCR: %s | Ativo: %s", todos_habilitados, ativo)
 
     if is_pdf:
-        # ── PDF: providers que leem nativamente ──────────────────────────────
-        providers_nativos = ["gemini", "anthropic"]
-        # Coloca o provider ativo na frente se for nativo
+        # ── PDF: providers nativos (lêem PDF diretamente) que estão habilitados ──
+        _nativos_todos = ["gemini", "anthropic"]
+        providers_nativos = [p for p in todos_habilitados if p in _nativos_todos]
+        # Garante que o ativo vem primeiro
         if ativo in providers_nativos:
             providers_nativos = [ativo] + [p for p in providers_nativos if p != ativo]
 
@@ -372,13 +415,13 @@ async def _rodar_com_fallback(path: str) -> tuple[str, str]:
                 erros.append(msg)
                 logger.warning("[ocr] %s falhou — %s", provider, e)
 
-        # ── PDF: fallback via conversão para imagem ───────────────────────────
-        logger.info("[ocr] Todos nativos falharam — convertendo PDF para imagem…")
+        # ── PDF: fallback via conversão para imagem (providers sem suporte nativo) ──
+        logger.info("[ocr] Nativos falharam — convertendo PDF para imagem…")
         converted = _pdf_to_image_base64(path)
         if converted:
             b64_img, mime_img = converted
-            providers_img = [p for p in [ativo, "openai", "groq", "gemini", "anthropic"]
-                             if p not in providers_nativos]
+            # Providers habilitados que NÃO são nativos (ou os nativos também como img)
+            providers_img = [p for p in todos_habilitados if p not in providers_nativos]
             for provider in providers_img:
                 try:
                     logger.info("[ocr] Tentando %s (PDF→imagem)…", provider)
@@ -387,7 +430,6 @@ async def _rodar_com_fallback(path: str) -> tuple[str, str]:
                     elif provider == "groq":
                         result = await _call_groq(path, b64_img, mime_img)
                     elif provider == "gemini":
-                        # Gemini com imagem convertida
                         result = await _call_gemini(path, is_pdf=False)
                     else:
                         continue
@@ -401,8 +443,8 @@ async def _rodar_com_fallback(path: str) -> tuple[str, str]:
             erros.append("pdftoppm: conversão falhou (poppler não instalado?)")
 
     else:
-        # ── IMAGEM: provider ativo primeiro, depois demais ────────────────────
-        ordem = [ativo] + [p for p in ["gemini", "openai", "anthropic", "groq"] if p != ativo]
+        # ── IMAGEM: provider ativo primeiro, depois demais habilitados ────────
+        ordem = todos_habilitados  # já vem ordenado com ativo na frente
 
         for provider in ordem:
             try:
