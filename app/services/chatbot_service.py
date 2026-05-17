@@ -41,7 +41,7 @@ def _chat_providers() -> list[str]:
     """
     from ..core.config import settings
 
-    ordem = ["openai", "gemini", "anthropic", "groq"]
+    ordem = ["openai", "groq", "gemini", "anthropic"]
     uso_map = {
         "openai":    settings.ai_uso_openai,
         "gemini":    settings.ai_uso_gemini,
@@ -93,7 +93,7 @@ async def _call_gemini(messages: list[dict]) -> str:
     # System instruction (pega do primeiro message com role=system)
     sys_inst = next((m["content"] for m in messages if m["role"] == "system"), _DEFAULT_SYSTEM)
 
-    model = "gemini-2.0-flash"
+    model = "gemini-1.5-flash"
     url = (
         f"https://generativelanguage.googleapis.com/v1beta/models/"
         f"{model}:generateContent?key={settings.gemini_api_key}"
