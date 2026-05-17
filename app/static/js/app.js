@@ -336,15 +336,28 @@
     const produtosEx = '• Gasolina Comum (x30) — R$ 5,99\n• Óleo Motor 5W30 (x1) — R$ 42,00';
     const header = _clientName ? '🏪 *' + _clientName + '*\n\n' : '';
     const full = header + tmpl;
-    const preview = full
+    let preview = full
       .replace(/{nome}/g, 'João Silva')
       .replace(/{telefone}/g, '5511999990000')
       .replace(/{data}/g, '14/05/2026')
       .replace(/{produtos}/g, produtosEx)
       .replace(/{valor_total_itens}/g, 'R$ 221,70')
       .replace(/{valor_total}/g, 'R$ 221,70')
-      .replace(/{valor}/g, 'R$ 221,70');
+      .replace(/{valor}/g, 'R$ 221,70')
+      .replace(/{vendedor}/g, 'Maria Santos');
+    // Adiciona link de avaliação se estiver ativo
+    const avalAtivo = document.getElementById('toggleAvaliacao')?.checked;
+    if (avalAtivo) {
+      const linkFull = _linkDemoAvaliacao || `${location.origin}/avaliacao?t=DEMO`;
+      const linkCurto = (() => {
+        try { const u = new URL(linkFull); return u.hostname + '/avaliacao'; } catch { return 'avaliacao'; }
+      })();
+      preview += `\n\n⭐ Avalie nosso atendimento:\n🔗 ${linkCurto}`;
+    }
     document.getElementById('previewMensagem').textContent = preview || 'Digite o template ao lado para ver o preview aqui…';
+    // Rola a bolha para o final para mostrar o link
+    const wrap = document.querySelector('.wa-preview-wrap-inner');
+    if (wrap) wrap.scrollTop = wrap.scrollHeight;
   }
 
   document.getElementById('inputMensagem').addEventListener('input', e => { updatePreview(e.target.value); atualizarPreviewTeste(); });
@@ -386,6 +399,8 @@
     const ativo = document.getElementById('toggleAvaliacao').checked;
     document.getElementById('avaliacaoPreviewWrap').style.display = ativo ? '' : 'none';
     await api('POST', '/api/config', { avaliacao_ativa: ativo ? '1' : '0' });
+    // Atualiza preview do celular com/sem link de avaliação
+    updatePreview(document.getElementById('inputMensagem')?.value || '');
     if (ativo) {
       const res = await fetch('/api/config');
       const cfg = res.ok ? await res.json() : {};
@@ -878,7 +893,13 @@
       if (window.ZD && ZD.registry._handlers['dashboard']) ZD.registry.dispatch('dashboard');
       else loadStats();
     }
-    else if (page === 'mensagem') { loadMensagem(); loadAvaliacaoCfg(); loadTesteMensagem(); }
+    else if (page === 'mensagem') {
+      // Carrega avaliação e link demo PRIMEIRO, depois o preview (para incluir o link)
+      Promise.all([loadAvaliacaoCfg(), _carregarLinkDemo()]).then(() => {
+        loadMensagem();
+        loadTesteMensagem();
+      });
+    }
     else if (page === 'config-envio') carregarConfigEnvio();
     else if (page === 'whatsapp') { loadSessoes(); _iniciarRefreshWA(); }
     else if (page === 'token') { loadToken(); loadPdvTokens(); }
@@ -1100,7 +1121,8 @@
       .replace(/{produtos}/g, produtosEx)
       .replace(/{valor_total_itens}/g, 'R$ 179,70')
       .replace(/{valor_total}/g, 'R$ 221,70')
-      .replace(/{valor}/g, 'R$ 221,70');
+      .replace(/{valor}/g, 'R$ 221,70')
+      .replace(/{vendedor}/g, 'Maria Santos');
     const inclAval = document.getElementById('testeMsgIncluirAval')?.checked;
     if (inclAval) {
       const link = _linkDemoAvaliacao || `${location.origin}/avaliacao?t=DEMO`;
@@ -1528,7 +1550,7 @@
   function renderContatos(lista) {
     const tbody = document.getElementById('tbodyContatos');
     if (!lista.length) {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2.5rem;color:var(--text-mid)">Nenhum contato cadastrado. Clique em <strong>Novo Contato</strong> ou importe um CSV.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2.5rem;color:var(--text-mid)">Nenhum contato cadastrado. Clique em <strong>Novo Contato</strong> ou importe um CSV.</td></tr>';
       document.getElementById('cbSelectAllContatos').checked = false;
       _atualizarActionBar();
       return;
@@ -1537,11 +1559,17 @@
       const badge = c.origem === 'erp'
         ? `<span style="background:#dcfce7;color:#15803d;font-size:.68rem;font-weight:700;padding:.15rem .4rem;border-radius:5px;letter-spacing:.03em">ERP</span>`
         : `<span style="background:var(--surface2);color:var(--text-mid);font-size:.68rem;font-weight:600;padding:.15rem .4rem;border-radius:5px">Manual</span>`;
+      const gruposPills = c.grupos
+        ? c.grupos.split(', ').map(g =>
+            `<span style="display:inline-flex;align-items:center;gap:.2rem;background:#f0f7eb;color:#3d7f1f;border:1px solid #d4edba;font-size:.67rem;font-weight:600;padding:.12rem .45rem;border-radius:20px;white-space:nowrap">📁 ${escHtml(g)}</span>`
+          ).join(' ')
+        : `<span style="color:var(--text-light);font-size:.78rem">—</span>`;
       return `
       <tr>
         <td style="text-align:center"><input type="checkbox" class="cb-contato" data-id="${c.id}" style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer" onchange="_atualizarActionBar()"></td>
         <td style="font-family:monospace;font-size:.85rem">${_fmtPhone(c.phone)}</td>
         <td>${escHtml(c.nome || '—')}</td>
+        <td><div style="display:flex;flex-wrap:wrap;gap:.25rem">${gruposPills}</div></td>
         <td style="text-align:center">${badge}</td>
         <td style="text-align:center">
           <button class="btn btn-ghost btn-sm btn-icon" onclick="deletarContato(${c.id})" title="Excluir" style="color:var(--red)">
@@ -3116,7 +3144,19 @@
         _conversasCache = await r.json();
         _renderContatos(_conversasCache);
       } catch(e) {
-        el.innerHTML = '<div style="text-align:center;padding:2rem;color:#ef4444;font-size:.8rem">Erro ao carregar conversas.</div>';
+        el.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2.5rem 1rem;gap:.75rem;text-align:center">
+        <div style="width:44px;height:44px;border-radius:50%;background:#fef2f2;display:flex;align-items:center;justify-content:center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div>
+          <div style="font-size:.82rem;font-weight:600;color:#dc2626;margin-bottom:.2rem">Erro ao carregar</div>
+          <div style="font-size:.72rem;color:var(--text-mid)">Verifique sua conexão</div>
+        </div>
+        <button onclick="chatbot.carregarConversas()" style="display:inline-flex;align-items:center;gap:.35rem;padding:.4rem .9rem;border-radius:20px;border:1px solid #fecaca;background:#fef2f2;color:#dc2626;font-size:.75rem;cursor:pointer;font-weight:600">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Tentar novamente
+        </button>
+      </div>`;
         console.error('[chatbot] carregarConversas:', e);
       }
     }

@@ -11,15 +11,24 @@ class ContatoRepository(BaseRepository):
     # ── Contatos ─────────────────────────────────────────────────────────────
 
     async def list(self, empresa_id: int, q: str = "") -> list:
+        base_sql = (
+            "SELECT c.id, c.phone, c.nome, c.ativo, COALESCE(c.origem,'manual') AS origem, "
+            "STRING_AGG(g.nome, ', ' ORDER BY g.nome) AS grupos "
+            "FROM contatos c "
+            "LEFT JOIN grupo_contatos gc ON gc.contato_id = c.id "
+            "LEFT JOIN grupos_contatos g ON g.id = gc.grupo_id "
+        )
         if q:
             return await self._fetchall(
-                "SELECT id, phone, nome, ativo, COALESCE(origem,'manual') AS origem "
-                "FROM contatos WHERE empresa_id=? AND (phone ILIKE ? OR nome ILIKE ?) ORDER BY nome",
+                base_sql +
+                "WHERE c.empresa_id=? AND (c.phone ILIKE ? OR c.nome ILIKE ?) "
+                "GROUP BY c.id, c.phone, c.nome, c.ativo, c.origem ORDER BY c.nome",
                 (empresa_id, f"%{q}%", f"%{q}%"),
             )
         return await self._fetchall(
-            "SELECT id, phone, nome, ativo, COALESCE(origem,'manual') AS origem "
-            "FROM contatos WHERE empresa_id=? ORDER BY nome",
+            base_sql +
+            "WHERE c.empresa_id=? "
+            "GROUP BY c.id, c.phone, c.nome, c.ativo, c.origem ORDER BY c.nome",
             (empresa_id,),
         )
 

@@ -166,6 +166,7 @@ def _aplicar_template(template: str, body: VendaPayload, telefone_normalizado: s
         .replace("{valor_total_itens}", body.valor_total_itens or "")
         .replace("{data}", data_str)
         .replace("{produtos}", produtos_str)
+        .replace("{vendedor}", body.vendedor or "")
     )
 
 

@@ -227,6 +227,7 @@
                 <span class="var-tag var-tag-orange" data-var="{produtos}">{produtos}</span>
                 <span class="var-tag var-tag-teal"   data-var="{valor_total_itens}">{valor_total_itens}</span>
                 <span class="var-tag var-tag-red"    data-var="{valor_total}">{valor_total}</span>
+                <span class="var-tag var-tag-yellow" data-var="{vendedor}">{vendedor}</span>
               </div>
             </div>
 
@@ -304,7 +305,7 @@
                   </div>
                   <h2>Preview ao Vivo</h2>
                 </div>
-                <div class="phone-mockup" style="max-width:210px">
+                <div class="phone-mockup" style="max-width:280px">
                   <div class="phone-mockup-screen">
                     <div class="wa-status-bar">
                       <span class="wa-status-bar-time">9:41</span>
@@ -324,7 +325,7 @@
                     </div>
                     <div class="wa-preview-wrap-inner">
                       <div class="wa-bubble">
-                        <div id="previewMensagem" style="font-size:.75rem;white-space:pre-wrap"></div>
+                        <div id="previewMensagem" style="white-space:pre-wrap"></div>
                         <div class="wa-bubble-time">9:41 ✓✓</div>
                       </div>
                     </div>
@@ -1893,12 +1894,13 @@
               <th style="width:36px;text-align:center"><input type="checkbox" id="cbSelectAllContatos" style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer" title="Selecionar todos"></th>
               <th>Telefone</th>
               <th>Nome</th>
+              <th>Grupos</th>
               <th style="width:70px;text-align:center">Fonte</th>
               <th style="width:60px;text-align:center">Ações</th>
             </tr>
           </thead>
           <tbody id="tbodyContatos">
-            <tr><td colspan="5" style="text-align:center;padding:2.5rem;color:var(--text-mid)">Carregando…</td></tr>
+            <tr><td colspan="6" style="text-align:center;padding:2.5rem;color:var(--text-mid)">Carregando…</td></tr>
           </tbody>
         </table>
 
@@ -2582,8 +2584,13 @@
 
                 <!-- Estado vazio -->
                 <div class="cb-wa-empty" id="cbChatVazio">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="opacity:.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                  <span>Selecione uma conversa</span>
+                  <div style="width:80px;height:80px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.25"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  </div>
+                  <div style="text-align:center">
+                    <div style="font-size:.92rem;font-weight:600;color:var(--text-mid);margin-bottom:.3rem">Nenhuma conversa aberta</div>
+                    <div style="font-size:.78rem;color:var(--text-light)">Selecione um contato ao lado<br>para ver o histórico</div>
+                  </div>
                 </div>
 
                 <!-- Mensagens -->
