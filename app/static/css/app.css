@@ -320,6 +320,95 @@
       display: block;
     }
 
+    /* ── IA Central — botão fixo no sidebar ─────────────────────────────── */
+    .ia-nav-fixed {
+      flex-shrink: 0;
+      padding: .5rem .6rem .25rem;
+      border-top: 1px solid rgba(124,220,68,.12);
+    }
+    .ia-nav-btn {
+      position: relative; overflow: hidden;
+      display: flex; align-items: center; gap: .7rem;
+      padding: .55rem .75rem;
+      border-radius: 10px;
+      cursor: pointer;
+      background: linear-gradient(135deg, rgba(6,10,18,.95), rgba(15,25,12,.9));
+      border: 1px solid rgba(124,220,68,.25);
+      box-shadow: 0 0 18px rgba(124,220,68,.08), inset 0 1px 0 rgba(255,255,255,.04);
+      transition: all .25s;
+      user-select: none;
+    }
+    .ia-nav-btn:hover {
+      border-color: rgba(124,220,68,.55);
+      box-shadow: 0 0 28px rgba(124,220,68,.18), inset 0 1px 0 rgba(255,255,255,.06);
+      background: linear-gradient(135deg, rgba(10,18,8,.98), rgba(20,38,16,.95));
+    }
+    .ia-nav-btn.active {
+      border-color: rgba(124,220,68,.7);
+      box-shadow: 0 0 32px rgba(124,220,68,.25), inset 0 0 20px rgba(124,220,68,.06);
+    }
+    /* Shimmer on hover */
+    .ia-nav-btn::before {
+      content: '';
+      position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(124,220,68,.06), transparent);
+      transition: left .5s;
+    }
+    .ia-nav-btn:hover::before { left: 100%; }
+
+    /* Orb com aneis */
+    .ia-nav-orb {
+      position: relative; width: 34px; height: 34px; flex-shrink: 0;
+    }
+    .ia-nav-icon {
+      position: absolute; inset: 0; border-radius: 50%;
+      background: linear-gradient(135deg, #2d6016, #5aaa20, #2563eb);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 12px rgba(124,220,68,.5), 0 0 24px rgba(124,220,68,.2);
+      z-index: 2;
+    }
+    .ia-nav-ring {
+      position: absolute; inset: -5px; border-radius: 50%;
+      border: 1px solid rgba(124,220,68,.4);
+      animation: ia-ring-spin 3s linear infinite;
+    }
+    .ia-nav-ring::before {
+      content: ''; position: absolute; top: -2px; left: 50%;
+      width: 4px; height: 4px; border-radius: 50%;
+      background: #7cdc44; transform: translateX(-50%);
+      box-shadow: 0 0 6px #7cdc44;
+    }
+    .ia-nav-ring2 {
+      position: absolute; inset: -10px; border-radius: 50%;
+      border: 1px solid rgba(59,130,246,.18);
+      animation: ia-ring-spin 6s linear infinite reverse;
+    }
+
+    /* Label */
+    .ia-nav-label { flex: 1; min-width: 0; }
+    .ia-nav-title {
+      display: block; font-size: .8rem; font-weight: 700;
+      color: rgba(180,255,130,.9); letter-spacing: .03em;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .ia-nav-sub {
+      display: block; font-size: .64rem;
+      color: rgba(255,255,255,.3); margin-top: .05rem;
+      white-space: nowrap;
+    }
+
+    /* Indicador de pulse (canto superior direito) */
+    .ia-nav-pulse {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #7cdc44; flex-shrink: 0;
+      box-shadow: 0 0 6px #7cdc44;
+      animation: ia-pulse-dot 2s ease-in-out infinite;
+    }
+    @keyframes ia-pulse-dot {
+      0%,100% { transform: scale(1);   opacity: 1; }
+      50%      { transform: scale(1.5); opacity: .6; }
+    }
+
     .btn-logout {
       display: flex;
       align-items: center;

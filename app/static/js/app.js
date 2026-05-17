@@ -36,16 +36,23 @@
     document.title = 'ZapDin — ' + label;
   }
 
+  function navigate(page) {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.ia-nav-btn').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
+    // Marca nav-item normal ou o botão fixo da IA Central
+    const navItem = document.querySelector(`.nav-item[data-page="${page}"]`);
+    const iaBtn   = document.querySelector(`.ia-nav-btn[data-page="${page}"]`);
+    if (navItem) navItem.classList.add('active');
+    if (iaBtn)   iaBtn.classList.add('active');
+    const pageEl = document.getElementById('page-' + page);
+    if (pageEl) pageEl.classList.add('active');
+    _setTopbarPage(page);
+    onPageLoad(page);
+  }
+
   document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', () => {
-      const p = item.dataset.page;
-      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-      document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
-      item.classList.add('active');
-      document.getElementById('page-' + p).classList.add('active');
-      _setTopbarPage(p);
-      onPageLoad(p);
-    });
+    item.addEventListener('click', () => navigate(item.dataset.page));
   });
 
   // ── Topbar status pill ────────────────────────────────────────────────────────
