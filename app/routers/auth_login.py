@@ -26,6 +26,7 @@ from ..core.security import (
     normalize_cnpj,
     invalidate_token,
 )
+from ..services.log_service import log_event
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -188,6 +189,7 @@ async def login(body: LoginRequest, request: Request, response: Response, db=Dep
     if has_real_hash:
         if not verify_password(body.password, local_user["password_hash"]):
             logger.warning("[login] Falha de autenticação local para '%s'", username)
+            await log_event(nivel="warn", modulo="auth", acao="login_fail", mensagem=f"Login falhou: {username}")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciais inválidas.")
         logger.debug("[login] Autenticação local para '%s'", username)
 
@@ -205,8 +207,10 @@ async def login(body: LoginRequest, request: Request, response: Response, db=Dep
             raise HTTPException(status_code=503, detail="Não foi possível conectar ao servidor de autenticação.")
 
         if r.status_code == 401:
+            await log_event(nivel="warn", modulo="auth", acao="login_fail", mensagem=f"Login falhou: {username}")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciais inválidas.")
         if r.status_code == 403:
+            await log_event(nivel="warn", modulo="auth", acao="login_fail", mensagem=f"Login falhou: {username}")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Acesso não autorizado para este posto.")
         if r.status_code != 200:
             raise HTTPException(status_code=502, detail=f"Erro no servidor de autenticação ({r.status_code}).")
@@ -251,6 +255,7 @@ async def login(body: LoginRequest, request: Request, response: Response, db=Dep
         secure=settings.cookie_secure,
         max_age=settings.session_max_age,
     )
+    await log_event(empresa_id=empresa_id, nivel="info", modulo="auth", acao="login_ok", mensagem=f"Login: {username}")
     return {"ok": True, "username": username, "empresa": empresa_nome}
 
 
@@ -260,6 +265,7 @@ async def logout(request: Request, response: Response):
     if token:
         invalidate_token(token)
     response.delete_cookie(SESSION_COOKIE)
+    await log_event(nivel="info", modulo="auth", acao="logout", mensagem="Logout")
     return {"ok": True}
 
 

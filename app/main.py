@@ -64,7 +64,10 @@ from .routers.pdv_router import router as pdv_router
 from .routers.avaliacao import router as avaliacao_router
 from .routers.contabil import router as contabil_router
 from .routers.chatbot_router import router as chatbot_router
+from .routers.dominio_router import router as dominio_router
+from .routers.syslog_router import router as syslog_router
 from .services import reporter, updater, telegram_service, queue_worker
+from .services.log_service import log_event
 from .services.whatsapp_service import wa_manager as _playwright_manager
 from .services.evolution_service import evo_manager as _evo_manager
 
@@ -157,6 +160,8 @@ async def lifespan(app: FastAPI):
     )
 
     await init_db()
+    await log_event(nivel="info", modulo="sistema", acao="app_start",
+                    mensagem=f"ZapDin iniciado — {settings.client_name}")
 
     # M3: carrega blacklist de sessões invalidadas do banco para a memória
     # Tokens revogados antes de um restart continuam inválidos após reiniciar.
@@ -261,6 +266,8 @@ fastapi_app.include_router(pdv_router)              # /api/pdv/* (ZapDin PDV loc
 fastapi_app.include_router(avaliacao_router)        # /avaliacao + /api/avaliacao/* + /api/avaliacoes
 fastapi_app.include_router(contabil_router)         # /api/contabil/* (módulo contábil)
 fastapi_app.include_router(chatbot_router)          # /api/chatbot/* (chatbot IA)
+fastapi_app.include_router(dominio_router)          # /api/dominio/* (integração Domínio Thomson Reuters)
+fastapi_app.include_router(syslog_router)            # /api/syslog/* (log do sistema)
 
 
 @fastapi_app.post("/api/logout")

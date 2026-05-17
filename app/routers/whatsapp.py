@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from ..core.database import get_db
 from ..core.security import get_current_user
 from ..core.config import settings
+from ..services.log_service import log_event
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,8 @@ async def create_sessao(
     await db.commit()
     await wa_manager.add_session(sessao_id, body.nome, empresa_id)
     logger.info("[whatsapp] Sessão criada: id=%s nome=%s empresa=%s", sessao_id, body.nome, empresa_id)
+    await log_event(empresa_id=empresa_id, nivel="info", modulo="whatsapp", acao="session_connect",
+                    mensagem=f"WhatsApp conectado: {sessao_id}")
     return {"id": sessao_id, "nome": body.nome, "status": "disconnected"}
 
 

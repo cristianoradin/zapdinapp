@@ -18,6 +18,7 @@ from ..core.security import get_current_user, verify_erp_token, hash_erp_token
 from ..core.config import settings
 from ..repositories import MensagemRepository, AvaliacaoRepository
 from ..repositories.config_repository import ConfigRepository
+from ..services.log_service import log_event
 
 
 async def _encurtar_url(url: str) -> str:
@@ -268,6 +269,9 @@ async def receber_venda(
     _record_call(empresa_id, request, "/api/erp/venda", True)
     logger.info("[erp] venda enfileirada → empresa=%s fone=%s nome=%s ip=%s",
                 empresa_id, telefone, nome or "?", request.client.host if request.client else "?")
+    await log_event(empresa_id=empresa_id, nivel="info", modulo="erp", acao="msg_recebida",
+                    mensagem=f"Mensagem ERP: {nome or '?'} — {body.vendedor or '?'}",
+                    detalhe={"nota": body.nota_fiscal if hasattr(body, 'nota_fiscal') else None})
     return {"ok": True, "queued": True}
 
 

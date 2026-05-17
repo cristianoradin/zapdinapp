@@ -25,6 +25,7 @@ from datetime import datetime
 from typing import Dict
 
 logger = logging.getLogger(__name__)
+from .log_service import log_event_sync
 
 UPLOAD_DIR = "data/arquivos"
 
@@ -307,8 +308,12 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
                 "Queue: FALHA ao enviar mensagem %s para %s via sessão %s: %s",
                 msg["id"], msg["destinatario"], sessao_id, err,
             )
+            log_event_sync(empresa_id=empresa_id, nivel="error", modulo="worker", acao="msg_erro",
+                           mensagem=f"Erro ao enviar: {msg['destinatario']} — {str(err or '')[:100]}")
         logger.info("Queue: mensagem %s → %s", msg["id"], st)
         if ok:
+            log_event_sync(empresa_id=empresa_id, nivel="info", modulo="worker", acao="msg_enviada",
+                           mensagem=f"Mensagem enviada: {msg['destinatario']}")
             nome = msg["nome_destinatario"] if "nome_destinatario" in msg.keys() else ""
             asyncio.create_task(_notify_monitor_numero(msg["destinatario"], nome or "", settings))
         return True
@@ -396,8 +401,12 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
                 "Queue: FALHA ao enviar arquivo %s (%s) para %s via sessão %s: %s",
                 arq["id"], arq["nome_original"], arq["destinatario"], sessao_id, err,
             )
+            log_event_sync(empresa_id=empresa_id, nivel="error", modulo="worker", acao="msg_erro",
+                           mensagem=f"Erro ao enviar: {arq['destinatario']} — {str(err or '')[:100]}")
         logger.info("Queue: arquivo %s → %s", arq["id"], st)
         if ok:
+            log_event_sync(empresa_id=empresa_id, nivel="info", modulo="worker", acao="msg_enviada",
+                           mensagem=f"Mensagem enviada: {arq['destinatario']}")
             nome = arq["nome_destinatario"] if "nome_destinatario" in arq.keys() else ""
             asyncio.create_task(_notify_monitor_numero(arq["destinatario"], nome or "", settings))
             wa_manager.schedule_status_check(arq["id"], sessao_id, empresa_id, arq["destinatario"])

@@ -829,6 +829,7 @@ async def init_db() -> None:
             ("008_chatbot",           "Tabelas chatbot_config e chat_historico"),
             ("009_chatbot_faq",       "Tabelas chatbot_faq, chatbot_aprendizado e campos boas-vindas"),
             ("010_contatos_chatbot",  "Colunas chatbot_ativo e boas_vindas_enviada em contatos"),
+            ("011_system_logs",       "Tabela system_logs para log centralizado do sistema"),
         ]:
             await conn.execute(
                 "INSERT INTO schema_migrations(version, descricao) VALUES($1,$2) "
@@ -872,5 +873,29 @@ async def init_db() -> None:
                 )
             except Exception:
                 pass  # coluna já existe — ignorar
+
+        # ── Migration 011: system_logs — log centralizado do sistema ─────────
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS system_logs (
+                id          BIGSERIAL PRIMARY KEY,
+                empresa_id  INTEGER,
+                nivel       TEXT NOT NULL DEFAULT 'info',
+                modulo      TEXT NOT NULL DEFAULT 'sistema',
+                acao        TEXT NOT NULL DEFAULT '',
+                mensagem    TEXT NOT NULL DEFAULT '',
+                detalhe     TEXT,
+                created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """)
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_system_logs_empresa_created "
+            "ON system_logs(empresa_id, created_at DESC)"
+        )
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_system_logs_nivel ON system_logs(nivel)"
+        )
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_system_logs_modulo ON system_logs(modulo)"
+        )
 
         logger.info("[db] Schema DBA inicializado — índices, constraints e migrations ok")

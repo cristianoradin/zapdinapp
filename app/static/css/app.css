@@ -1787,6 +1787,12 @@
       border-bottom: 1px solid var(--border);
       margin-bottom: .4rem;
     }
+    .sys-sidebar-section {
+      font-size: .62rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .08em; color: var(--text-light);
+      padding: .75rem 1rem .35rem 1rem;
+      margin-top: .25rem;
+    }
     .sys-menu-item {
       display: flex; align-items: center; gap: .6rem;
       padding: .6rem 1rem;
@@ -1817,6 +1823,32 @@
     .sys-row-title { font-size: .9rem; font-weight: 600; color: var(--text); margin-bottom: .2rem; }
     .sys-row-desc  { font-size: .78rem; color: var(--text-mid); line-height: 1.4; }
     .sys-row-control { display: flex; flex-direction: column; gap: .4rem; }
+    .sys-row-control input:not([type="checkbox"]):not([type="radio"]),
+    .sys-row-control select,
+    .sys-row-control textarea {
+      width: 100%;
+      padding: .5rem .75rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--text);
+      font-family: inherit;
+      font-size: .875rem;
+      line-height: 1.4;
+      transition: border-color .15s, box-shadow .15s;
+      box-sizing: border-box;
+    }
+    .sys-row-control input:not([type="checkbox"]):not([type="radio"]):focus,
+    .sys-row-control select:focus,
+    .sys-row-control textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(61,127,31,.1);
+    }
+    .sys-row-control input[readonly] {
+      background: var(--bg);
+      color: var(--text-mid);
+    }
     .sys-divider { height: 1px; background: var(--border); }
     .sys-status-pill {
       display: inline-flex; align-items: center; gap: .4rem;

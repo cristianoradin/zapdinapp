@@ -3360,6 +3360,8 @@
     el.classList.add('active');
     const target = document.getElementById('sys-panel-' + panel);
     if (target) target.classList.add('active');
+    if (panel === 'dominio' && window.dominio) dominio.carregar();
+    if (panel === 'log' && window.syslog) syslog.carregar(true);
   }
 
   // ── Usuário ──────────────────────────────────────────────────────────────────

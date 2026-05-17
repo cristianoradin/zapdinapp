@@ -847,10 +847,13 @@ class EvoManager:
                         break
 
                 if not empresa:
-                    logger.debug(
-                        "[contabil] MESSAGES_UPSERT de %s — não é cliente contábil cadastrado",
-                        phone_local
-                    )
+                    # Não é cliente contábil — roteia texto para o chatbot geral da empresa dona da sessão
+                    if _ROTA_CHATBOT:
+                        from ..services.chatbot_service import responder_mensagem
+                        logger.debug("[chatbot] Mensagem de %s → chatbot geral (empresa %s)", phone_local, tenant_id)
+                        asyncio.create_task(
+                            responder_mensagem(tenant_id, phone_full, _texto, inst, "")
+                        )
                     return
 
                 empresa_id   = empresa["id"]

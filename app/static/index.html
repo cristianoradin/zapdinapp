@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/static/css/app.css?v=20260517c">
+  <link rel="stylesheet" href="/static/css/app.css?v=20260517d">
 </head>
 <body>
 
@@ -1364,6 +1364,16 @@
             <span class="sys-menu-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
             Usuário
           </div>
+
+          <div class="sys-sidebar-section">Integração Contábil</div>
+          <div class="sys-menu-item" data-panel="dominio" onclick="sysNav(this,'dominio')">
+            <span class="sys-menu-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span>
+            Domínio
+          </div>
+          <div class="sys-menu-item" data-panel="log" onclick="sysNav(this,'log')">
+            <span class="sys-menu-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span>
+            Log do Sistema
+          </div>
         </div>
 
         <!-- Conteúdo dinâmico -->
@@ -1662,6 +1672,217 @@
             </div>
             <div class="alert" id="alertSysUsuario" style="margin-top:.75rem"></div>
           </div>
+
+          <!-- Painel: Domínio -->
+          <div class="sys-panel" id="sys-panel-dominio">
+            <div class="sys-panel-header">
+              <div class="sys-panel-title">Integração Domínio</div>
+              <div class="sys-panel-sub">Configure a integração com o sistema Domínio Thomson Reuters para envio automático de documentos fiscais ao escritório contábil.</div>
+            </div>
+
+            <div id="dominio-alert" style="display:none;margin-bottom:1rem"></div>
+
+            <!-- Status -->
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">Status da conexão</div>
+                <div class="sys-row-desc">Clique em "Testar" para verificar a conectividade com a API Domínio.</div>
+              </div>
+              <div class="sys-row-control" style="flex-direction:row;align-items:center;gap:.75rem">
+                <span id="dominio-status-dot" style="width:10px;height:10px;border-radius:50%;background:#e5e7eb;flex-shrink:0"></span>
+                <span id="dominio-status-text" style="font-size:.82rem;color:var(--text-muted)">Não testado</span>
+                <button class="btn btn-sm" id="btnDominioTestar" onclick="dominio.testar()" style="margin-left:.5rem">Testar</button>
+              </div>
+            </div>
+
+            <div class="sys-divider"></div>
+            <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-light);margin:.25rem 0 .75rem">Origem — Dados do Cliente</div>
+
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">CNPJ do Cliente</div>
+                <div class="sys-row-desc">CNPJ da empresa cujos documentos serão enviados.</div>
+              </div>
+              <div class="sys-row-control">
+                <input type="text" id="dominio-cnpj-origem" placeholder="00.000.000/0001-00" maxlength="18" oninput="dominio.maskCnpj(this)" />
+              </div>
+            </div>
+
+            <div class="sys-divider"></div>
+
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">Nome / Razão Social</div>
+                <div class="sys-row-desc">Apenas para identificação interna.</div>
+              </div>
+              <div class="sys-row-control">
+                <input type="text" id="dominio-nome-origem" placeholder="Empresa Ltda" />
+              </div>
+            </div>
+
+            <div class="sys-divider"></div>
+            <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-light);margin:.25rem 0 .75rem">Destino — Credenciais Domínio</div>
+
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">URL Base da API</div>
+                <div class="sys-row-desc">Endpoint fornecido pelo escritório ou Thomson Reuters.</div>
+              </div>
+              <div class="sys-row-control">
+                <input type="url" id="dominio-api-url" placeholder="https://api.dominio.com.br/v1" value="https://api.dominio.com.br/v1" />
+              </div>
+            </div>
+
+            <div class="sys-divider"></div>
+
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">Token de Autenticação</div>
+                <div class="sys-row-desc">Token gerado no portal Onvio (Thomson Reuters).</div>
+              </div>
+              <div class="sys-row-control" style="position:relative">
+                <input type="password" id="dominio-api-token" placeholder="Bearer token ou API Key" style="padding-right:2.5rem" />
+                <button type="button" onclick="dominio.toggleToken()" style="position:absolute;right:.6rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);padding:0">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="sys-divider"></div>
+
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">CNPJ do Escritório Contábil</div>
+                <div class="sys-row-desc">CNPJ do destinatário no sistema Domínio.</div>
+              </div>
+              <div class="sys-row-control">
+                <input type="text" id="dominio-cnpj-escritorio" placeholder="00.000.000/0001-00" maxlength="18" oninput="dominio.maskCnpj(this)" />
+              </div>
+            </div>
+
+            <div class="sys-divider"></div>
+
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">Tipos de Documento</div>
+                <div class="sys-row-desc">Documentos destes tipos serão enviados ao Domínio automaticamente.</div>
+              </div>
+              <div class="sys-row-control" style="flex-direction:row;flex-wrap:wrap;gap:.75rem">
+                <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;cursor:pointer"><input type="checkbox" id="dominio-tipo-nfe" checked> NF-e</label>
+                <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;cursor:pointer"><input type="checkbox" id="dominio-tipo-cte"> CT-e</label>
+                <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;cursor:pointer"><input type="checkbox" id="dominio-tipo-nfse"> NFS-e</label>
+                <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;cursor:pointer"><input type="checkbox" id="dominio-tipo-cfe"> CF-e (SAT)</label>
+              </div>
+            </div>
+
+            <div class="sys-divider"></div>
+
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">Envio Automático</div>
+                <div class="sys-row-desc">Envia documentos ao Domínio assim que chegam do ERP, sem intervenção manual.</div>
+              </div>
+              <div class="sys-row-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="dominio-auto-envio">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div style="margin-top:1.5rem;display:flex;gap:.75rem">
+              <button class="btn btn-primary" onclick="dominio.salvar()">Salvar configuração</button>
+              <button class="btn" onclick="dominio.carregar()">Cancelar</button>
+            </div>
+            <div class="alert" id="alertDominio" style="margin-top:.75rem;display:none"></div>
+
+            <div class="sys-divider" style="margin-top:2rem"></div>
+            <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-light);margin:.25rem 0 .75rem">Log de Envios Recentes</div>
+            <div class="table-wrap">
+              <table class="table" id="dominioLogTable">
+                <thead><tr><th>Data/Hora</th><th>Documento</th><th>Tipo</th><th>Status</th><th>Resposta</th></tr></thead>
+                <tbody id="dominioLogBody">
+                  <tr><td colspan="5" class="table-empty">Nenhum envio registrado</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div><!-- /sys-panel-dominio -->
+
+          <!-- Painel: Log do Sistema -->
+          <div class="sys-panel" id="sys-panel-log">
+            <div class="sys-panel-header">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div>
+                  <div class="sys-panel-title">Log do Sistema</div>
+                  <div class="sys-panel-sub">Registro completo de eventos: WhatsApp, IA, ERP, Campanhas, Autenticação, Monitor e Sistema.</div>
+                </div>
+                <span id="syslogCounter" style="font-size:.8rem;color:var(--text-muted);white-space:nowrap">—</span>
+              </div>
+            </div>
+
+            <!-- Toolbar -->
+            <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem;align-items:center">
+              <!-- Filtro Nível -->
+              <select onchange="syslog.setFiltro('nivel',this.value)" style="padding:.35rem .6rem;border:1px solid var(--border);border-radius:8px;font-size:.82rem;color:var(--text);background:var(--surface)">
+                <option value="">Todos os níveis</option>
+                <option value="info">INFO</option>
+                <option value="warn">WARN</option>
+                <option value="error">ERRO</option>
+                <option value="critical">CRÍTICO</option>
+              </select>
+              <!-- Filtro Módulo -->
+              <select onchange="syslog.setFiltro('modulo',this.value)" style="padding:.35rem .6rem;border:1px solid var(--border);border-radius:8px;font-size:.82rem;color:var(--text);background:var(--surface)">
+                <option value="">Todos os módulos</option>
+                <option value="whatsapp">WhatsApp</option>
+                <option value="ia">IA / OCR</option>
+                <option value="erp">ERP</option>
+                <option value="campanhas">Campanhas</option>
+                <option value="auth">Autenticação</option>
+                <option value="monitor">Monitor</option>
+                <option value="worker">Worker</option>
+                <option value="chatbot">Chatbot</option>
+                <option value="dominio">Domínio</option>
+                <option value="sistema">Sistema</option>
+              </select>
+              <!-- Busca -->
+              <input type="search" placeholder="Buscar nos logs…" oninput="syslog.setFiltro('busca',this.value)"
+                style="padding:.35rem .75rem;border:1px solid var(--border);border-radius:8px;font-size:.82rem;flex:1;min-width:160px;color:var(--text);background:var(--surface)">
+              <!-- Botões -->
+              <button class="btn btn-sm" onclick="syslog.carregar(true)" title="Recarregar">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.18-4.73"/></svg>
+              </button>
+              <button class="btn btn-sm" id="btnSyslogAuto" onclick="syslog.toggleAutoRefresh(this)">▶ Auto-refresh</button>
+              <button class="btn btn-sm" onclick="syslog.exportar()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Exportar CSV
+              </button>
+              <button class="btn btn-sm" onclick="syslog.limpar()" style="color:var(--red)" title="Apagar logs antigos">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                Limpar 30d
+              </button>
+            </div>
+
+            <!-- Tabela -->
+            <div class="table-wrap" style="max-height:60vh;overflow-y:auto">
+              <table class="table" style="font-size:.83rem">
+                <thead style="position:sticky;top:0;background:var(--surface);z-index:1">
+                  <tr>
+                    <th style="white-space:nowrap">Data/Hora</th>
+                    <th>Nível</th>
+                    <th>Módulo</th>
+                    <th>Ação</th>
+                    <th>Mensagem</th>
+                    <th>Empresa</th>
+                  </tr>
+                </thead>
+                <tbody id="syslogBody">
+                  <tr><td colspan="6" class="table-empty">Carregando…</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div id="syslogPager" style="display:flex;align-items:center;gap:.75rem;margin-top:.75rem;justify-content:center"></div>
+          </div>
+          <!-- fim log -->
 
         </div><!-- /sys-content -->
       </div><!-- /sys-layout -->
@@ -3421,6 +3642,8 @@
     </div>
     <!-- fim modais contábil -->
 
+
+
   </div>
 </div>
 
@@ -3503,9 +3726,11 @@
 <script src="/static/js/modules/avaliacao.js?v=20260517a"></script>
 <script src="/static/js/modules/dashboard.js?v=20260517a"></script>
 <script src="/static/js/modules/contabil.js?v=20260517a"></script>
+<script src="/static/js/modules/dominio.js?v=20260517a"></script>
+<script src="/static/js/modules/syslog.js?v=20260517d"></script>
 
 <!-- App principal -->
-<script src="/static/js/app.js?v=20260517c"></script>
+<script src="/static/js/app.js?v=20260517d"></script>
 
 
 </body>
