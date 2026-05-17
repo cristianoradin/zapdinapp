@@ -84,7 +84,7 @@ async def _call_openai(messages: list[dict]) -> str:
 
 async def _call_gemini(messages: list[dict]) -> str:
     from ..core.config import settings
-    import httpx
+    import httpx, asyncio
 
     # Converte formato OpenAI → Gemini
     contents = []
@@ -107,10 +107,18 @@ async def _call_gemini(messages: list[dict]) -> str:
         "contents": contents,
         "generationConfig": {"maxOutputTokens": 500},
     }
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        r = await client.post(url, json=payload)
+    # Retry com backoff exponencial em caso de 429 (rate limit)
+    for tentativa in range(3):
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            r = await client.post(url, json=payload)
+        if r.status_code == 429:
+            wait = 10 * (2 ** tentativa)  # 10s, 20s, 40s
+            logger.warning("[chatbot] Gemini rate limit (429) — aguardando %ds (tentativa %d/3)", wait, tentativa + 1)
+            await asyncio.sleep(wait)
+            continue
         r.raise_for_status()
         return r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+    raise RuntimeError("Gemini retornou 429 após 3 tentativas — tente novamente mais tarde")
 
 
 async def _call_anthropic(messages: list[dict]) -> str:
@@ -186,6 +194,8 @@ async def responder_mensagem(
     from ..core.database import get_db_direct
     from .evolution_service import evo_manager
 
+    logger.info("[chatbot] responder_mensagem iniciado — empresa=%s phone=%s inst=%s texto=%r",
+                empresa_id, phone, instance, texto[:60])
     try:
         # Normaliza phone para formato local (sem 55)
         phone_local = phone.split("@")[0]
@@ -197,12 +207,14 @@ async def responder_mensagem(
             async with db.execute(
                 """SELECT ativo, system_prompt, boas_vindas_ativo, boas_vindas_msg
                    FROM chatbot_config WHERE empresa_id=$1""",
-                empresa_id,
+                (empresa_id,),
             ) as cur:
                 cfg = await cur.fetchone()
 
-            if cfg and not cfg["ativo"]:
-                logger.debug("[chatbot] Chatbot desativado para empresa %s", empresa_id)
+            if not cfg:
+                logger.warning("[chatbot] Sem config de chatbot para empresa %s — prosseguindo com defaults", empresa_id)
+            elif not cfg["ativo"]:
+                logger.info("[chatbot] Chatbot desativado para empresa %s", empresa_id)
                 return
 
             system_prompt = (cfg["system_prompt"] if cfg and cfg["system_prompt"]
@@ -224,7 +236,7 @@ async def responder_mensagem(
                 async with db.execute(
                     "SELECT id, nome, chatbot_ativo, boas_vindas_enviada "
                     "FROM contatos WHERE empresa_id=$1 AND phone=$2",
-                    empresa_id, v,
+                    (empresa_id, v),
                 ) as cur:
                     contato = await cur.fetchone()
                 if contato:
@@ -238,7 +250,7 @@ async def responder_mensagem(
                        VALUES($1,$2,$3,TRUE,TRUE,'chatbot')
                        ON CONFLICT(empresa_id, phone) DO UPDATE
                          SET chatbot_ativo=TRUE""",
-                    empresa_id, phone_key, phone_local,
+                    (empresa_id, phone_key, phone_local),
                 )
                 await db.commit()
                 nome_contato          = phone_local
@@ -251,7 +263,7 @@ async def responder_mensagem(
 
             # Se bot pausado para este contato, silencia
             if not chatbot_ativo_contato:
-                logger.debug("[chatbot] Bot pausado para %s (empresa %s)", phone_local, empresa_id)
+                logger.info("[chatbot] Bot pausado para %s (empresa %s)", phone_local, empresa_id)
                 return
 
             # Enriquece system prompt com nome da empresa
@@ -263,7 +275,7 @@ async def responder_mensagem(
             # ── Busca FAQ para injetar como exemplos no prompt ─────────────────
             async with db.execute(
                 "SELECT pergunta, resposta FROM chatbot_faq WHERE empresa_id=$1 AND ativo=TRUE LIMIT 30",
-                empresa_id,
+                (empresa_id,),
             ) as cur:
                 faq_rows = await cur.fetchall()
 
@@ -278,7 +290,7 @@ async def responder_mensagem(
                 """SELECT pergunta, resposta FROM chatbot_aprendizado
                    WHERE empresa_id=$1 AND aprovado=TRUE
                    ORDER BY created_at DESC LIMIT 10""",
-                empresa_id,
+                (empresa_id,),
             ) as cur:
                 exemplos = await cur.fetchall()
 
@@ -291,7 +303,7 @@ async def responder_mensagem(
             # ── Salva mensagem do usuário no histórico ─────────────────────────
             await db.execute(
                 "INSERT INTO chat_historico(empresa_id, phone, role, conteudo) VALUES($1,$2,$3,$4)",
-                empresa_id, phone, "user", texto,
+                (empresa_id, phone, "user", texto),
             )
             await db.commit()
 
@@ -300,7 +312,7 @@ async def responder_mensagem(
                 """SELECT role, conteudo FROM chat_historico
                    WHERE empresa_id=$1 AND phone=$2
                    ORDER BY created_at DESC LIMIT $3""",
-                empresa_id, phone, _HIST_LIMIT,
+                (empresa_id, phone, _HIST_LIMIT),
             ) as cur:
                 rows = await cur.fetchall()
 
@@ -326,13 +338,13 @@ async def responder_mensagem(
         async with get_db_direct() as db:
             await db.execute(
                 "INSERT INTO chat_historico(empresa_id, phone, role, conteudo) VALUES($1,$2,$3,$4)",
-                empresa_id, phone, "assistant", resposta,
+                (empresa_id, phone, "assistant", resposta),
             )
             # Salva o par pergunta/resposta para revisão no painel de Aprendizado
             await db.execute(
                 """INSERT INTO chatbot_aprendizado(empresa_id, phone, pergunta, resposta)
                    VALUES($1,$2,$3,$4)""",
-                empresa_id, phone, texto[:500], resposta[:1000],
+                (empresa_id, phone, texto[:500], resposta[:1000]),
             )
             await db.commit()
 
@@ -349,7 +361,7 @@ async def responder_mensagem(
             async with get_db_direct() as db:
                 await db.execute(
                     "UPDATE contatos SET boas_vindas_enviada=TRUE WHERE empresa_id=$1 AND phone=$2",
-                    empresa_id, phone_key,
+                    (empresa_id, phone_key),
                 )
                 await db.commit()
 
