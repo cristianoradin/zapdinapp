@@ -60,10 +60,13 @@ async def set_config(
     return {"ok": True}
 
 
-# ── OpenAI API Key ────────────────────────────────────────────────────────────
+# ── IA Multi-provider ─────────────────────────────────────────────────────────
 
-class OpenAIKeyBody(BaseModel):
-    key: str
+_AI_PROVIDERS = {
+    "openai":    {"env": "OPENAI_API_KEY",    "attr": "openai_api_key",    "prefix": "sk-"},
+    "gemini":    {"env": "GEMINI_API_KEY",     "attr": "gemini_api_key",    "prefix": "AIza"},
+    "anthropic": {"env": "ANTHROPIC_API_KEY",  "attr": "anthropic_api_key", "prefix": "sk-ant-"},
+}
 
 
 def _update_env_key(env_key: str, value: str) -> None:
@@ -88,20 +91,63 @@ def _update_env_key(env_key: str, value: str) -> None:
     os.environ[env_key] = value
 
 
-@router.get("/openai-key")
-async def get_openai_key_status(user: dict = Depends(get_current_user)):
-    """Retorna apenas se a chave está configurada (nunca expõe o valor)."""
-    key = settings.openai_api_key or ""
+def _key_preview(key: str) -> dict:
     configurado = bool(key and len(key) > 8)
-    preview = (key[:7] + "..." + key[-4:]) if configurado else ""
+    preview = (key[:8] + "..." + key[-4:]) if configurado else ""
     return {"configurado": configurado, "preview": preview}
 
 
-@router.post("/openai-key")
-async def set_openai_key(body: OpenAIKeyBody, user: dict = Depends(get_current_user)):
+class AIKeyBody(BaseModel):
+    provider: str
+    key: str
+
+
+class AIProviderBody(BaseModel):
+    provider: str
+
+
+@router.get("/ai-keys")
+async def get_ai_keys(user: dict = Depends(get_current_user)):
+    """Retorna status de todos os provedores de IA + provedor ativo."""
+    return {
+        "provider_ativo": settings.ai_provider or "openai",
+        "openai":    _key_preview(settings.openai_api_key or ""),
+        "gemini":    _key_preview(settings.gemini_api_key or ""),
+        "anthropic": _key_preview(settings.anthropic_api_key or ""),
+    }
+
+
+@router.post("/ai-key")
+async def set_ai_key(body: AIKeyBody, user: dict = Depends(get_current_user)):
+    provider = body.provider.strip().lower()
+    if provider not in _AI_PROVIDERS:
+        raise HTTPException(400, f"Provedor inválido: {provider}")
+    cfg = _AI_PROVIDERS[provider]
     key = body.key.strip()
-    if key and not key.startswith("sk-"):
-        raise HTTPException(400, "Chave OpenAI inválida — deve começar com 'sk-'")
-    _update_env_key("OPENAI_API_KEY", key)
-    settings.openai_api_key = key
+    if key and not key.startswith(cfg["prefix"]):
+        raise HTTPException(400, f"Chave inválida para {provider} — deve começar com '{cfg['prefix']}'")
+    _update_env_key(cfg["env"], key)
+    setattr(settings, cfg["attr"], key)
     return {"ok": True}
+
+
+@router.post("/ai-provider")
+async def set_ai_provider(body: AIProviderBody, user: dict = Depends(get_current_user)):
+    provider = body.provider.strip().lower()
+    if provider not in _AI_PROVIDERS:
+        raise HTTPException(400, f"Provedor inválido: {provider}")
+    _update_env_key("AI_PROVIDER", provider)
+    settings.ai_provider = provider
+    return {"ok": True}
+
+
+# Mantém compatibilidade com endpoint antigo
+@router.get("/openai-key")
+async def get_openai_key_status(user: dict = Depends(get_current_user)):
+    return _key_preview(settings.openai_api_key or "")
+
+
+@router.post("/openai-key")
+async def set_openai_key(body: AIKeyBody, user: dict = Depends(get_current_user)):
+    body.provider = "openai"
+    return await set_ai_key(body, user)

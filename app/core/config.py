@@ -72,8 +72,11 @@ class Settings(BaseSettings):
     evolution_url: str = "http://localhost:8080"
     evolution_api_key: str = ""
 
-    # Módulo Contábil — OCR via OpenAI GPT-4o Vision
-    openai_api_key: str = ""
+    # Módulo Contábil — OCR via IA (OpenAI / Google Gemini / Anthropic Claude)
+    openai_api_key:    str = ""
+    gemini_api_key:    str = ""
+    anthropic_api_key: str = ""
+    ai_provider:       str = "openai"   # openai | gemini | anthropic
 
     @property
     def is_locked(self) -> bool:

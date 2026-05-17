@@ -2731,7 +2731,6 @@
   // ── Sistema ───────────────────────────────────────────────────────────────────
 
   async function loadSistema() {
-    // Carrega username atual
     try {
       const r = await fetch('/api/auth/me');
       if (r.ok) {
@@ -2740,51 +2739,74 @@
         if (el) el.value = d.username || '';
       }
     } catch {}
-
-    // Carrega status + preview da chave IA
-    await _sysCarregarTokenIA();
+    await _aiCarregarTodos();
   }
 
-  async function _sysCarregarTokenIA() {
+  // ── AI Multi-provider ────────────────────────────────────────────────────────
+
+  async function _aiCarregarTodos() {
     try {
-      const r = await fetch('/api/config/openai-key');
+      const r = await fetch('/api/config/ai-keys');
       if (!r.ok) return;
       const d = await r.json();
-      const inp  = document.getElementById('sysTokenIaInput');
-      if (inp) inp.value = d.configurado ? d.preview : '';
-      inp && inp.setAttribute('data-preview', d.configurado ? '1' : '0');
-      _sysSetAiStatus(d.configurado ? 'ok' : 'err',
-                      d.configurado ? 'Chave configurada' : 'Não configurada');
+
+      // Seta provedor ativo
+      _aiAtualizarTabs(d.provider_ativo || 'openai');
+
+      // Carrega cada card
+      for (const p of ['openai', 'gemini', 'anthropic']) {
+        const info = d[p] || {};
+        const inp  = document.getElementById('aiKey-' + p);
+        if (!inp) continue;
+        if (info.configurado) {
+          inp.value = info.preview || '';
+          inp.setAttribute('data-preview', '1');
+          _aiSetStatus(p, 'ok', 'Configurada');
+        } else {
+          inp.value = '';
+          inp.setAttribute('data-preview', '0');
+          _aiSetStatus(p, 'err', 'Não configurada');
+        }
+      }
+
+      // Destaca card do provedor ativo
+      _aiDestacarCard(d.provider_ativo || 'openai');
     } catch {}
   }
 
-  function _sysSetAiStatus(type, text) {
-    const pill = document.getElementById('sysAiStatusPill');
-    const txt  = document.getElementById('sysAiStatusTxt');
+  function _aiSetStatus(provider, type, text) {
+    const pill = document.getElementById('aiStatus-' + provider);
+    const txt  = document.getElementById('aiStatusTxt-' + provider);
     if (!pill || !txt) return;
-    pill.className = 'sys-status-pill' + (type === 'ok' ? ' ok' : type === 'err' ? ' err' : '');
+    pill.className = 'ai-card-status ' + (type === 'ok' ? 'ok' : 'err');
     txt.textContent = text;
   }
 
-  function sysNav(el, panel) {
-    document.querySelectorAll('#page-sistema .sys-menu-item').forEach(i => i.classList.remove('active'));
-    document.querySelectorAll('#page-sistema .sys-panel').forEach(p => p.classList.remove('active'));
-    el.classList.add('active');
-    const panelEl = document.getElementById('sys-panel-' + panel);
-    if (panelEl) panelEl.classList.add('active');
-    if (panel === 'usuario') {
-      // Garante username atualizado ao abrir o painel
-      fetch('/api/auth/me').then(r => r.ok && r.json()).then(d => {
-        if (d) { const el = document.getElementById('sysUserAtual'); if(el) el.value = d.username || ''; }
-      }).catch(()=>{});
-    }
+  function _aiShowAlert(provider, msg, type) {
+    const el = document.getElementById('aiAlert-' + provider);
+    if (!el) return;
+    el.style.display = 'block';
+    el.className = 'ai-card-alert ' + (type === 'err' ? 'err' : 'ok');
+    el.textContent = msg;
+    setTimeout(() => { el.style.display = 'none'; }, 3500);
   }
 
-  function sysToggleKey() {
-    const inp = document.getElementById('sysTokenIaInput');
+  function _aiAtualizarTabs(providerAtivo) {
+    document.querySelectorAll('.ai-provider-tab').forEach(t => t.classList.remove('active'));
+    const tab = document.getElementById('aiTab-' + providerAtivo);
+    if (tab) tab.classList.add('active');
+  }
+
+  function _aiDestacarCard(providerAtivo) {
+    document.querySelectorAll('.ai-card').forEach(c => c.classList.remove('active-provider'));
+    const card = document.getElementById('aiCard-' + providerAtivo);
+    if (card) card.classList.add('active-provider');
+  }
+
+  function aiToggleKey(provider) {
+    const inp = document.getElementById('aiKey-' + provider);
     if (!inp) return;
     if (inp.getAttribute('data-preview') === '1') {
-      // É preview — limpa para o user digitar a nova chave
       inp.value = '';
       inp.setAttribute('data-preview', '0');
       inp.type = 'text';
@@ -2794,36 +2816,46 @@
     inp.type = inp.type === 'password' ? 'text' : 'password';
   }
 
-  async function salvarTokenIA() {
-    const inp = document.getElementById('sysTokenIaInput');
-    const key = (inp ? inp.value.trim() : '');
-    if (!key) { showAlert('alertSysTokenIa', 'Digite a chave OpenAI.', 'error'); return; }
-    if (!key.startsWith('sk-')) { showAlert('alertSysTokenIa', 'Chave inválida — deve começar com sk-.', 'error'); return; }
-    const r = await api('POST', '/api/config/openai-key', { key });
+  async function aiSalvar(provider) {
+    const inp = document.getElementById('aiKey-' + provider);
+    const key = inp ? inp.value.trim() : '';
+    if (!key) { _aiShowAlert(provider, 'Digite a chave.', 'err'); return; }
+    const r = await api('POST', '/api/config/ai-key', { provider, key });
     if (r.ok) {
-      showAlert('alertSysTokenIa', 'Chave salva com sucesso!');
-      inp.value = key.slice(0,7) + '...' + key.slice(-4);
+      _aiShowAlert(provider, '✓ Chave salva!', 'ok');
+      inp.value = key.slice(0, 8) + '...' + key.slice(-4);
       inp.setAttribute('data-preview', '1');
       inp.type = 'password';
-      _sysSetAiStatus('ok', 'Chave configurada');
+      _aiSetStatus(provider, 'ok', 'Configurada');
     } else {
-      showAlert('alertSysTokenIa', r.detail || 'Erro ao salvar.', 'error');
+      _aiShowAlert(provider, r.detail || 'Erro ao salvar.', 'err');
     }
   }
 
-  async function testarTokenIA() {
-    _sysSetAiStatus('', '⏳ Verificando…');
+  async function aiTestar(provider) {
+    _aiSetStatus(provider, '', '⏳ Testando…');
     try {
-      const r = await fetch('/api/contabil/ai-status');
+      const r = await fetch('/api/contabil/ai-status?provider=' + provider);
       if (r.ok) {
         const d = await r.json();
-        if (d.ativa) _sysSetAiStatus('ok', 'Conexão OK — API ativa');
-        else _sysSetAiStatus('err', 'Falha: ' + (d.motivo || 'API inacessível'));
+        if (d.ativa) _aiSetStatus(provider, 'ok', 'Conexão OK');
+        else _aiSetStatus(provider, 'err', d.motivo || 'Falha');
       } else {
-        _sysSetAiStatus('err', 'Erro ao verificar');
+        _aiSetStatus(provider, 'err', 'Erro');
       }
-    } catch { _sysSetAiStatus('err', 'Sem resposta'); }
+    } catch { _aiSetStatus(provider, 'err', 'Sem resposta'); }
   }
+
+  async function aiSetProvider(provider) {
+    const r = await api('POST', '/api/config/ai-provider', { provider });
+    if (r.ok) {
+      _aiAtualizarTabs(provider);
+      _aiDestacarCard(provider);
+    }
+  }
+  }
+
+  // ── Usuário ──────────────────────────────────────────────────────────────────
 
   async function salvarUsuario() {
     const senhaAtual  = document.getElementById('sysUserSenhaAtual')?.value.trim() || '';
