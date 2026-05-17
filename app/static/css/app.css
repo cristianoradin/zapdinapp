@@ -1865,32 +1865,6 @@
     }
 
     /* ─── AI Provider Cards ──────────────────────────────────────────────────── */
-    .ai-provider-active-bar {
-      display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
-      background: var(--bg); border: 1px solid var(--border);
-      border-radius: 10px; padding: .75rem 1rem; margin-bottom: 1.5rem;
-    }
-    .ai-provider-active-label {
-      font-size: .78rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: .07em; color: var(--text-mid); white-space: nowrap;
-    }
-    .ai-provider-tabs {
-      display: flex; gap: .3rem; flex-wrap: wrap;
-    }
-    .ai-provider-tab {
-      display: flex; align-items: center; gap: .4rem;
-      padding: .35rem .85rem; border-radius: 20px; font-size: .8rem; font-weight: 500;
-      border: 1.5px solid var(--border); background: var(--surface);
-      color: var(--text-mid); cursor: pointer; transition: all .15s;
-    }
-    .ai-provider-tab:hover { border-color: #adb5bd; color: var(--text); }
-    .ai-provider-tab.active {
-      border-color: currentColor; font-weight: 700;
-    }
-    .ai-provider-tab.active.openai    { color: #10a37f; background: #f0fdf9; border-color: #6ee7c7; }
-    .ai-provider-tab.active.gemini    { color: #1a73e8; background: #eff6ff; border-color: #93c5fd; }
-    .ai-provider-tab.active.anthropic { color: #d97706; background: #fffbeb; border-color: #fcd34d; }
-
     .ai-cards-grid {
       display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem;
     }
@@ -1901,10 +1875,6 @@
       box-shadow: var(--shadow-sm);
     }
     .ai-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
-    .ai-card.active-provider {
-      border-color: var(--ai-brand, var(--accent));
-      box-shadow: 0 0 0 3px color-mix(in srgb, var(--ai-brand, var(--accent)) 10%, transparent), var(--shadow-sm);
-    }
 
     .ai-card-head {
       padding: 1.1rem 1.25rem .95rem;
@@ -1921,7 +1891,6 @@
     .ai-card-logo.gemini    { background: #eff6ff; color: #1a73e8; }
     .ai-card-logo.anthropic { background: #fffbeb; color: #d97706; }
     .ai-card-logo.groq      { background: #fff5f5; color: #f55036; }
-    .ai-provider-tab.active.groq { color: #f55036; background: #fff5f5; border-color: #fca5a5; }
 
     .ai-card-name   { font-size: .88rem; font-weight: 700; color: var(--text); }
     .ai-card-model  { font-size: .72rem; color: var(--text-mid); margin-top: .1rem; }

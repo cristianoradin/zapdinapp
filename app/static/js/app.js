@@ -75,14 +75,15 @@
     const txt  = document.getElementById('topbarAiText');
     if (!pill || !txt) return;
     try {
-      // Descobre qual provider está ativo e se tem chave configurada
+      // Verifica se algum provider com OCR habilitado está configurado
       const keysRes = await fetch('/api/config/ai-keys');
       if (!keysRes.ok) throw new Error('no keys');
       const keys = await keysRes.json();
-      const provider = keys.provider_ativo || 'gemini';
-      const configurado = keys[provider]?.configurado;
+      const algumOcrAtivo = ['openai','gemini','anthropic','groq'].some(
+        p => keys[p]?.configurado && keys[p]?.uso?.ocr
+      );
 
-      if (!configurado) {
+      if (!algumOcrAtivo) {
         pill.classList.remove('active');
         txt.textContent = 'IA sem chave';
         return;
@@ -2798,9 +2799,6 @@
       if (!r.ok) return;
       const d = await r.json();
 
-      // Seta provedor ativo
-      _aiAtualizarTabs(d.provider_ativo || 'openai');
-
       // Carrega cada card
       for (const p of ['openai', 'gemini', 'anthropic', 'groq']) {
         const info = d[p] || {};
@@ -2820,9 +2818,6 @@
         _aiSetUsoPill(p, 'ocr',  uso.ocr  === true);
         _aiSetUsoPill(p, 'chat', uso.chat === true);
       }
-
-      // Destaca card do provedor ativo
-      _aiDestacarCard(d.provider_ativo || 'openai');
     } catch {}
   }
 
@@ -2856,17 +2851,6 @@
     setTimeout(() => { el.style.display = 'none'; }, 3500);
   }
 
-  function _aiAtualizarTabs(providerAtivo) {
-    document.querySelectorAll('.ai-provider-tab').forEach(t => t.classList.remove('active'));
-    const tab = document.getElementById('aiTab-' + providerAtivo);
-    if (tab) tab.classList.add('active');
-  }
-
-  function _aiDestacarCard(providerAtivo) {
-    document.querySelectorAll('.ai-card').forEach(c => c.classList.remove('active-provider'));
-    const card = document.getElementById('aiCard-' + providerAtivo);
-    if (card) card.classList.add('active-provider');
-  }
 
   function aiToggleKey(provider) {
     const inp = document.getElementById('aiKey-' + provider);
@@ -2920,14 +2904,6 @@
         _aiSetStatus(provider, 'err', 'Erro');
       }
     } catch { _aiSetStatus(provider, 'err', 'Sem resposta'); }
-  }
-
-  async function aiSetProvider(provider) {
-    const r = await api('POST', '/api/config/ai-provider', { provider });
-    if (r.ok) {
-      _aiAtualizarTabs(provider);
-      _aiDestacarCard(provider);
-    }
   }
 
   // ── Chatbot ───────────────────────────────────────────────────────────────────

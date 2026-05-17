@@ -103,10 +103,6 @@ class AIKeyBody(BaseModel):
     key: str
 
 
-class AIProviderBody(BaseModel):
-    provider: str
-
-
 class AIUsoBody(BaseModel):
     provider: str
     ocr: bool = False
@@ -115,13 +111,12 @@ class AIUsoBody(BaseModel):
 
 @router.get("/ai-keys")
 async def get_ai_keys(user: dict = Depends(get_current_user)):
-    """Retorna status de todos os provedores de IA + provedor ativo."""
+    """Retorna status de todos os provedores de IA com suas configurações de uso."""
     def _uso(raw: str) -> dict:
         parts = [p.strip() for p in (raw or "").split(",") if p.strip()]
         return {"ocr": "ocr" in parts, "chat": "chat" in parts}
 
     return {
-        "provider_ativo": settings.ai_provider or "gemini",
         "openai":    {**_key_preview(settings.openai_api_key or ""),    "uso": _uso(settings.ai_uso_openai)},
         "gemini":    {**_key_preview(settings.gemini_api_key or ""),    "uso": _uso(settings.ai_uso_gemini)},
         "anthropic": {**_key_preview(settings.anthropic_api_key or ""), "uso": _uso(settings.ai_uso_anthropic)},
@@ -140,16 +135,6 @@ async def set_ai_key(body: AIKeyBody, user: dict = Depends(get_current_user)):
         raise HTTPException(400, f"Chave inválida para {provider} — deve começar com '{cfg['prefix']}'")
     _update_env_key(cfg["env"], key)
     setattr(settings, cfg["attr"], key)
-    return {"ok": True}
-
-
-@router.post("/ai-provider")
-async def set_ai_provider(body: AIProviderBody, user: dict = Depends(get_current_user)):
-    provider = body.provider.strip().lower()
-    if provider not in _AI_PROVIDERS:
-        raise HTTPException(400, f"Provedor inválido: {provider}")
-    _update_env_key("AI_PROVIDER", provider)
-    settings.ai_provider = provider
     return {"ok": True}
 
 

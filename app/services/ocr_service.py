@@ -336,10 +336,15 @@ async def _call_groq(path: str, b64: str = None, mime: str = None) -> str:
 
 def _ocr_providers_habilitados() -> list[str]:
     """
-    Retorna providers disponíveis para OCR respeitando:
+    Retorna providers disponíveis para OCR em ordem de prioridade fixa:
+      OpenAI → Gemini → Anthropic → Groq
+
+    Critério de inclusão:
       1. Possuem chave API configurada
       2. Estão marcados com 'ocr' no ai_uso_* (USAR PARA OCR toggle)
-    O provider ativo (ai_provider) vem sempre primeiro.
+
+    O sistema tenta cada provider em sequência (fallback automático).
+    A prioridade é controlada exclusivamente pelos toggles — sem seletor adicional.
     """
     uso_map = {
         "openai":    settings.ai_uso_openai,
@@ -353,18 +358,10 @@ def _ocr_providers_habilitados() -> list[str]:
         "anthropic": settings.anthropic_api_key,
         "groq":      settings.groq_api_key,
     }
-    ativo = (settings.ai_provider or "gemini").lower()
-    habilitados = [
-        p for p in ["gemini", "openai", "anthropic", "groq"]
+    return [
+        p for p in ["openai", "gemini", "anthropic", "groq"]
         if "ocr" in (uso_map.get(p) or "").split(",") and (key_map.get(p) or "").strip()
     ]
-    # Provider ativo sempre na frente (mesmo que não tenha chave — vai falhar e dar fallback)
-    if ativo in habilitados:
-        habilitados = [ativo] + [p for p in habilitados if p != ativo]
-    elif ativo not in habilitados:
-        # Ativo não habilitado para OCR — só loga, não força
-        logger.warning("[ocr] Provider ativo '%s' não habilitado para OCR no USAR PARA — usando apenas habilitados", ativo)
-    return habilitados
 
 
 async def _rodar_com_fallback(path: str) -> tuple[str, str]:
@@ -379,7 +376,6 @@ async def _rodar_com_fallback(path: str) -> tuple[str, str]:
     Respeita 'USAR PARA OCR' e 'PROVEDOR ATIVO PARA OCR' da configuração.
     """
     is_pdf = _is_pdf(path)
-    ativo = (settings.ai_provider or "gemini").lower()
     todos_habilitados = _ocr_providers_habilitados()
 
     if not todos_habilitados:
@@ -395,9 +391,6 @@ async def _rodar_com_fallback(path: str) -> tuple[str, str]:
         # ── PDF: providers nativos (lêem PDF diretamente) que estão habilitados ──
         _nativos_todos = ["gemini", "anthropic"]
         providers_nativos = [p for p in todos_habilitados if p in _nativos_todos]
-        # Garante que o ativo vem primeiro
-        if ativo in providers_nativos:
-            providers_nativos = [ativo] + [p for p in providers_nativos if p != ativo]
 
         for provider in providers_nativos:
             try:
