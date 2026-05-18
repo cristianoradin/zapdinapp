@@ -112,17 +112,10 @@ async def importar_contatos(
 
     if registros:
         repo = ContatoRepository(db)
-        try:
-            await repo.upsert_batch(registros)
-        except Exception:
-            for reg in registros:
-                try:
-                    await repo.upsert(reg[0], reg[1], reg[2])
-                except Exception:
-                    errors += 1
+        await repo.upsert_batch(registros)
         await db.commit()
 
-    return {"ok": True, "importados": len(registros) - errors, "erros": errors}
+    return {"ok": True, "importados": len(registros), "erros": 0}
 
 
 @router.delete("/contatos/{contato_id}")
