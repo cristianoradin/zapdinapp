@@ -37,6 +37,79 @@
     document.title = 'ZapDin — ' + label;
   }
 
+  // ── Conector visual + cantos côncavos ────────────────────────────────────────
+  function _updateNavConnector(navItem) {
+    // ─ Conector: faixa vertical que tapa qualquer gap entre sidebar e conteúdo
+    let connector = document.getElementById('nav-connector');
+    if (!connector) {
+      connector = document.createElement('div');
+      connector.id = 'nav-connector';
+      document.body.appendChild(connector);
+    }
+
+    // ─ Cantos côncavos superiror e inferior (position:fixed → imune a overflow)
+    let concTop = document.getElementById('nav-concave-top');
+    if (!concTop) {
+      concTop = document.createElement('div');
+      concTop.id = 'nav-concave-top';
+      document.body.appendChild(concTop);
+    }
+    let concBot = document.getElementById('nav-concave-bot');
+    if (!concBot) {
+      concBot = document.createElement('div');
+      concBot.id = 'nav-concave-bot';
+      document.body.appendChild(concBot);
+    }
+
+    if (!navItem) {
+      connector.style.display = 'none';
+      concTop.style.display   = 'none';
+      concBot.style.display   = 'none';
+      return;
+    }
+
+    const rect    = navItem.getBoundingClientRect();
+    const sbW     = parseFloat(getComputedStyle(document.documentElement)
+                      .getPropertyValue('--sidebar-w')) || 224;
+
+    // Conector: cobre 1-2 px de gap na borda direita da sidebar
+    connector.style.cssText = `
+      position: fixed;
+      left: ${sbW - 2}px;
+      top: ${rect.top}px;
+      height: ${rect.height}px;
+      width: 4px;
+      background: var(--bg);
+      z-index: 101;
+      pointer-events: none;
+      display: block;
+    `;
+
+    // Canto côncavo superior: 14×14 acima do item, alinhado à borda direita da sidebar
+    concTop.style.cssText = `
+      position: fixed;
+      left: ${sbW - 14}px;
+      top: ${rect.top - 14}px;
+      width: 14px;
+      height: 14px;
+      z-index: 101;
+      pointer-events: none;
+      display: block;
+    `;
+
+    // Canto côncavo inferior
+    concBot.style.cssText = `
+      position: fixed;
+      left: ${sbW - 14}px;
+      top: ${rect.bottom}px;
+      width: 14px;
+      height: 14px;
+      z-index: 101;
+      pointer-events: none;
+      display: block;
+    `;
+  }
+
   function navigate(page) {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.querySelectorAll('.ia-nav-btn').forEach(n => n.classList.remove('active'));
@@ -50,6 +123,8 @@
     if (pageEl) pageEl.classList.add('active');
     _setTopbarPage(page);
     onPageLoad(page);
+    // Atualiza conector visual
+    _updateNavConnector(navItem || null);
   }
 
   document.querySelectorAll('.nav-item').forEach(item => {
@@ -3961,10 +4036,15 @@
   // ── Sistema — navegação interna ───────────────────────────────────────────────
 
   function sysNav(el, panel) {
+    // Move painéis avulsos para dentro do sys-content na primeira chamada
+    const sysContent = document.querySelector('#page-sistema .sys-content');
+    const target = document.getElementById('sys-panel-' + panel);
+    if (target && sysContent && !sysContent.contains(target)) {
+      sysContent.appendChild(target);
+    }
     document.querySelectorAll('.sys-menu-item').forEach(i => i.classList.remove('active'));
     document.querySelectorAll('.sys-panel').forEach(p => p.classList.remove('active'));
     el.classList.add('active');
-    const target = document.getElementById('sys-panel-' + panel);
     if (target) target.classList.add('active');
     if (panel === 'dominio' && window.dominio) dominio.carregar();
     if (panel === 'log' && window.syslog) syslog.carregar(true);
@@ -4015,6 +4095,7 @@
     if (pageEl) pageEl.classList.add('active');
     _setTopbarPage(p);
     onPageLoad(p);
+    _updateNavConnector(navItem || null);
   }
 
 // ═══════════════════════════════════════════════════════════
@@ -4033,8 +4114,6 @@ function _homeTick() {
   const ss = String(now.getSeconds()).padStart(2,'0');
   const el = document.getElementById('home-time');
   if (el) el.textContent = `${hh}:${mm}`;
-  const elSecs = document.getElementById('home-secs');
-  if (elSecs) elSecs.textContent = ss;
   const elDate = document.getElementById('home-date');
   if (elDate) elDate.textContent = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
   const elDay = document.getElementById('home-day');
@@ -4339,3 +4418,9 @@ function initHome() {
   // Recados
   homeCarregarRecados();
 }
+
+// Inicializa conector visual no item já ativo ao carregar
+window.addEventListener('load', () => {
+  const activeItem = document.querySelector('.nav-item.active');
+  if (activeItem) _updateNavConnector(activeItem);
+});

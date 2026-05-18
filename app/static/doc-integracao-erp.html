@@ -602,6 +602,15 @@
       </td>
     </tr>
     <tr>
+      <td><code>vendedor</code></td>
+      <td>string</td>
+      <td><span class="badge badge-gray">Não</span></td>
+      <td>
+        Nome do vendedor responsável pela venda.<br>
+        Usado na variável <code>{vendedor}</code> do template.
+      </td>
+    </tr>
+    <tr>
       <td><code>mensagem_custom</code></td>
       <td>string</td>
       <td><span class="badge badge-gray">Não</span></td>
@@ -657,7 +666,8 @@
     { <span class="key">"nome"</span>: <span class="str">"Óleo Motor 5W30"</span>, <span class="key">"quantidade"</span>: <span class="num">1</span>,  <span class="key">"valor_unitario"</span>: <span class="str">"42,00"</span> }
   ],
   <span class="key">"valor_total_itens"</span>:  <span class="str">"281,60"</span>,
-  <span class="key">"valor_total"</span>:        <span class="str">"275,00"</span>
+  <span class="key">"valor_total"</span>:        <span class="str">"275,00"</span>,
+  <span class="key">"vendedor"</span>:           <span class="str">"Carlos Oliveira"</span>
 }</pre>
 
 <div class="resp-block">
@@ -877,6 +887,11 @@
       <td><code>valor_total</code></td>
       <td>275,00</td>
     </tr>
+    <tr>
+      <td><code>{vendedor}</code></td>
+      <td><code>vendedor</code></td>
+      <td>Carlos Oliveira</td>
+    </tr>
   </tbody>
 </table>
 </div>
@@ -1063,7 +1078,8 @@ ZapDin Auto Center</div>
       {"nome": "Óleo Motor 5W30", "quantidade": 1, "valor_unitario": "42,00"}
     ],
     "valor_total_itens": "281,60",
-    "valor_total": "275,00"
+    "valor_total": "275,00",
+    "vendedor": "Carlos Oliveira"
   }'</span>
 
 <span class="cmt"># Envio de arquivo (nota fiscal PDF)</span>
@@ -1100,7 +1116,8 @@ client.DefaultRequestHeaders.Add(<span class="str">"x-token"</span>, TOKEN);
         <span class="kw">new</span> { nome = <span class="str">"Óleo Motor 5W30"</span>, quantidade = <span class="num">1</span>,  valor_unitario = <span class="str">"42,00"</span> }
     },
     valor_total_itens = <span class="str">"281,60"</span>,
-    valor_total       = <span class="str">"275,00"</span>
+    valor_total       = <span class="str">"275,00"</span>,
+    vendedor          = <span class="str">"Carlos Oliveira"</span>
 };
 
 <span class="kw">var</span> resp = <span class="kw">await</span> client.PostAsJsonAsync($<span class="str">"{BASE_URL}/api/erp/venda"</span>, venda);
@@ -1175,6 +1192,7 @@ respArq.EnsureSuccessStatusCode();</pre>
     Json.AddPair(<span class="str">'produtos'</span>,           Prod);
     Json.AddPair(<span class="str">'valor_total_itens'</span>,  <span class="str">'239,60'</span>);
     Json.AddPair(<span class="str">'valor_total'</span>,        <span class="str">'235,00'</span>);
+    Json.AddPair(<span class="str">'vendedor'</span>,           <span class="str">'Carlos Oliveira'</span>);
 
     ZapDinPost(<span class="str">'/api/erp/venda'</span>, Json.ToJSON);
   <span class="kw">finally</span>
@@ -1285,7 +1303,7 @@ TOKEN    = <span class="str">"SEU_TOKEN"</span>
 HEADERS  = {<span class="str">"x-token"</span>: TOKEN, <span class="str">"Content-Type"</span>: <span class="str">"application/json"</span>}
 
 <span class="cmt"># ── Enviar mensagem de venda ──────────────────────────────────────────</span>
-<span class="kw">def</span> enviar_venda(telefone, nome, produtos, valor_total_itens, valor_total):
+<span class="kw">def</span> enviar_venda(telefone, nome, produtos, valor_total_itens, valor_total, vendedor=<span class="str">""</span>):
     payload = {
         <span class="str">"telefone"</span>:          telefone,
         <span class="str">"nome"</span>:               nome,
@@ -1293,6 +1311,7 @@ HEADERS  = {<span class="str">"x-token"</span>: TOKEN, <span class="str">"Conten
         <span class="str">"produtos"</span>:           produtos,
         <span class="str">"valor_total_itens"</span>:  valor_total_itens,
         <span class="str">"valor_total"</span>:        valor_total,
+        <span class="str">"vendedor"</span>:           vendedor,
     }
     resp = requests.post(f<span class="str">"{BASE_URL}/api/erp/venda"</span>,
                          json=payload, headers=HEADERS, timeout=<span class="num">10</span>)
@@ -1323,6 +1342,7 @@ resultado = enviar_venda(
     ],
     valor_total_itens=<span class="str">"239,60"</span>,
     valor_total=<span class="str">"239,60"</span>,
+    vendedor=<span class="str">"Carlos Oliveira"</span>,
 )
 print(resultado)  <span class="cmt"># {'ok': True, 'queued': True}</span></pre>
 </div>
@@ -1362,6 +1382,7 @@ zapdin_post(<span class="str">'/api/erp/venda'</span>, [
     ],
     <span class="str">'valor_total_itens'</span> => <span class="str">'239,60'</span>,
     <span class="str">'valor_total'</span>       => <span class="str">'235,00'</span>,
+    <span class="str">'vendedor'</span>          => <span class="str">'Carlos Oliveira'</span>,
 ]);
 
 <span class="cmt">// ── Enviar arquivo PDF ────────────────────────────────────────────────</span>
