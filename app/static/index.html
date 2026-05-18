@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/static/css/app.css?v=20260517n">
+  <link rel="stylesheet" href="/static/css/app.css?v=20260517o">
 </head>
 <body>
 
@@ -24,7 +24,8 @@
 
   <div class="sidebar-nav-scroll">
   <div class="sidebar-section">Gestão</div>
-  <div class="nav-item active" data-page="dashboard"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span> Gestão de Envios</div>
+  <div class="nav-item active" data-page="home"><span class="nav-icon">🏠</span> Home</div>
+  <div class="nav-item" data-page="dashboard"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span> Gestão de Envios</div>
   <div class="nav-item" data-page="arquivo"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></span> Gestão de Arquivos</div>
   <div class="nav-item" data-page="avaliacoes"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span> Gestão de Avaliação</div>
 
@@ -118,8 +119,151 @@
       <h1 id="pageTitleText">Gestão de Envios</h1>
     </div>
 
+    <!-- Home -->
+    <div class="page active" id="page-home">
+      <!-- LAYOUT 3 COLUNAS -->
+      <div class="home-grid">
+
+        <!-- COL 1: Clock + Clima + Calendário -->
+        <div class="home-col home-col-left">
+
+          <!-- Card Relógio -->
+          <div class="home-card home-clock-card">
+            <div class="home-clock-date" id="home-date">carregando...</div>
+            <div class="home-clock-time" id="home-time">00:00:00</div>
+            <div class="home-clock-day" id="home-day"></div>
+          </div>
+
+          <!-- Card Clima -->
+          <div class="home-card home-clima-card" id="home-clima-card">
+            <div class="home-clima-loading">
+              <div class="home-clima-city" id="home-clima-city">--</div>
+              <div class="home-clima-main">
+                <div class="home-clima-icon" id="home-clima-icon">🌤️</div>
+                <div class="home-clima-temp" id="home-clima-temp">--°C</div>
+              </div>
+              <div class="home-clima-desc" id="home-clima-desc">Carregando...</div>
+              <div class="home-clima-details">
+                <span>💧 <span id="home-clima-umid">--%</span></span>
+                <span>💨 <span id="home-clima-vento">-- km/h</span></span>
+              </div>
+              <div class="home-clima-forecast" id="home-clima-forecast"></div>
+            </div>
+            <div class="home-clima-config">
+              <input type="text" id="home-clima-cidade-input" placeholder="Cidade" class="home-input-sm">
+              <input type="text" id="home-clima-uf-input" placeholder="UF" class="home-input-sm" maxlength="2" style="width:60px">
+              <button onclick="homeSalvarCidade()" class="home-btn-sm">Salvar</button>
+            </div>
+          </div>
+
+          <!-- Card Calendário -->
+          <div class="home-card home-cal-card">
+            <div class="home-cal-header">
+              <button class="home-cal-nav" onclick="homeCalNav(-1)">‹</button>
+              <span class="home-cal-month" id="home-cal-month">Maio 2026</span>
+              <button class="home-cal-nav" onclick="homeCalNav(1)">›</button>
+            </div>
+            <div class="home-cal-weekdays">
+              <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span>
+            </div>
+            <div class="home-cal-days" id="home-cal-days"></div>
+          </div>
+
+        </div>
+
+        <!-- COL 2: Post-its -->
+        <div class="home-col home-col-mid">
+          <div class="home-card home-postits-card">
+            <div class="home-section-header">
+              <h3>📝 Anotações</h3>
+              <button class="home-btn-add" onclick="homeNovoPostit()">+ Novo</button>
+            </div>
+            <div class="home-postits-grid" id="home-postits-grid">
+              <!-- post-its rendered here -->
+            </div>
+          </div>
+        </div>
+
+        <!-- COL 3: Recados -->
+        <div class="home-col home-col-right">
+          <div class="home-card home-recados-card">
+            <div class="home-section-header">
+              <h3>📢 Avisos</h3>
+              <span class="home-badge" id="home-recados-badge">0</span>
+            </div>
+            <div class="home-recados-list" id="home-recados-list">
+              <div class="home-empty">Nenhum aviso no momento</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- MODAL AGENDA -->
+      <div class="home-modal-overlay" id="home-agenda-overlay" onclick="homeFecharAgenda(event)">
+        <div class="home-modal">
+          <div class="home-modal-header">
+            <h3 id="home-agenda-modal-titulo">Agenda — <span id="home-agenda-data-label"></span></h3>
+            <button onclick="homeFecharAgenda(null, true)" class="home-modal-close">✕</button>
+          </div>
+          <div class="home-agenda-lista" id="home-agenda-lista"></div>
+          <div class="home-agenda-form">
+            <input type="hidden" id="home-agenda-id">
+            <input type="text" id="home-agenda-titulo" placeholder="Título do compromisso" class="home-input">
+            <div style="display:flex;gap:.5rem">
+              <input type="time" id="home-agenda-inicio" class="home-input" placeholder="Início">
+              <input type="time" id="home-agenda-fim" class="home-input" placeholder="Fim">
+            </div>
+            <textarea id="home-agenda-desc" placeholder="Descrição (opcional)" class="home-input" rows="2"></textarea>
+            <div class="home-agenda-cores">
+              <span>Cor:</span>
+              <label><input type="radio" name="agenda-cor" value="#3d7f1f" checked> <span style="background:#3d7f1f" class="home-cor-dot"></span></label>
+              <label><input type="radio" name="agenda-cor" value="#3b82f6"> <span style="background:#3b82f6" class="home-cor-dot"></span></label>
+              <label><input type="radio" name="agenda-cor" value="#ef4444"> <span style="background:#ef4444" class="home-cor-dot"></span></label>
+              <label><input type="radio" name="agenda-cor" value="#f59e0b"> <span style="background:#f59e0b" class="home-cor-dot"></span></label>
+              <label><input type="radio" name="agenda-cor" value="#8b5cf6"> <span style="background:#8b5cf6" class="home-cor-dot"></span></label>
+            </div>
+            <div style="display:flex;gap:.5rem;justify-content:flex-end">
+              <button class="home-btn-cancel" onclick="homeLimparAgendaForm()">Cancelar</button>
+              <button class="home-btn-save" onclick="homeSalvarAgenda()">Salvar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL POST-IT -->
+      <div class="home-modal-overlay" id="home-postit-overlay" onclick="homeFecharPostit(event)">
+        <div class="home-modal home-postit-modal" id="home-postit-modal-inner">
+          <div class="home-modal-header">
+            <h3>📝 Anotação</h3>
+            <button onclick="homeFecharPostit(null, true)" class="home-modal-close">✕</button>
+          </div>
+          <input type="hidden" id="home-postit-id">
+          <input type="text" id="home-postit-titulo" placeholder="Título" class="home-input">
+          <textarea id="home-postit-conteudo" placeholder="Escreva sua anotação..." class="home-input home-postit-textarea" rows="6"></textarea>
+          <div class="home-postit-cores">
+            <span>Cor:</span>
+            <label><input type="radio" name="postit-cor" value="#fef08a" checked> <span style="background:#fef08a" class="home-cor-dot"></span></label>
+            <label><input type="radio" name="postit-cor" value="#bbf7d0"> <span style="background:#bbf7d0" class="home-cor-dot"></span></label>
+            <label><input type="radio" name="postit-cor" value="#bfdbfe"> <span style="background:#bfdbfe" class="home-cor-dot"></span></label>
+            <label><input type="radio" name="postit-cor" value="#fecaca"> <span style="background:#fecaca" class="home-cor-dot"></span></label>
+            <label><input type="radio" name="postit-cor" value="#e9d5ff"> <span style="background:#e9d5ff" class="home-cor-dot"></span></label>
+            <label><input type="radio" name="postit-cor" value="#fed7aa"> <span style="background:#fed7aa" class="home-cor-dot"></span></label>
+          </div>
+          <div style="display:flex;gap:.5rem;justify-content:space-between;margin-top:.5rem">
+            <button class="home-btn-cancel home-btn-danger" id="home-postit-del-btn" onclick="homeDeletarPostit()" style="display:none">🗑 Excluir</button>
+            <div style="display:flex;gap:.5rem;margin-left:auto">
+              <button class="home-btn-cancel" onclick="homeFecharPostit(null,true)">Cancelar</button>
+              <button class="home-btn-save" onclick="homeSalvarPostit()">Salvar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /page-home -->
+
     <!-- Dashboard -->
-    <div class="page active" id="page-dashboard">
+    <div class="page" id="page-dashboard">
 
       <!-- Fix 12: Banner de fila travada (oculto por padrão) -->
       <div id="queueStuckBanner" style="display:none;align-items:center;gap:1rem;padding:.85rem 1.1rem;background:#fff3cd;border:1px solid #ffc107;border-radius:10px;margin-bottom:1rem">
@@ -3833,7 +3977,7 @@
 <script src="/static/js/modules/syslog.js?v=20260517d"></script>
 
 <!-- App principal -->
-<script src="/static/js/app.js?v=20260517n"></script>
+<script src="/static/js/app.js?v=20260517o"></script>
 
 
 </body>

@@ -932,4 +932,42 @@ async def init_db() -> None:
             "CREATE INDEX IF NOT EXISTS idx_system_logs_modulo ON system_logs(modulo)"
         )
 
+        # ── Home Dashboard — Agenda e Post-its ──────────────────────────────
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS agenda_compromissos (
+                id           BIGSERIAL PRIMARY KEY,
+                empresa_id   BIGINT NOT NULL,
+                usuario_id   BIGINT NOT NULL,
+                data         DATE NOT NULL,
+                hora_inicio  TEXT,
+                hora_fim     TEXT,
+                titulo       TEXT NOT NULL,
+                descricao    TEXT,
+                cor          TEXT DEFAULT '#3d7f1f',
+                created_at   TIMESTAMPTZ DEFAULT NOW()
+            )
+        """)
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_agenda_emp_data "
+            "ON agenda_compromissos(empresa_id, data)"
+        )
+
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS postits (
+                id           BIGSERIAL PRIMARY KEY,
+                empresa_id   BIGINT NOT NULL,
+                usuario_id   BIGINT NOT NULL,
+                titulo       TEXT DEFAULT '',
+                conteudo     TEXT DEFAULT '',
+                cor          TEXT DEFAULT '#fef08a',
+                ordem        INT DEFAULT 0,
+                created_at   TIMESTAMPTZ DEFAULT NOW(),
+                updated_at   TIMESTAMPTZ DEFAULT NOW()
+            )
+        """)
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_postits_emp_user "
+            "ON postits(empresa_id, usuario_id)"
+        )
+
         logger.info("[db] Schema DBA inicializado — índices, constraints e migrations ok")

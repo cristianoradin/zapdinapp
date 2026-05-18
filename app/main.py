@@ -67,6 +67,7 @@ from .routers.chatbot_router import router as chatbot_router
 from .routers.dominio_router import router as dominio_router
 from .routers.syslog_router import router as syslog_router
 from .routers.ia_central_router import router as ia_central_router
+from .routers.home_router import router as home_router
 from .services import reporter, updater, telegram_service, queue_worker
 from .services.log_service import log_event
 from .services.whatsapp_service import wa_manager as _playwright_manager
@@ -270,6 +271,7 @@ fastapi_app.include_router(chatbot_router)          # /api/chatbot/* (chatbot IA
 fastapi_app.include_router(dominio_router)          # /api/dominio/* (integração Domínio Thomson Reuters)
 fastapi_app.include_router(syslog_router)            # /api/syslog/* (log do sistema)
 fastapi_app.include_router(ia_central_router)       # /api/ia-central/* (IA Central)
+fastapi_app.include_router(home_router)             # /api/home/* (Home Dashboard)
 
 
 @fastapi_app.post("/api/logout")
