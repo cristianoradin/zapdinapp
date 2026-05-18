@@ -22,14 +22,14 @@
       --shadow-sm:   0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
       --shadow-md:   0 4px 16px rgba(0,0,0,.10), 0 2px 6px rgba(0,0,0,.06);
       --shadow-lg:   0 8px 32px rgba(0,0,0,.13), 0 4px 12px rgba(0,0,0,.07);
-      /* Sidebar light theme */
+      /* Sidebar branca */
       --sb-bg:        #ffffff;
       --sb-text:      #6b7280;
       --sb-text-h:    #111318;
-      --sb-active-bg: #f0f7eb;
+      --sb-active-bg: var(--bg);
       --sb-active-c:  #3d7f1f;
-      --sb-section:   #b0b8c4;
-      --sb-divider:   #e8eaed;
+      --sb-section:   #9ca3af;
+      --sb-divider:   #e4e6ea;
     }
 
     body {
@@ -49,14 +49,14 @@
     .sidebar {
       width: var(--sidebar-w);
       background: var(--sb-bg);
-      border-right: 1px solid var(--border);
+      border-right: none;
       display: flex;
       flex-direction: column;
       position: fixed;
       top: 0; left: 0; bottom: 0;
       z-index: 100;
       overflow: hidden;
-      box-shadow: 2px 0 12px rgba(0,0,0,.04);
+      box-shadow: 1px 0 0 var(--border), 4px 0 12px rgba(0,0,0,.05);
     }
     .sidebar-nav-scroll {
       flex: 1;
@@ -85,11 +85,8 @@
       max-width: none;
       height: auto;
       object-fit: contain;
-      /* tinge a logo na cor verde #3d7f1f (mesmo verde do tema) */
-      filter: brightness(0) saturate(100%)
-              invert(41%) sepia(57%) saturate(570%)
-              hue-rotate(72deg) brightness(96%)
-              drop-shadow(0 2px 10px rgba(47,108,0,.25));
+      /* logo colorida na sidebar branca */
+      filter: none;
     }
     /* Nome removido — apenas logo */
     .sidebar-logo span { display: none; }
@@ -132,14 +129,47 @@
     }
     .nav-item .nav-icon svg { display: block; }
     .nav-item:hover {
-      background: var(--surface2);
+      background: var(--bg);
       color: var(--sb-text-h);
     }
     .nav-item.active {
-      background: var(--sb-active-bg);
+      /* Tab conectada ao conteúdo: fundo idêntico ao da página,
+         cantos côncavos criados via #nav-concave-top / #nav-concave-bot (JS) */
+      background: var(--bg);
       color: var(--sb-active-c);
       font-weight: 700;
-      box-shadow: inset 3px 0 0 var(--accent);
+      border-radius: 12px 0 0 12px;
+      margin: 2px 0 2px .5rem;
+      border: none;
+      box-shadow: none;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ─── Cantos côncavos da nav (posicionados pelo JS) ──────────────────── */
+    #nav-concave-top,
+    #nav-concave-bot {
+      position: fixed;
+      width: 14px;
+      height: 14px;
+      pointer-events: none;
+      z-index: 101;          /* acima da sidebar (z-index: 100) */
+    }
+    #nav-concave-top {
+      /* Quadrado com arco: revelando sidebar no canto inferior-esq,
+         var(--bg) no restante → canto côncavo superior */
+      background: radial-gradient(
+        circle at 0% 100%,
+        var(--sb-bg) 0, var(--sb-bg) 71%,
+        var(--bg) 72%
+      );
+    }
+    #nav-concave-bot {
+      background: radial-gradient(
+        circle at 0% 0%,
+        var(--sb-bg) 0, var(--sb-bg) 71%,
+        var(--bg) 72%
+      );
     }
 
     /* ─── Main ────────────────────────────────────────────────────────────── */
@@ -2554,8 +2584,8 @@
 .home-wrapper {
   display: flex;
   flex-direction: column;
-  gap: .75rem;
-  padding: .75rem 1rem;
+  gap: 12px;
+  padding: 12px 15px;
   height: calc(100vh - 60px);
   overflow: hidden;
   box-sizing: border-box;
@@ -2574,7 +2604,7 @@
    ═══════════════════════════════════════ */
 .home-topbar {
   display: flex;
-  gap: .75rem;
+  gap: 12px;
   flex-shrink: 0;
 }
 
@@ -2584,8 +2614,8 @@
   color: #fff;
   position: relative;
   overflow: hidden;
-  padding: .7rem 1.1rem;
-  flex-shrink: 0;
+  padding: 11px 18px;
+  flex: 1;
   display: flex;
   align-items: center;
 }
@@ -2608,34 +2638,25 @@
   gap: .2rem;
 }
 .home-clock-time {
-  font-size: 2rem;
+  font-size: 32px;
   font-weight: 800;
   letter-spacing: -.04em;
   color: #fff;
   line-height: 1;
-}
-.home-clock-secs {
-  font-size: .95rem;
-  font-weight: 600;
-  color: var(--accent-light);
-  opacity: .8;
-  line-height: 1;
-  align-self: flex-end;
-  margin-bottom: .12rem;
 }
 .home-clock-right {
   border-left: 1px solid rgba(255,255,255,.15);
   padding-left: .9rem;
 }
 .home-clock-date {
-  font-size: .72rem;
+  font-size: 12px;
   color: rgba(255,255,255,.55);
   letter-spacing: .04em;
   text-transform: uppercase;
   white-space: nowrap;
 }
 .home-clock-day {
-  font-size: .82rem;
+  font-size: 13px;
   color: var(--accent-light);
   font-weight: 600;
   margin-top: .1rem;
@@ -2644,72 +2665,73 @@
 
 /* ── Clima compacto ── */
 .home-clima-card {
-  flex: 1;
+  flex: none;
+  width: 220px;
   background: linear-gradient(135deg, #edf7ed 0%, #f5faf5 100%);
   border-color: rgba(61,127,31,.15);
-  padding: .65rem 1rem;
+  padding: 6px 13px;
   overflow: hidden;
 }
 .home-clima-inner {
   display: flex;
   align-items: center;
-  gap: .8rem;
+  gap: .65rem;
   height: 100%;
 }
 .home-clima-main-block {
   display: flex;
   align-items: center;
-  gap: .5rem;
+  gap: .35rem;
   flex-shrink: 0;
 }
-.home-clima-icon { font-size: 2rem; line-height: 1; }
+.home-clima-icon { font-size: 24px; line-height: 1; }
 .home-clima-temp {
-  font-size: 1.6rem;
+  font-size: 20px;
   font-weight: 800;
   color: var(--accent);
   line-height: 1;
 }
 .home-clima-city {
-  font-size: .68rem;
+  font-size: .6rem;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: .05em;
-  margin-top: .1rem;
+  margin-top: .08rem;
 }
 .home-clima-sep {
   width: 1px;
-  height: 36px;
+  height: 28px;
   background: rgba(61,127,31,.2);
   flex-shrink: 0;
 }
 .home-clima-details-block { flex-shrink: 0; }
 .home-clima-desc {
-  font-size: .75rem;
+  font-size: .68rem;
   color: var(--text-muted);
   font-weight: 600;
-  margin-bottom: .2rem;
+  margin-bottom: .15rem;
 }
 .home-clima-details {
   display: flex;
-  gap: .7rem;
-  font-size: .72rem;
+  gap: .55rem;
+  font-size: .65rem;
   color: #555;
 }
 .home-clima-forecast {
   display: flex;
-  gap: .4rem;
+  gap: .3rem;
   flex: 1;
   overflow: hidden;
 }
 .home-clima-forecast-day {
   flex: 1;
-  min-width: 44px;
-  max-width: 60px;
+  min-width: 38px;
+  max-width: 52px;
   text-align: center;
   background: rgba(255,255,255,.7);
-  border-radius: 8px;
-  padding: .25rem .2rem;
-  font-size: .65rem;
+  border-radius: 6px;
+  padding: .2rem .15rem;
+  font-size: .6rem;
 }
 .home-clima-forecast-day .fc-icon { font-size: .95rem; }
 .home-clima-forecast-day .fc-label { color: var(--text-muted); font-size: .6rem; }
@@ -2758,8 +2780,8 @@
    ═══════════════════════════════════════ */
 .home-content {
   display: grid;
-  grid-template-columns: 240px 1fr 230px;
-  gap: .75rem;
+  grid-template-columns: 320px 1fr 220px;
+  gap: 12px;
   flex: 1;
   min-height: 0;
 }
@@ -2772,7 +2794,7 @@
 /* ── Calendário ── */
 .home-cal-card {
   flex: 1;
-  padding: .85rem;
+  padding: 14px;
   display: flex;
   flex-direction: column;
 }
@@ -2814,13 +2836,14 @@
   grid-template-columns: repeat(7, 1fr);
   gap: 2px;
   flex: 1;
+  min-height: 0;
 }
 .home-cal-day {
   aspect-ratio: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: .75rem;
+  font-size: 12px;
   border-radius: 7px;
   cursor: pointer;
   position: relative;
@@ -2846,7 +2869,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: .85rem;
+  padding: 14px;
   overflow: hidden;
 }
 .home-section-header {
@@ -2876,7 +2899,7 @@
 .home-btn-add:hover { opacity: .85; }
 .home-postits-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: .5rem;
   overflow-y: auto;
   flex: 1;
@@ -2895,7 +2918,7 @@
 }
 .home-postit:hover { transform: translateY(-2px); box-shadow: 0 5px 14px rgba(0,0,0,.13); }
 .home-postit-titulo {
-  font-size: .7rem;
+  font-size: 11px;
   font-weight: 700;
   color: #1a1d23;
   margin-bottom: .2rem;
@@ -2904,7 +2927,7 @@
   text-overflow: ellipsis;
 }
 .home-postit-conteudo {
-  font-size: .68rem;
+  font-size: 11px;
   color: #3a3a3a;
   line-height: 1.45;
   flex: 1;
@@ -2933,7 +2956,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: .85rem;
+  padding: 14px;
   overflow: hidden;
 }
 .home-badge {
@@ -2962,13 +2985,13 @@
 }
 .home-recado-item:hover { transform: translateX(2px); background: #f2f4f6; }
 .home-recado-titulo {
-  font-size: .76rem;
+  font-size: 12px;
   font-weight: 700;
   color: var(--text);
   margin-bottom: .15rem;
 }
 .home-recado-conteudo {
-  font-size: .71rem;
+  font-size: 11px;
   color: var(--text-muted);
   line-height: 1.45;
   display: -webkit-box;
