@@ -1,0 +1,318 @@
+<div class="page" id="page-chatbot">
+
+      <div class="sys-layout" style="min-height:620px">
+
+        <!-- Sidebar esquerda -->
+        <div class="sys-sidebar">
+          <div class="sys-sidebar-title">Chatbot IA</div>
+
+          <!-- Conversas -->
+          <div class="sys-menu-item active" id="cbMenu-conversas" onclick="chatbotNav(this,'conversas')">
+            <span class="sys-menu-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </span>
+            Conversas
+          </div>
+
+          <!-- Separador Configuração -->
+          <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);padding:.9rem 1rem .3rem 1rem;margin-top:.3rem;border-top:1px solid var(--border)">Configuração</div>
+
+          <!-- Personalidade -->
+          <div class="sys-menu-item" id="cbMenu-personalidade" onclick="chatbotNav(this,'personalidade')">
+            <span class="sys-menu-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+            </span>
+            Personalidade
+          </div>
+
+          <!-- Boas-vindas -->
+          <div class="sys-menu-item" id="cbMenu-boasvindas" onclick="chatbotNav(this,'boasvindas')">
+            <span class="sys-menu-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+            </span>
+            Boas-vindas
+          </div>
+
+          <!-- Perguntas & Respostas -->
+          <div class="sys-menu-item" id="cbMenu-faq" onclick="chatbotNav(this,'faq')">
+            <span class="sys-menu-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </span>
+            Perguntas & Respostas
+          </div>
+
+          <!-- Aprendizado -->
+          <div class="sys-menu-item" id="cbMenu-aprendizado" onclick="chatbotNav(this,'aprendizado')">
+            <span class="sys-menu-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </span>
+            Aprendizado
+          </div>
+
+          <!-- Memória IA -->
+          <div class="sys-menu-item" id="cbMenu-memoria" onclick="chatbotNav(this,'memoria')">
+            <span class="sys-menu-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+            </span>
+            Memória IA
+          </div>
+        </div>
+
+        <!-- Conteúdo principal -->
+        <div class="sys-content">
+
+          <!-- ── Painel: Conversas ── -->
+          <div class="sys-panel active" id="cb-panel-conversas" style="padding:0;overflow:hidden;border-radius:12px">
+
+            <div class="cb-wa-layout">
+
+              <!-- ── Coluna esquerda: lista de contatos ── -->
+              <div class="cb-wa-sidebar">
+
+                <div class="cb-wa-sidebar-header">
+                  <span style="font-size:.82rem;font-weight:700;color:var(--text)">Conversas</span>
+                  <button class="btn btn-ghost btn-sm" onclick="chatbot.carregarConversas()" title="Atualizar" style="padding:.25rem .45rem">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                  </button>
+                </div>
+
+                <div class="cb-wa-search">
+                  <input type="text" id="cbSearch" placeholder="🔍  Buscar contato…" oninput="chatbot.filtrarContatos(this.value)">
+                </div>
+
+                <div class="cb-wa-contacts" id="chatbotConversasList">
+                  <div style="text-align:center;padding:3rem 1rem;color:var(--text-mid);font-size:.8rem">Nenhuma conversa ainda</div>
+                </div>
+
+              </div>
+
+              <!-- ── Coluna direita: área de chat ── -->
+              <div class="cb-wa-chat">
+
+                <!-- Header (aparece ao selecionar contato) -->
+                <div class="cb-wa-chat-header" id="cbChatHeader" style="display:none">
+                  <div class="cb-wa-avatar" id="cbChatAvatar">?</div>
+                  <div class="cb-wa-chat-info">
+                    <div class="cb-wa-chat-name" id="cbChatNome">—</div>
+                    <div class="cb-wa-chat-phone" id="cbChatPhone"></div>
+                  </div>
+                  <div class="cb-wa-chat-actions">
+                    <!-- Toggle Pausar Bot -->
+                    <div class="cb-pausar-wrap">
+                      <span class="cb-pausar-label" id="cbPausarLabel">Bot ativo</span>
+                      <button class="cb-pausar-toggle" id="cbPausarToggle" onclick="chatbot.toggleChatbotAtivo()" title="Pausar/Ativar bot para este contato"></button>
+                    </div>
+                    <!-- Limpar -->
+                    <button class="btn btn-ghost btn-sm" onclick="chatbot.limparHistorico()" title="Limpar histórico" style="color:#ef4444;padding:.3rem .5rem">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Estado vazio -->
+                <div class="cb-wa-empty" id="cbChatVazio">
+                  <div style="width:80px;height:80px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.25"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  </div>
+                  <div style="text-align:center">
+                    <div style="font-size:.92rem;font-weight:600;color:var(--text-mid);margin-bottom:.3rem">Nenhuma conversa aberta</div>
+                    <div style="font-size:.78rem;color:var(--text-light)">Selecione um contato ao lado<br>para ver o histórico</div>
+                  </div>
+                </div>
+
+                <!-- Mensagens -->
+                <div class="cb-wa-messages" id="cbChatMsgs" style="display:none"></div>
+
+                <!-- Input de intervenção manual -->
+                <div class="cb-wa-input" id="cbChatInput" style="display:none">
+                  <textarea id="cbMsgTexto" rows="1" placeholder="Intervir manualmente…"
+                    onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();chatbot.enviarMensagem()}"
+                    oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
+                  <button class="cb-wa-send" onclick="chatbot.enviarMensagem()" title="Enviar">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Painel: Personalidade ── -->
+          <div class="sys-panel" id="cb-panel-personalidade">
+            <div class="sys-panel-header">
+              <div class="sys-panel-title">Personalidade do Bot</div>
+              <div class="sys-panel-sub">Defina como o chatbot se comporta, o que ele pode responder e o tom de comunicação com os clientes.</div>
+            </div>
+
+            <!-- Toggle ativo -->
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:1rem;background:var(--surface2);border:1px solid var(--border);border-radius:10px;margin-bottom:1.25rem">
+              <div>
+                <div style="font-weight:600;font-size:.88rem;color:var(--text)">Chatbot ativo</div>
+                <div style="font-size:.75rem;color:var(--text-muted);margin-top:.1rem">Responde automaticamente mensagens de texto dos clientes</div>
+              </div>
+              <label class="ctb-toggle" style="flex-shrink:0">
+                <input type="checkbox" id="chatbotAtivo">
+                <span class="ctb-toggle-slider"></span>
+              </label>
+            </div>
+
+            <div style="margin-bottom:.5rem;font-size:.8rem;font-weight:600;color:var(--text)">Instruções da personalidade</div>
+            <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:.65rem;line-height:1.55">
+              Descreva o papel do bot, o que ele pode e não pode responder, o tom (formal, informal, técnico) e qualquer regra específica do seu escritório.
+            </div>
+            <textarea id="chatbotPrompt" rows="10"
+              placeholder="Ex: Você é o assistente virtual do Escritório Contábil Silva. Responda dúvidas sobre entrega de documentos fiscais, prazos, horários de atendimento e regimes tributários. Seja sempre educado, objetivo e profissional. Não discuta preços — direcione para falar com o responsável pelo atendimento."
+              style="width:100%;resize:vertical;font-family:inherit;font-size:.82rem;padding:.75rem;border:1px solid var(--border);border-radius:8px;color:var(--text);line-height:1.6;background:var(--surface2)"></textarea>
+
+            <div style="display:flex;align-items:center;gap:.75rem;margin-top:1rem">
+              <button class="btn btn-primary" onclick="chatbot.salvarConfig()">Salvar personalidade</button>
+              <div id="chatbotConfigAlert" style="display:none;font-size:.75rem;padding:.35rem .7rem;border-radius:7px"></div>
+            </div>
+          </div>
+
+          <!-- ── Painel: Boas-vindas ── -->
+          <div class="sys-panel" id="cb-panel-boasvindas">
+            <div class="sys-panel-header">
+              <div class="sys-panel-title">Mensagem de Boas-vindas</div>
+              <div class="sys-panel-sub">Enviada automaticamente na primeira vez que um cliente manda mensagem — apresenta o bot e orienta como interagir.</div>
+            </div>
+
+            <!-- Toggle boas-vindas -->
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:1rem;background:var(--surface2);border:1px solid var(--border);border-radius:10px;margin-bottom:1.25rem">
+              <div>
+                <div style="font-weight:600;font-size:.88rem;color:var(--text)">Enviar mensagem de boas-vindas</div>
+                <div style="font-size:.75rem;color:var(--text-muted);margin-top:.1rem">Ativado: o bot envia uma saudação antes de responder a primeira mensagem</div>
+              </div>
+              <label class="ctb-toggle" style="flex-shrink:0">
+                <input type="checkbox" id="chatbotBoasVindasAtivo">
+                <span class="ctb-toggle-slider"></span>
+              </label>
+            </div>
+
+            <div style="margin-bottom:.5rem;font-size:.8rem;font-weight:600;color:var(--text)">Texto da mensagem</div>
+            <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:.65rem;line-height:1.55">
+              Use <strong>{nome}</strong> para inserir o nome do cliente automaticamente.
+            </div>
+            <textarea id="chatbotBoasVindasMsg" rows="7"
+              placeholder="Ex: Olá! 👋 Seja bem-vindo ao atendimento do Escritório Silva. Sou o assistente virtual e estou aqui para responder suas dúvidas sobre documentos, prazos e muito mais. Como posso te ajudar hoje?"
+              style="width:100%;resize:vertical;font-family:inherit;font-size:.82rem;padding:.75rem;border:1px solid var(--border);border-radius:8px;color:var(--text);line-height:1.6;background:var(--surface2)"></textarea>
+
+            <!-- Preview -->
+            <div style="margin-top:1rem;padding:.85rem 1rem;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px">
+              <div style="font-size:.7rem;font-weight:700;color:#8b5cf6;margin-bottom:.4rem">👁 Preview (como o cliente vai ver)</div>
+              <div id="chatbotBoasVindasPreview" style="font-size:.82rem;color:var(--text);line-height:1.6;white-space:pre-wrap"></div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:.75rem;margin-top:1rem">
+              <button class="btn btn-primary" onclick="chatbot.salvarBoasVindas()">Salvar boas-vindas</button>
+              <div id="chatbotBoasVindasAlert" style="display:none;font-size:.75rem;padding:.35rem .7rem;border-radius:7px"></div>
+            </div>
+          </div>
+
+          <!-- ── Painel: FAQ ── -->
+          <div class="sys-panel" id="cb-panel-faq">
+            <div class="sys-panel-header">
+              <div class="sys-panel-title">Perguntas & Respostas</div>
+              <div class="sys-panel-sub">Treine o bot com pares de pergunta e resposta. Quando um cliente fizer uma pergunta similar, o bot usa esses exemplos para responder com precisão.</div>
+            </div>
+
+            <!-- Formulário de nova pergunta -->
+            <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:1.25rem">
+              <div style="font-size:.8rem;font-weight:600;color:var(--text);margin-bottom:.75rem">➕ Adicionar pergunta</div>
+              <div style="display:flex;flex-direction:column;gap:.5rem">
+                <input type="text" id="faqPergunta" placeholder="Ex: Qual o prazo para entrega de notas fiscais?" style="font-family:inherit;font-size:.82rem;padding:.6rem .75rem;border:1px solid var(--border);border-radius:8px;color:var(--text);background:var(--surface)">
+                <textarea id="faqResposta" rows="3" placeholder="Ex: As notas fiscais devem ser entregues até o dia 10 de cada mês. Para o mês de dezembro, o prazo especial é dia 5." style="width:100%;font-family:inherit;font-size:.82rem;padding:.6rem .75rem;border:1px solid var(--border);border-radius:8px;color:var(--text);line-height:1.5;background:var(--surface);resize:vertical"></textarea>
+                <div style="display:flex;align-items:center;gap:.5rem">
+                  <button class="btn btn-primary btn-sm" onclick="chatbot.adicionarFaq()">Adicionar</button>
+                  <div id="faqAlert" style="display:none;font-size:.75rem;padding:.3rem .65rem;border-radius:7px"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Lista de FAQs -->
+            <div style="font-size:.8rem;font-weight:600;color:var(--text);margin-bottom:.6rem">Base de conhecimento</div>
+            <div id="faqLista" style="display:flex;flex-direction:column;gap:.5rem">
+              <div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:.82rem">Nenhuma pergunta cadastrada ainda</div>
+            </div>
+          </div>
+
+          <!-- ── Painel: Aprendizado ── -->
+          <div class="sys-panel" id="cb-panel-aprendizado">
+            <div class="sys-panel-header">
+              <div class="sys-panel-title">Aprendizado</div>
+              <div class="sys-panel-sub">Aprove as melhores respostas do bot para que ele use como referência nas próximas conversas. Quanto mais exemplos aprovados, melhor o bot responde.</div>
+            </div>
+
+            <!-- Instrução -->
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;margin-bottom:1.5rem">
+              <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:.85rem;text-align:center">
+                <div style="font-size:1.3rem;margin-bottom:.3rem">👍</div>
+                <div style="font-size:.75rem;font-weight:700;color:#3d7f1f">Aprovar</div>
+                <div style="font-size:.7rem;color:#166534;margin-top:.2rem">O bot aprende com essa resposta</div>
+              </div>
+              <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:.85rem;text-align:center">
+                <div style="font-size:1.3rem;margin-bottom:.3rem">👎</div>
+                <div style="font-size:.75rem;font-weight:700;color:#ef4444">Rejeitar</div>
+                <div style="font-size:.7rem;color:#991b1b;margin-top:.2rem">Ignora essa resposta</div>
+              </div>
+              <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:.85rem;text-align:center">
+                <div style="font-size:1.3rem;margin-bottom:.3rem">✏️</div>
+                <div style="font-size:.75rem;font-weight:700;color:#3b82f6">Corrigir</div>
+                <div style="font-size:.7rem;color:#1e40af;margin-top:.2rem">Edite antes de aprovar</div>
+              </div>
+            </div>
+
+            <!-- Filtros -->
+            <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap">
+              <button class="btn btn-sm" id="aprendFiltroTodos" onclick="chatbot.filtrarAprendizado('todos')" style="background:var(--accent);color:#fff;border:none;border-radius:20px;font-size:.72rem">Todas</button>
+              <button class="btn btn-ghost btn-sm" id="aprendFiltroAprovados" onclick="chatbot.filtrarAprendizado('aprovados')" style="border-radius:20px;font-size:.72rem">✅ Aprovadas</button>
+              <button class="btn btn-ghost btn-sm" id="aprendFiltroPendentes" onclick="chatbot.filtrarAprendizado('pendentes')" style="border-radius:20px;font-size:.72rem">⏳ Pendentes</button>
+              <button class="btn btn-ghost btn-sm" onclick="chatbot.carregarAprendizado()" style="margin-left:auto;display:inline-flex;align-items:center;gap:.3rem;font-size:.72rem">
+                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                Atualizar
+              </button>
+            </div>
+
+            <div id="aprendizadoLista" style="display:flex;flex-direction:column;gap:.6rem">
+              <div style="text-align:center;padding:2.5rem;color:var(--text-muted);font-size:.82rem">Nenhuma conversa para revisar ainda</div>
+            </div>
+          </div>
+
+          <!-- ── Painel: Memória IA ── -->
+          <div class="sys-panel" id="cb-panel-memoria">
+            <div class="sys-panel-header">
+              <div class="sys-panel-title">Memória IA</div>
+              <div class="sys-panel-sub">Base de conhecimento gerada automaticamente pela IA a cada atendimento. Aprove as entradas para que sejam usadas como contexto nos próximos atendimentos.</div>
+            </div>
+
+            <!-- Stats bar -->
+            <div id="memoriaIaStats" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.25rem"></div>
+
+            <!-- Toggle memoria ativa -->
+            <div style="display:flex;align-items:center;gap:.75rem;padding:.75rem 1rem;background:var(--surface2);border-radius:10px;border:1px solid var(--border);margin-bottom:1.25rem">
+              <input type="checkbox" id="memoriaIaAtiva" style="width:16px;height:16px;accent-color:var(--accent)" onchange="chatbot.toggleMemoriaIaAtiva(this.checked)">
+              <div>
+                <div style="font-size:.85rem;font-weight:600;color:var(--text)">Usar Memória IA como contexto</div>
+                <div style="font-size:.75rem;color:var(--text-muted)">Quando ativado, entradas aprovadas são injetadas no prompt da IA para respostas mais precisas</div>
+              </div>
+            </div>
+
+            <!-- Filtros -->
+            <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap">
+              <button class="mem-filter-btn active" data-filtro="" onclick="chatbot.filtrarMemoria(this,'')">Todas</button>
+              <button class="mem-filter-btn" data-filtro="pendentes" onclick="chatbot.filtrarMemoria(this,'pendentes')">⏳ Pendentes</button>
+              <button class="mem-filter-btn" data-filtro="aprovadas" onclick="chatbot.filtrarMemoria(this,'aprovadas')">✅ Aprovadas</button>
+              <button class="mem-filter-btn" data-filtro="rejeitadas" onclick="chatbot.filtrarMemoria(this,'rejeitadas')">❌ Rejeitadas</button>
+              <button class="btn btn-sm btn-primary" style="margin-left:auto" onclick="chatbot.abrirNovaMemoria()">+ Nova entrada</button>
+            </div>
+
+            <!-- Lista -->
+            <div id="memoriaIaLista"></div>
+
+            <!-- Alert -->
+            <div id="memoriaIaAlert" style="display:none;font-size:.75rem;padding:.35rem .7rem;border-radius:7px;margin-top:.75rem"></div>
+          </div>
+
+        </div><!-- /sys-content -->
+      </div><!-- /sys-layout -->
+    </div>

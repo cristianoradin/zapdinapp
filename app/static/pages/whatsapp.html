@@ -1,0 +1,79 @@
+<div class="page" id="page-whatsapp">
+
+      <div class="page-hero hero-green">
+        <div class="page-hero-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 10h8M8 14h5"/></svg>
+        </div>
+        <div class="page-hero-text">
+          <h1>Conectar WhatsApp</h1>
+          <p>Cada sessão representa um número conectado. Você pode ter múltiplos números ativos simultaneamente.</p>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 340px;gap:1.25rem;align-items:start">
+
+        <!-- Sessões -->
+        <div class="card" style="margin-bottom:0">
+          <div class="section-header">
+            <div class="section-header-icon shi-green">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+            </div>
+            <h2>Sessões Ativas</h2>
+          </div>
+          <div class="alert" id="alertWA"></div>
+          <div id="listaSessoes"></div>
+          <div style="display:flex;gap:.75rem;align-items:flex-end;margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid var(--border)">
+            <div class="form-group" style="flex:1;margin-bottom:0">
+              <label>Nome da nova sessão</label>
+              <input type="text" id="inputNovaSessao" placeholder="ex: Número Principal, Vendas, Suporte…" />
+            </div>
+            <button class="btn btn-primary" id="btnAddSessao" style="white-space:nowrap;display:inline-flex;align-items:center;gap:.4rem">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Adicionar
+            </button>
+          </div>
+        </div>
+
+        <!-- Como conectar -->
+        <div>
+          <div class="card" style="margin-bottom:1rem;padding:1.25rem 1.5rem">
+            <div class="section-header" style="margin-bottom:1rem">
+              <div class="section-header-icon shi-blue">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              </div>
+              <h3>Como conectar</h3>
+            </div>
+            <div class="step-list">
+              <div class="step-item">
+                <div class="step-num">1</div>
+                <div class="step-body">Clique em <strong>＋ Adicionar</strong> e dê um nome à sessão</div>
+              </div>
+              <div class="step-item">
+                <div class="step-num">2</div>
+                <div class="step-body">Clique em <strong>Mostrar QR</strong> para exibir o código</div>
+              </div>
+              <div class="step-item">
+                <div class="step-num">3</div>
+                <div class="step-body">Abra o <strong>WhatsApp</strong> no celular</div>
+              </div>
+              <div class="step-item">
+                <div class="step-num">4</div>
+                <div class="step-body">Toque em <strong>⋮ Menu → Aparelhos conectados</strong></div>
+              </div>
+              <div class="step-item">
+                <div class="step-num">5</div>
+                <div class="step-body">Toque em <strong>Conectar aparelho</strong> e aponte a câmera para o QR</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="info-banner info-banner-yellow">
+            <span class="ib-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </span>
+            <div><strong>Atenção:</strong> O QR expira a cada ~60s. Se não funcionar, aguarde um novo código aparecer automaticamente.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>

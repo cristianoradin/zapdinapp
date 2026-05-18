@@ -1,0 +1,530 @@
+<div class="page" id="page-sistema">
+      <div class="sys-layout">
+
+        <!-- Menu lateral esquerdo -->
+        <div class="sys-sidebar">
+          <div class="sys-sidebar-title">Sistema</div>
+          <div class="sys-menu-item active" data-panel="token-ia" onclick="sysNav(this,'token-ia')">
+            <span class="sys-menu-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/><circle cx="7.5" cy="14.5" r="1.5"/><circle cx="16.5" cy="14.5" r="1.5"/></svg></span>
+            Token IA
+          </div>
+          <div class="sys-menu-item" data-panel="usuario" onclick="sysNav(this,'usuario')">
+            <span class="sys-menu-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+            Usuário
+          </div>
+          <div class="sys-menu-item" data-panel="token" onclick="sysNav(this,'token')">
+            <span class="sys-menu-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg></span>
+            Token API
+          </div>
+
+          <div class="sys-sidebar-section">Integração Contábil</div>
+          <div class="sys-menu-item" data-panel="dominio" onclick="sysNav(this,'dominio')">
+            <span class="sys-menu-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span>
+            Domínio
+          </div>
+          <div class="sys-menu-item" data-panel="docs" onclick="sysNav(this,'docs')">
+            <span class="sys-menu-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span>
+            Documentações
+          </div>
+          <div class="sys-menu-item" data-panel="log" onclick="sysNav(this,'log')">
+            <span class="sys-menu-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span>
+            Log do Sistema
+          </div>
+        </div>
+
+        <!-- Conteúdo dinâmico -->
+        <div class="sys-content">
+
+          <!-- Painel: Token IA -->
+          <div class="sys-panel active" id="sys-panel-token-ia">
+            <div class="sys-panel-header">
+              <div class="sys-panel-title">Integrações de IA</div>
+              <div class="sys-panel-sub">Configure as chaves dos provedores de IA. Use os toggles <strong>USAR PARA</strong> para definir se cada provedor faz OCR, Chatbot ou ambos. Quando múltiplos estão habilitados para a mesma função, o sistema faz fallback automático.</div>
+            </div>
+
+            <!-- Cards de provedor -->
+            <div class="ai-cards-grid">
+
+              <!-- OpenAI -->
+              <div class="ai-card" id="aiCard-openai" style="--ai-brand:#10a37f">
+                <div class="ai-card-head">
+                  <div class="ai-card-logo openai">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 23.9a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.896zm16.597 3.855l-5.843-3.369 2.02-1.168a.076.076 0 0 1 .071 0l4.83 2.78a4.496 4.496 0 0 1-.676 8.119v-5.677a.767.767 0 0 0-.402-.685zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z"/></svg>
+                  </div>
+                  <div>
+                    <div class="ai-card-name">OpenAI</div>
+                    <div class="ai-card-model">GPT-4o Vision</div>
+                    <div class="ai-card-status err" id="aiStatus-openai">
+                      <span class="ai-card-status-dot"></span>
+                      <span id="aiStatusTxt-openai">Não configurada</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="ai-card-body">
+                  <div>
+                    <div class="ai-card-field-label">Chave API</div>
+                    <div class="ai-key-wrap">
+                      <input type="password" id="aiKey-openai" placeholder="sk-..." data-preview="0" />
+                      <button class="btn-eye" onclick="aiToggleKey('openai')" title="Mostrar/ocultar">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="ai-card-field-label">Modelo</div>
+                    <select class="ai-model-select" id="aiModel-openai">
+                      <option value="gpt-4o">gpt-4o</option>
+                      <option value="gpt-4o-mini">gpt-4o-mini</option>
+                      <option value="gpt-4-turbo">gpt-4-turbo</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div class="ai-card-field-label">Usar para</div>
+                    <div class="ai-uso-pills">
+                      <div class="ai-uso-pill ocr" id="aiUso-openai-ocr" onclick="aiToggleUso('openai','ocr')"><span class="ai-uso-dot"></span>🔍 OCR</div>
+                      <div class="ai-uso-pill chat" id="aiUso-openai-chat" onclick="aiToggleUso('openai','chat')"><span class="ai-uso-dot"></span>💬 Chatbot</div>
+                    </div>
+                  </div>
+                  <div class="ai-card-actions">
+                    <button class="btn btn-primary" onclick="aiSalvar('openai')">Salvar</button>
+                    <button class="btn btn-ghost" onclick="aiTestar('openai')">Testar</button>
+                  </div>
+                  <div id="aiAlert-openai" style="display:none" class="ai-card-alert"></div>
+                </div>
+              </div>
+
+              <!-- Google Gemini -->
+              <div class="ai-card" id="aiCard-gemini" style="--ai-brand:#1a73e8">
+                <div class="ai-card-head">
+                  <div class="ai-card-logo gemini">
+                    <svg width="20" height="20" viewBox="0 0 28 28" fill="currentColor"><path d="M14 28C14 26.0633 13.6267 24.2433 12.88 22.54C12.1567 20.8367 11.165 19.355 9.905 18.095C8.645 16.835 7.16333 15.8433 5.46 15.12C3.75667 14.3733 1.93667 14 0 14C1.93667 14 3.75667 13.6383 5.46 12.915C7.16333 12.1683 8.645 11.165 9.905 9.905C11.165 8.645 12.1567 7.16333 12.88 5.46C13.6267 3.75667 14 1.93667 14 0C14 1.93667 14.3617 3.75667 15.085 5.46C15.8317 7.16333 16.835 8.645 18.095 9.905C19.355 11.165 20.8367 12.1683 22.54 12.915C24.2433 13.6383 26.0633 14 28 14C26.0633 14 24.2433 14.3733 22.54 15.12C20.8367 15.8433 19.355 16.835 18.095 18.095C16.835 19.355 15.8317 20.8367 15.085 22.54C14.3617 24.2433 14 26.0633 14 28Z"/></svg>
+                  </div>
+                  <div>
+                    <div class="ai-card-name">Google Gemini</div>
+                    <div class="ai-card-model">Gemini 1.5 Pro Vision</div>
+                    <div class="ai-card-status err" id="aiStatus-gemini">
+                      <span class="ai-card-status-dot"></span>
+                      <span id="aiStatusTxt-gemini">Não configurada</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="ai-card-body">
+                  <div>
+                    <div class="ai-card-field-label">Chave API</div>
+                    <div class="ai-key-wrap">
+                      <input type="password" id="aiKey-gemini" placeholder="AIza..." data-preview="0" />
+                      <button class="btn-eye" onclick="aiToggleKey('gemini')" title="Mostrar/ocultar">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="ai-card-field-label">Modelo</div>
+                    <select class="ai-model-select" id="aiModel-gemini">
+                      <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+                      <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                      <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div class="ai-card-field-label">Usar para</div>
+                    <div class="ai-uso-pills">
+                      <div class="ai-uso-pill ocr" id="aiUso-gemini-ocr" onclick="aiToggleUso('gemini','ocr')"><span class="ai-uso-dot"></span>🔍 OCR</div>
+                      <div class="ai-uso-pill chat" id="aiUso-gemini-chat" onclick="aiToggleUso('gemini','chat')"><span class="ai-uso-dot"></span>💬 Chatbot</div>
+                    </div>
+                  </div>
+                  <div class="ai-card-actions">
+                    <button class="btn btn-primary" onclick="aiSalvar('gemini')">Salvar</button>
+                    <button class="btn btn-ghost" onclick="aiTestar('gemini')">Testar</button>
+                  </div>
+                  <div id="aiAlert-gemini" style="display:none" class="ai-card-alert"></div>
+                </div>
+              </div>
+
+              <!-- Anthropic Claude -->
+              <div class="ai-card" id="aiCard-anthropic" style="--ai-brand:#d97706">
+                <div class="ai-card-head">
+                  <div class="ai-card-logo anthropic">
+                    <svg width="20" height="14" viewBox="0 0 46 32" fill="currentColor"><path d="M32.73 0h-6.945L38.45 32h6.945L32.73 0zM13.27 0 0 32h7.082l2.71-7.006h13.85l2.71 7.006h7.082L20.16 0h-6.89zm-.684 19.337 4.77-12.33 4.77 12.33h-9.54z"/></svg>
+                  </div>
+                  <div>
+                    <div class="ai-card-name">Anthropic Claude</div>
+                    <div class="ai-card-model">Claude 3.5 Sonnet Vision</div>
+                    <div class="ai-card-status err" id="aiStatus-anthropic">
+                      <span class="ai-card-status-dot"></span>
+                      <span id="aiStatusTxt-anthropic">Não configurada</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="ai-card-body">
+                  <div>
+                    <div class="ai-card-field-label">Chave API</div>
+                    <div class="ai-key-wrap">
+                      <input type="password" id="aiKey-anthropic" placeholder="sk-ant-..." data-preview="0" />
+                      <button class="btn-eye" onclick="aiToggleKey('anthropic')" title="Mostrar/ocultar">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="ai-card-field-label">Modelo</div>
+                    <select class="ai-model-select" id="aiModel-anthropic">
+                      <option value="claude-3-5-sonnet-20241022">claude-3-5-sonnet</option>
+                      <option value="claude-3-5-haiku-20241022">claude-3-5-haiku</option>
+                      <option value="claude-3-opus-20240229">claude-3-opus</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div class="ai-card-field-label">Usar para</div>
+                    <div class="ai-uso-pills">
+                      <div class="ai-uso-pill ocr" id="aiUso-anthropic-ocr" onclick="aiToggleUso('anthropic','ocr')"><span class="ai-uso-dot"></span>🔍 OCR</div>
+                      <div class="ai-uso-pill chat" id="aiUso-anthropic-chat" onclick="aiToggleUso('anthropic','chat')"><span class="ai-uso-dot"></span>💬 Chatbot</div>
+                    </div>
+                  </div>
+                  <div class="ai-card-actions">
+                    <button class="btn btn-primary" onclick="aiSalvar('anthropic')">Salvar</button>
+                    <button class="btn btn-ghost" onclick="aiTestar('anthropic')">Testar</button>
+                  </div>
+                  <div id="aiAlert-anthropic" style="display:none" class="ai-card-alert"></div>
+                </div>
+              </div>
+
+              <!-- Groq -->
+              <div class="ai-card" id="aiCard-groq" style="--ai-brand:#f55036">
+                <div class="ai-card-head">
+                  <div class="ai-card-logo groq">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.374 0 0 5.373 0 12c0 6.628 5.374 12 12 12 6.628 0 12-5.372 12-12 0-6.627-5.372-12-12-12zm2.862 6.426a5.572 5.572 0 0 1 0 11.145 5.572 5.572 0 0 1-5.572-5.572v-1.116h2.228v1.116a3.344 3.344 0 1 0 3.344-3.344h-1.116V6.426h1.116z"/></svg>
+                  </div>
+                  <div>
+                    <div class="ai-card-name">Groq</div>
+                    <div class="ai-card-model">Llama 4 Scout Vision</div>
+                    <div class="ai-card-status err" id="aiStatus-groq">
+                      <span class="ai-card-status-dot"></span>
+                      <span id="aiStatusTxt-groq">Não configurada</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="ai-card-body">
+                  <div>
+                    <div class="ai-card-field-label">Chave API</div>
+                    <div class="ai-key-wrap">
+                      <input type="password" id="aiKey-groq" placeholder="gsk_..." data-preview="0" />
+                      <button class="btn-eye" onclick="aiToggleKey('groq')" title="Mostrar/ocultar">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="ai-card-field-label">Modelo</div>
+                    <select class="ai-model-select" id="aiModel-groq">
+                      <option value="meta-llama/llama-4-scout-17b-16e-instruct">llama-4-scout</option>
+                      <option value="meta-llama/llama-4-maverick-17b-128e-instruct">llama-4-maverick</option>
+                    </select>
+                  </div>
+                  <div style="font-size:.7rem;color:var(--accent);background:#f0fdf4;border:1px solid var(--accent-mid);border-radius:6px;padding:.3rem .6rem;">
+                    ✓ Gratuito · 1.000 req/dia · Só imagem (PDF converte automático)
+                  </div>
+                  <div>
+                    <div class="ai-card-field-label">Usar para</div>
+                    <div class="ai-uso-pills">
+                      <div class="ai-uso-pill ocr" id="aiUso-groq-ocr" onclick="aiToggleUso('groq','ocr')"><span class="ai-uso-dot"></span>🔍 OCR</div>
+                      <div class="ai-uso-pill chat" id="aiUso-groq-chat" onclick="aiToggleUso('groq','chat')"><span class="ai-uso-dot"></span>💬 Chatbot</div>
+                    </div>
+                  </div>
+                  <div class="ai-card-actions">
+                    <button class="btn btn-primary" onclick="aiSalvar('groq')">Salvar</button>
+                    <button class="btn btn-ghost" onclick="aiTestar('groq')">Testar</button>
+                  </div>
+                  <div id="aiAlert-groq" style="display:none" class="ai-card-alert"></div>
+                </div>
+              </div>
+
+            </div><!-- /ai-cards-grid -->
+          </div>
+
+          <!-- Painel: Usuário -->
+          <div class="sys-panel" id="sys-panel-usuario">
+            <div class="sys-panel-header">
+              <div class="sys-panel-title">Usuário</div>
+              <div class="sys-panel-sub">Altere o login e a senha de acesso local. Este usuário é independente do Monitor.</div>
+            </div>
+
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">Usuário atual</div>
+                <div class="sys-row-desc">Identificador de login atual.</div>
+              </div>
+              <div class="sys-row-control">
+                <input type="text" id="sysUserAtual" readonly style="background:var(--bg);color:var(--text-mid);font-weight:600" />
+              </div>
+            </div>
+
+            <div class="sys-divider"></div>
+
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">Novo usuário</div>
+                <div class="sys-row-desc">Deixe em branco para manter o atual.</div>
+              </div>
+              <div class="sys-row-control">
+                <input type="text" id="sysUserNovo" placeholder="Novo nome de usuário" autocomplete="off" />
+              </div>
+            </div>
+
+            <div class="sys-divider"></div>
+
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">Senha atual</div>
+                <div class="sys-row-desc">Obrigatória para confirmar qualquer alteração.</div>
+              </div>
+              <div class="sys-row-control">
+                <input type="password" id="sysUserSenhaAtual" placeholder="••••••••" autocomplete="current-password" />
+              </div>
+            </div>
+
+            <div class="sys-divider"></div>
+
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">Nova senha</div>
+                <div class="sys-row-desc">Mínimo 6 caracteres. Deixe em branco para não alterar.</div>
+              </div>
+              <div class="sys-row-control">
+                <input type="password" id="sysUserSenhaNova" placeholder="Nova senha" autocomplete="new-password" />
+                <input type="password" id="sysUserSenhaConf" placeholder="Confirmar nova senha" autocomplete="new-password" />
+              </div>
+            </div>
+
+            <div style="margin-top:1.5rem">
+              <button class="btn btn-primary" onclick="salvarUsuario()">Salvar alterações</button>
+            </div>
+            <div class="alert" id="alertSysUsuario" style="margin-top:.75rem"></div>
+          </div>
+
+          <!-- Painel: Domínio -->
+          <div class="sys-panel" id="sys-panel-dominio">
+            <div class="sys-panel-header">
+              <div class="sys-panel-title">Integração Domínio</div>
+              <div class="sys-panel-sub">Configure a integração com o sistema Domínio Thomson Reuters para envio automático de documentos fiscais ao escritório contábil.</div>
+            </div>
+
+            <div id="dominio-alert" style="display:none;margin-bottom:1rem"></div>
+
+            <!-- Status -->
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">Status da conexão</div>
+                <div class="sys-row-desc">Clique em "Testar" para verificar a conectividade com a API Domínio.</div>
+              </div>
+              <div class="sys-row-control" style="flex-direction:row;align-items:center;gap:.75rem">
+                <span id="dominio-status-dot" style="width:10px;height:10px;border-radius:50%;background:#e5e7eb;flex-shrink:0"></span>
+                <span id="dominio-status-text" style="font-size:.82rem;color:var(--text-muted)">Não testado</span>
+                <button class="btn btn-sm" id="btnDominioTestar" onclick="dominio.testar()" style="margin-left:.5rem">Testar</button>
+              </div>
+            </div>
+
+            <div class="sys-divider"></div>
+            <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-light);margin:.25rem 0 .75rem">Origem — Dados do Cliente</div>
+
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">CNPJ do Cliente</div>
+                <div class="sys-row-desc">CNPJ da empresa cujos documentos serão enviados.</div>
+              </div>
+              <div class="sys-row-control">
+                <input type="text" id="dominio-cnpj-origem" placeholder="00.000.000/0001-00" maxlength="18" oninput="dominio.maskCnpj(this)" />
+              </div>
+            </div>
+
+            <div class="sys-divider"></div>
+
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">Nome / Razão Social</div>
+                <div class="sys-row-desc">Apenas para identificação interna.</div>
+              </div>
+              <div class="sys-row-control">
+                <input type="text" id="dominio-nome-origem" placeholder="Empresa Ltda" />
+              </div>
+            </div>
+
+            <div class="sys-divider"></div>
+            <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-light);margin:.25rem 0 .75rem">Destino — Credenciais Domínio</div>
+
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">URL Base da API</div>
+                <div class="sys-row-desc">Endpoint fornecido pelo escritório ou Thomson Reuters.</div>
+              </div>
+              <div class="sys-row-control">
+                <input type="url" id="dominio-api-url" placeholder="https://api.dominio.com.br/v1" value="https://api.dominio.com.br/v1" />
+              </div>
+            </div>
+
+            <div class="sys-divider"></div>
+
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">Token de Autenticação</div>
+                <div class="sys-row-desc">Token gerado no portal Onvio (Thomson Reuters).</div>
+              </div>
+              <div class="sys-row-control" style="position:relative">
+                <input type="password" id="dominio-api-token" placeholder="Bearer token ou API Key" style="padding-right:2.5rem" />
+                <button type="button" onclick="dominio.toggleToken()" style="position:absolute;right:.6rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);padding:0">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="sys-divider"></div>
+
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">CNPJ do Escritório Contábil</div>
+                <div class="sys-row-desc">CNPJ do destinatário no sistema Domínio.</div>
+              </div>
+              <div class="sys-row-control">
+                <input type="text" id="dominio-cnpj-escritorio" placeholder="00.000.000/0001-00" maxlength="18" oninput="dominio.maskCnpj(this)" />
+              </div>
+            </div>
+
+            <div class="sys-divider"></div>
+
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">Tipos de Documento</div>
+                <div class="sys-row-desc">Documentos destes tipos serão enviados ao Domínio automaticamente.</div>
+              </div>
+              <div class="sys-row-control" style="flex-direction:row;flex-wrap:wrap;gap:.75rem">
+                <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;cursor:pointer"><input type="checkbox" id="dominio-tipo-nfe" checked> NF-e</label>
+                <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;cursor:pointer"><input type="checkbox" id="dominio-tipo-cte"> CT-e</label>
+                <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;cursor:pointer"><input type="checkbox" id="dominio-tipo-nfse"> NFS-e</label>
+                <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;cursor:pointer"><input type="checkbox" id="dominio-tipo-cfe"> CF-e (SAT)</label>
+              </div>
+            </div>
+
+            <div class="sys-divider"></div>
+
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">Envio Automático</div>
+                <div class="sys-row-desc">Envia documentos ao Domínio assim que chegam do ERP, sem intervenção manual.</div>
+              </div>
+              <div class="sys-row-control">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="dominio-auto-envio">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div style="margin-top:1.5rem;display:flex;gap:.75rem">
+              <button class="btn btn-primary" onclick="dominio.salvar()">Salvar configuração</button>
+              <button class="btn" onclick="dominio.carregar()">Cancelar</button>
+            </div>
+            <div class="alert" id="alertDominio" style="margin-top:.75rem;display:none"></div>
+
+            <div class="sys-divider" style="margin-top:2rem"></div>
+            <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-light);margin:.25rem 0 .75rem">Log de Envios Recentes</div>
+            <div class="table-wrap">
+              <table class="table" id="dominioLogTable">
+                <thead><tr><th>Data/Hora</th><th>Documento</th><th>Tipo</th><th>Status</th><th>Resposta</th></tr></thead>
+                <tbody id="dominioLogBody">
+                  <tr><td colspan="5" class="table-empty">Nenhum envio registrado</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div><!-- /sys-panel-dominio -->
+
+          <!-- Painel: Log do Sistema -->
+          <div class="sys-panel" id="sys-panel-log">
+            <div class="sys-panel-header">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div>
+                  <div class="sys-panel-title">Log do Sistema</div>
+                  <div class="sys-panel-sub">Registro completo de eventos: WhatsApp, IA, ERP, Campanhas, Autenticação, Monitor e Sistema.</div>
+                </div>
+                <span id="syslogCounter" style="font-size:.8rem;color:var(--text-muted);white-space:nowrap">—</span>
+              </div>
+            </div>
+
+            <!-- Toolbar -->
+            <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem;align-items:center">
+              <!-- Filtro Nível -->
+              <select onchange="syslog.setFiltro('nivel',this.value)" style="padding:.35rem .6rem;border:1px solid var(--border);border-radius:8px;font-size:.82rem;color:var(--text);background:var(--surface)">
+                <option value="">Todos os níveis</option>
+                <option value="info">INFO</option>
+                <option value="warn">WARN</option>
+                <option value="error">ERRO</option>
+                <option value="critical">CRÍTICO</option>
+              </select>
+              <!-- Filtro Módulo -->
+              <select onchange="syslog.setFiltro('modulo',this.value)" style="padding:.35rem .6rem;border:1px solid var(--border);border-radius:8px;font-size:.82rem;color:var(--text);background:var(--surface)">
+                <option value="">Todos os módulos</option>
+                <option value="whatsapp">WhatsApp</option>
+                <option value="ia">IA / OCR</option>
+                <option value="erp">ERP</option>
+                <option value="campanhas">Campanhas</option>
+                <option value="auth">Autenticação</option>
+                <option value="monitor">Monitor</option>
+                <option value="worker">Worker</option>
+                <option value="chatbot">Chatbot</option>
+                <option value="dominio">Domínio</option>
+                <option value="sistema">Sistema</option>
+              </select>
+              <!-- Busca -->
+              <input type="search" placeholder="Buscar nos logs…" oninput="syslog.setFiltro('busca',this.value)"
+                style="padding:.35rem .75rem;border:1px solid var(--border);border-radius:8px;font-size:.82rem;flex:1;min-width:160px;color:var(--text);background:var(--surface)">
+              <!-- Botões -->
+              <button class="btn btn-sm" onclick="syslog.carregar(true)" title="Recarregar">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.18-4.73"/></svg>
+              </button>
+              <button class="btn btn-sm" id="btnSyslogAuto" onclick="syslog.toggleAutoRefresh(this)">▶ Auto-refresh</button>
+              <button class="btn btn-sm" onclick="syslog.exportar()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Exportar CSV
+              </button>
+              <button class="btn btn-sm" onclick="syslog.limpar()" style="color:var(--red)" title="Apagar logs antigos">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                Limpar 30d
+              </button>
+            </div>
+
+            <!-- Tabela -->
+            <div class="table-wrap" style="max-height:60vh;overflow-y:auto">
+              <table class="table" style="font-size:.83rem">
+                <thead style="position:sticky;top:0;background:var(--surface);z-index:1">
+                  <tr>
+                    <th style="white-space:nowrap">Data/Hora</th>
+                    <th>Nível</th>
+                    <th>Módulo</th>
+                    <th>Ação</th>
+                    <th>Mensagem</th>
+                    <th>Empresa</th>
+                  </tr>
+                </thead>
+                <tbody id="syslogBody">
+                  <tr><td colspan="6" class="table-empty">Carregando…</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div id="syslogPager" style="display:flex;align-items:center;gap:.75rem;margin-top:.75rem;justify-content:center"></div>
+          </div>
+          <!-- fim log -->
+
+          <!-- Painel: Documentações -->
+          <div class="sys-panel" id="sys-panel-docs">
+            <div class="sys-panel-header">
+              <div class="sys-panel-title">Documentação da API</div>
+              <div class="sys-panel-sub">Referência completa para integrar o ERP com o ZapDin.</div>
+            </div>
+            <iframe src="/static/doc-integracao-erp.html"
+              style="width:100%;height:calc(100vh - 180px);border:none;border-radius:8px;background:#fff;"
+              title="Documentação ERP"></iframe>
+          </div>
+          <!-- fim docs -->
+
+        </div><!-- /sys-content -->
+      </div><!-- /sys-layout -->
+    </div>

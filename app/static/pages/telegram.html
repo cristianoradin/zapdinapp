@@ -1,0 +1,149 @@
+<div class="page" id="page-telegram">
+
+      <div class="page-hero hero-sky">
+        <div class="page-hero-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </div>
+        <div class="page-hero-text">
+          <h1>Integração Telegram</h1>
+          <p>Receba alertas de falhas e relatórios automáticos a cada 3 horas diretamente no seu Telegram.</p>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 340px;gap:1.25rem;align-items:start">
+
+        <!-- Config + Alertas -->
+        <div>
+          <div class="card" style="margin-bottom:1.25rem">
+            <div class="section-header">
+              <div class="section-header-icon shi-blue">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
+              </div>
+              <h2>Configuração do Bot</h2>
+            </div>
+            <div class="alert" id="alertTelegram"></div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem">
+              <div class="form-group" style="margin-bottom:0">
+                <label>Bot Token</label>
+                <input type="password" id="tgBotToken" placeholder="123456789:AABBccDD..." autocomplete="off" />
+                <div style="font-size:.75rem;color:var(--text-mid);margin-top:.35rem">Obtenha em <strong style="color:var(--accent)">@BotFather</strong></div>
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label>Chat ID</label>
+                <input type="text" id="tgChatId" placeholder="-1001234567890" />
+                <div style="font-size:.75rem;color:var(--text-mid);margin-top:.35rem">Use <strong style="color:var(--accent)">@userinfobot</strong> para descobrir</div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+              <button class="btn btn-primary" id="btnSalvarTelegram" style="display:inline-flex;align-items:center;gap:.4rem">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                Salvar Configuração
+              </button>
+              <button class="btn btn-ghost" id="btnTestarTelegram" style="display:inline-flex;align-items:center;gap:.4rem">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                Testar Conexão
+              </button>
+              <button class="btn btn-ghost" id="btnRelatorioParcial" style="display:inline-flex;align-items:center;gap:.4rem">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                Enviar Relatório Agora
+              </button>
+            </div>
+            <div id="tgStatus" style="margin-top:1rem;padding:.65rem 1rem;border-radius:8px;font-size:.85rem;display:none"></div>
+          </div>
+
+          <!-- Alertas -->
+          <div class="card">
+            <div class="section-header">
+              <div class="section-header-icon shi-red">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              </div>
+              <h2>Alertas Automáticos</h2>
+            </div>
+            <div style="display:grid;gap:.6rem">
+              <div class="tg-alert-card tg-ac-red">
+                <div class="tg-alert-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+                <div class="tg-alert-text">
+                  <strong>Falha no envio</strong>
+                  <span>Notificação imediata quando uma mensagem ou arquivo falhar</span>
+                </div>
+              </div>
+              <div class="tg-alert-card tg-ac-orange">
+                <div class="tg-alert-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                </div>
+                <div class="tg-alert-text">
+                  <strong>Sessão desconectada</strong>
+                  <span>Alerta quando um número cair e precisar escanear o QR novamente</span>
+                </div>
+              </div>
+              <div class="tg-alert-card tg-ac-yellow">
+                <div class="tg-alert-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
+                <div class="tg-alert-text">
+                  <strong>Erro crítico na API</strong>
+                  <span>Alerta quando o serviço interno travar ou crashar</span>
+                </div>
+              </div>
+              <div class="tg-alert-card tg-ac-blue">
+                <div class="tg-alert-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                </div>
+                <div class="tg-alert-text">
+                  <strong>Relatório a cada 3 horas</strong>
+                  <span>Status das sessões, mensagens enviadas, arquivos e erros</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Como configurar -->
+        <div class="card" style="margin-bottom:0">
+          <div class="section-header">
+            <div class="section-header-icon shi-teal">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <h3>Como configurar</h3>
+          </div>
+          <div class="step-list">
+            <div class="step-item">
+              <div class="step-num">1</div>
+              <div class="step-body">Abra o Telegram e busque <strong style="color:var(--accent)">@BotFather</strong></div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">2</div>
+              <div class="step-body">Envie <code style="background:var(--surface2);padding:.1rem .3rem;border-radius:4px;color:var(--accent)">/newbot</code> e siga as instruções</div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">3</div>
+              <div class="step-body">Copie o <strong>Token</strong> gerado e cole no campo ao lado</div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">4</div>
+              <div class="step-body">Adicione o bot ao grupo/canal desejado e envie uma mensagem</div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">5</div>
+              <div class="step-body">Use <strong style="color:var(--accent)">@userinfobot</strong> para descobrir o <strong>Chat ID</strong></div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">6</div>
+              <div class="step-body">Cole o Chat ID, salve e clique em <strong>Testar Conexão</strong></div>
+            </div>
+          </div>
+
+          <div class="info-banner info-banner-blue" style="margin-top:1rem;margin-bottom:0">
+            <span class="ib-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </span>
+            <div>O bot só consegue enviar mensagens em grupos onde foi adicionado como membro.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>

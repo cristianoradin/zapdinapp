@@ -1,3 +1,27 @@
+  // ── Page lazy loader ────────────────────────────────────────────────────────
+  const APP_BUILD = '__BUILD__';
+  const _loadedPages = new Set();
+
+  async function _loadPage(page) {
+    const id = 'page-' + page;
+    if (_loadedPages.has(page) || document.getElementById(id)) {
+      _loadedPages.add(page);
+      return;
+    }
+    try {
+      const r = await fetch(`/static/pages/${page}.html?v=${APP_BUILD}`);
+      if (r.ok) {
+        const html = await r.text();
+        document.querySelector('.content').insertAdjacentHTML('beforeend', html);
+        _loadedPages.add(page);
+      } else {
+        console.warn(`[pages] ${page} not found (${r.status})`);
+      }
+    } catch (e) {
+      console.error(`[pages] Failed to load ${page}:`, e);
+    }
+  }
+
   // ── Nav ──────────────────────────────────────────────────────────────────────
   // Nomes devem bater exatamente com os itens do menu lateral
   const pages = {
@@ -110,7 +134,8 @@
     `;
   }
 
-  function navigate(page) {
+  async function navigate(page) {
+    await _loadPage(page);
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
     // Marca nav-item normal
@@ -1035,7 +1060,8 @@
   });
 
   // ── Init ──────────────────────────────────────────────────────────────────────
-  checkAuth().then(() => {
+  checkAuth().then(async () => {
+    await _loadPage('home');
     initHome();
     _updateTopbarStatus();
     _updateAiStatus();
@@ -4084,7 +4110,8 @@
   }
 
   // Helper showPage (para navegação programática)
-  function showPage(p) {
+  async function showPage(p) {
+    await _loadPage(p);
     // Destrói gráficos do dashboard ao sair da página
     if (typeof _destroyCharts === 'function' && p !== 'dm-dashboard') _destroyCharts();
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));

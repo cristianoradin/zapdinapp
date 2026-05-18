@@ -1,0 +1,209 @@
+<div class="page" id="page-dm-campanha">
+
+      <div class="page-hero hero-purple">
+        <div class="page-hero-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </div>
+        <div class="page-hero-text">
+          <h1>Criar Campanhas</h1>
+          <p>Configure e envie campanhas de disparo em massa com agendamento automático.</p>
+        </div>
+      </div>
+
+      <div class="alert" id="alertCampanha"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 360px;gap:1.25rem;align-items:start">
+
+      <div class="card" style="margin-bottom:0">
+        <div class="section-header">
+          <div class="section-header-icon shi-purple">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </div>
+          <h2>Configurar Campanha</h2>
+        </div>
+
+        <div class="form-group">
+          <label>Nome da Campanha</label>
+          <input type="text" id="inpCampNome" placeholder="Ex: Promoção Maio 2025" />
+        </div>
+
+
+        <div class="form-group" id="secCampImagem">
+          <label style="display:block;margin-bottom:.4rem">Imagem <span style="color:var(--text-mid);font-weight:400">(opcional)</span></label>
+          <!-- input fora do label para evitar conflito de eventos -->
+          <input type="file" id="inpCampImagem" accept="image/*" style="display:none">
+          <label for="inpCampImagem" id="campImagemDrop" style="display:block;border:2px dashed var(--border);border-radius:10px;padding:1rem;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;position:relative">
+            <div id="campImagemEmpty" style="display:flex;flex-direction:column;align-items:center;gap:.4rem;color:var(--text-mid)">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              <span style="font-size:.84rem;font-weight:500">Clique para selecionar imagem</span>
+              <span style="font-size:.74rem">JPG · PNG · GIF · WEBP</span>
+            </div>
+            <div id="campImagemPreview" style="display:none;position:relative">
+              <img id="campImagemThumb" style="max-width:100%;max-height:200px;border-radius:8px;object-fit:cover;display:block;margin:0 auto" />
+              <button type="button" onclick="event.preventDefault();event.stopPropagation();_removerCampImagem()" style="position:absolute;top:.4rem;right:.4rem;background:rgba(0,0,0,.6);border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;line-height:1">✕</button>
+              <div id="campImagemNome" style="font-size:.74rem;color:var(--text-mid);margin-top:.5rem;text-align:center"></div>
+            </div>
+          </label>
+        </div>
+
+        <div class="form-group">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
+            <label style="margin:0">Mensagem <span style="color:var(--text-mid);font-weight:400">(obrigatória para texto; opcional como legenda para arquivo)</span></label>
+            <button type="button" class="btn btn-ghost btn-sm" id="btnToggleEmojis" onclick="toggleEmojiBank()" title="Inserir emoji" style="display:inline-flex;align-items:center;gap:.3rem;font-size:.78rem">
+              😊 Emojis
+            </button>
+          </div>
+
+          <!-- Emoji bank panel -->
+          <div id="emojiBank" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:.75rem;margin-bottom:.5rem">
+            <div style="display:flex;flex-wrap:wrap;gap:.3rem;line-height:1">
+              <!-- Comunicação -->
+              <div style="width:100%;font-size:.68rem;color:var(--text-light);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin:0 0 .3rem;padding-bottom:.25rem;border-bottom:1px solid var(--border)">Comunicação</div>
+              <span class="emoji-btn" onclick="insertEmoji('✅')">✅</span>
+              <span class="emoji-btn" onclick="insertEmoji('❌')">❌</span>
+              <span class="emoji-btn" onclick="insertEmoji('✉️')">✉️</span>
+              <span class="emoji-btn" onclick="insertEmoji('📱')">📱</span>
+              <span class="emoji-btn" onclick="insertEmoji('💬')">💬</span>
+              <span class="emoji-btn" onclick="insertEmoji('📞')">📞</span>
+              <span class="emoji-btn" onclick="insertEmoji('🔔')">🔔</span>
+              <span class="emoji-btn" onclick="insertEmoji('📢')">📢</span>
+              <span class="emoji-btn" onclick="insertEmoji('📣')">📣</span>
+              <span class="emoji-btn" onclick="insertEmoji('ℹ️')">ℹ️</span>
+              <!-- Negócios -->
+              <div style="width:100%;font-size:.68rem;color:var(--text-light);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin:.5rem 0 .3rem;padding-bottom:.25rem;border-bottom:1px solid var(--border)">Negócios</div>
+              <span class="emoji-btn" onclick="insertEmoji('💰')">💰</span>
+              <span class="emoji-btn" onclick="insertEmoji('💳')">💳</span>
+              <span class="emoji-btn" onclick="insertEmoji('💼')">💼</span>
+              <span class="emoji-btn" onclick="insertEmoji('📊')">📊</span>
+              <span class="emoji-btn" onclick="insertEmoji('📈')">📈</span>
+              <span class="emoji-btn" onclick="insertEmoji('🏆')">🏆</span>
+              <span class="emoji-btn" onclick="insertEmoji('🎯')">🎯</span>
+              <span class="emoji-btn" onclick="insertEmoji('💡')">💡</span>
+              <span class="emoji-btn" onclick="insertEmoji('🤝')">🤝</span>
+              <span class="emoji-btn" onclick="insertEmoji('🔑')">🔑</span>
+              <!-- Pessoas -->
+              <div style="width:100%;font-size:.68rem;color:var(--text-light);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin:.5rem 0 .3rem;padding-bottom:.25rem;border-bottom:1px solid var(--border)">Pessoas</div>
+              <span class="emoji-btn" onclick="insertEmoji('👤')">👤</span>
+              <span class="emoji-btn" onclick="insertEmoji('👥')">👥</span>
+              <span class="emoji-btn" onclick="insertEmoji('👋')">👋</span>
+              <span class="emoji-btn" onclick="insertEmoji('🙏')">🙏</span>
+              <span class="emoji-btn" onclick="insertEmoji('👍')">👍</span>
+              <span class="emoji-btn" onclick="insertEmoji('❤️')">❤️</span>
+              <span class="emoji-btn" onclick="insertEmoji('😊')">😊</span>
+              <span class="emoji-btn" onclick="insertEmoji('🎉')">🎉</span>
+              <!-- Compras -->
+              <div style="width:100%;font-size:.68rem;color:var(--text-light);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin:.5rem 0 .3rem;padding-bottom:.25rem;border-bottom:1px solid var(--border)">Compras &amp; Ofertas</div>
+              <span class="emoji-btn" onclick="insertEmoji('🛒')">🛒</span>
+              <span class="emoji-btn" onclick="insertEmoji('🛍️')">🛍️</span>
+              <span class="emoji-btn" onclick="insertEmoji('🏷️')">🏷️</span>
+              <span class="emoji-btn" onclick="insertEmoji('🎁')">🎁</span>
+              <span class="emoji-btn" onclick="insertEmoji('💝')">💝</span>
+              <span class="emoji-btn" onclick="insertEmoji('🔥')">🔥</span>
+              <span class="emoji-btn" onclick="insertEmoji('⭐')">⭐</span>
+              <span class="emoji-btn" onclick="insertEmoji('✨')">✨</span>
+              <span class="emoji-btn" onclick="insertEmoji('🆕')">🆕</span>
+              <span class="emoji-btn" onclick="insertEmoji('🆓')">🆓</span>
+              <!-- Data & Hora -->
+              <div style="width:100%;font-size:.68rem;color:var(--text-light);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin:.5rem 0 .3rem;padding-bottom:.25rem;border-bottom:1px solid var(--border)">Data &amp; Hora</div>
+              <span class="emoji-btn" onclick="insertEmoji('📅')">📅</span>
+              <span class="emoji-btn" onclick="insertEmoji('⏰')">⏰</span>
+              <span class="emoji-btn" onclick="insertEmoji('🕐')">🕐</span>
+              <span class="emoji-btn" onclick="insertEmoji('⌛')">⌛</span>
+              <span class="emoji-btn" onclick="insertEmoji('⏱️')">⏱️</span>
+              <!-- Alertas -->
+              <div style="width:100%;font-size:.68rem;color:var(--text-light);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin:.5rem 0 .3rem;padding-bottom:.25rem;border-bottom:1px solid var(--border)">Alertas</div>
+              <span class="emoji-btn" onclick="insertEmoji('⚠️')">⚠️</span>
+              <span class="emoji-btn" onclick="insertEmoji('🚨')">🚨</span>
+              <span class="emoji-btn" onclick="insertEmoji('🆗')">🆗</span>
+              <span class="emoji-btn" onclick="insertEmoji('📍')">📍</span>
+              <span class="emoji-btn" onclick="insertEmoji('🏠')">🏠</span>
+              <span class="emoji-btn" onclick="insertEmoji('🚗')">🚗</span>
+              <span class="emoji-btn" onclick="insertEmoji('⛽')">⛽</span>
+              <span class="emoji-btn" onclick="insertEmoji('🔧')">🔧</span>
+            </div>
+          </div>
+
+          <textarea id="inpCampMensagem" rows="5" placeholder="Digite a mensagem que será enviada a todos os contatos…"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Quando enviar</label>
+          <div class="tipo-envio-options" style="margin-top:.5rem">
+            <label class="tipo-envio-card agend-card selected" data-agend="agora" onclick="_setAgendamento('agora')">
+              <input type="radio" name="campAgendamento" value="agora" checked>
+              <div class="tec-icon">⚡</div>
+              <div class="tec-label">Enviar Agora</div>
+              <div class="tec-desc">Disparo imediato ao criar a campanha</div>
+            </label>
+            <label class="tipo-envio-card agend-card" data-agend="agendar" onclick="_setAgendamento('agendar')">
+              <input type="radio" name="campAgendamento" value="agendar">
+              <div class="tec-icon">📅</div>
+              <div class="tec-label">Agendar Envio</div>
+              <div class="tec-desc">Define data e hora para disparo automático</div>
+            </label>
+          </div>
+        </div>
+
+        <div id="secAgendamento" style="display:none">
+          <div style="background:linear-gradient(135deg,var(--accent-soft) 0%,var(--surface2) 100%);border:1.5px solid var(--accent-light);border-radius:12px;padding:1.25rem 1.25rem 1rem;margin-bottom:1rem">
+            <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem">
+              <span style="font-size:1.1rem">📅</span>
+              <span style="font-weight:700;font-size:.9rem;color:var(--accent)">Agendamento automático</span>
+            </div>
+            <div style="display:flex;gap:1rem;flex-wrap:wrap">
+              <div class="form-group" style="flex:1;min-width:140px;margin-bottom:0">
+                <label style="font-size:.78rem;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.04em">Data</label>
+                <input type="date" id="inpCampData" min="" style="width:100%;margin-top:.3rem">
+              </div>
+              <div class="form-group" style="flex:1;min-width:120px;margin-bottom:0">
+                <label style="font-size:.78rem;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.04em">Hora</label>
+                <input type="time" id="inpCampHora" value="08:00" style="width:100%;margin-top:.3rem">
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:.4rem;font-size:.77rem;color:var(--accent);margin-top:.85rem;background:rgba(61,127,31,.08);border-radius:7px;padding:.4rem .6rem">
+              <span>🔔</span>
+              <span>A campanha será disparada automaticamente nesta data e hora (horário local do servidor).</span>
+            </div>
+          </div>
+        </div>
+
+
+        <div style="display:flex;justify-content:flex-end;padding-top:.25rem;border-top:1px solid var(--border)">
+          <button class="btn btn-primary" id="btnCriarCampanha" style="display:inline-flex;align-items:center;gap:.4rem">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Criar Campanha
+          </button>
+        </div>
+      </div>
+
+      <!-- RIGHT column: WhatsApp Preview -->
+      <div class="card" style="margin-bottom:0;position:sticky;top:5.5rem">
+        <div class="section-header">
+          <div class="section-header-icon shi-green">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </div>
+          <h2>Preview da Mensagem</h2>
+        </div>
+        <p style="font-size:.78rem;color:var(--text-mid);margin-bottom:1rem">Visualize como a mensagem chegará no WhatsApp do contato.</p>
+        <div class="wa-preview-wrap">
+          <div class="wa-bubble" style="max-width:100%">
+            <!-- Image preview inside bubble -->
+            <div id="campPrevImagem" style="display:none;margin-bottom:.5rem">
+              <img id="campPrevImagemImg" style="width:100%;border-radius:8px;max-height:200px;object-fit:cover" />
+            </div>
+            <!-- Text preview -->
+            <div id="campPrevTexto" style="font-size:.875rem;white-space:pre-wrap;color:#111;min-height:1.5em">
+              <span style="color:#aaa;font-style:italic">A mensagem aparecerá aqui…</span>
+            </div>
+            <div class="wa-bubble-time">agora ✓✓</div>
+          </div>
+        </div>
+        <!-- Placeholder when empty -->
+        <div id="campPrevVazio" style="text-align:center;padding:1rem .5rem;color:var(--text-mid);font-size:.8rem;border-top:1px solid var(--border);margin-top:1rem">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.3;display:block;margin:0 auto .5rem"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Digite a mensagem para ver o preview
+        </div>
+      </div>
+
+      </div><!-- end 2-col grid -->
+    </div>

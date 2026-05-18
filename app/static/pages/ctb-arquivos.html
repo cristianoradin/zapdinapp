@@ -1,0 +1,79 @@
+<div class="page" id="page-ctb-arquivos">
+      <div class="page-hero hero-green">
+        <div class="page-hero-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div class="page-hero-text">
+          <h1>Gestão de Arquivos</h1>
+          <p>Todos os documentos fiscais organizados por empresa. Clique em uma empresa para ver seus documentos.</p>
+        </div>
+      </div>
+
+      <!-- Grid de empresas como cards visuais -->
+      <div class="card" style="margin-bottom:1.25rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
+          <div class="section-header" style="margin-bottom:0">
+            <div class="section-header-icon shi-green">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+            </div>
+            <h2>Empresas</h2>
+          </div>
+        </div>
+        <div class="ctb-search-wrap" style="margin-bottom:.85rem">
+          <svg class="ctb-search-ico" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="search" id="ctbArqSearch" class="ctb-search-input" placeholder="Buscar por nome ou CNPJ…" oninput="ctbArquivos.buscar(this.value)">
+        </div>
+        <div class="ctb-arq-grid" id="ctbArqEmpGrid">
+          <div class="ctb-table-empty">Carregando empresas…</div>
+        </div>
+      </div>
+
+      <!-- Painel de documentos da empresa selecionada -->
+      <div id="ctbArqDocPanel" style="display:none">
+        <div class="card" style="margin-bottom:0">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
+            <div class="section-header" style="margin-bottom:0">
+              <div class="section-header-icon shi-teal">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </div>
+              <h2>Documentos — <span id="ctbArqEmpNome" style="color:var(--accent)">—</span></h2>
+            </div>
+            <div style="display:flex;gap:.5rem;align-items:center">
+              <label class="btn btn-ghost btn-sm" style="cursor:pointer" title="Upload de documento">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Upload
+                <input type="file" id="ctbUploadInput" style="display:none" accept="image/*,.pdf" onchange="ctbArquivos.uploadDoc(this)">
+              </label>
+              <select id="ctbArqFiltroStatus" class="form-control" style="font-size:.8rem;padding:.3rem .6rem;height:auto" onchange="ctbArquivos.filtrarDocs()">
+                <option value="">Todos</option>
+                <option value="recebido">Recebido</option>
+                <option value="ocr_pendente">OCR Pendente</option>
+                <option value="ocr_erro">Erro OCR</option>
+                <option value="revisao_manual">Revisão Manual</option>
+                <option value="aprovado">Aprovado</option>
+              </select>
+              <button class="btn btn-ghost btn-sm" onclick="ctbArquivos.fecharPanel()">✕ Fechar</button>
+            </div>
+          </div>
+          <div class="alert" id="alertCtbArqDocs"></div>
+          <div class="ctb-doc-table-wrap">
+            <table class="ctb-doc-table">
+              <thead>
+                <tr>
+                  <th>Arquivo</th>
+                  <th>Emitente</th>
+                  <th>NF / Chave</th>
+                  <th>Valor</th>
+                  <th>Data Emissão</th>
+                  <th>Status</th>
+                  <th style="text-align:right">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="ctbArqDocTbody">
+                <tr><td colspan="7" class="ctb-table-empty">Selecione uma empresa acima</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>

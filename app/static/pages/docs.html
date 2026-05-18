@@ -1,0 +1,200 @@
+<div class="page" id="page-docs">
+
+      <div class="page-hero hero-blue">
+        <div class="page-hero-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        </div>
+        <div class="page-hero-text">
+          <h1>Documentação da API</h1>
+          <p>Referência completa para integrar o ERP com o ZapDin. Todos os endpoints exigem o header <code style="background:rgba(0,0,0,.1);padding:.1rem .35rem;border-radius:4px">x-token</code>.</p>
+        </div>
+      </div>
+
+      <!-- Avisos -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem">
+        <div class="info-banner info-banner-green" style="margin-bottom:0">
+          <span class="ib-icon">📄</span>
+          <div>
+            <strong>Integração via ZapDin App (servidor):</strong><br>
+            <div style="display:flex;gap:.5rem;margin-top:.4rem;flex-wrap:wrap">
+              <button class="btn btn-primary btn-sm" onclick="abrirDocErpBrowser()">🌐 Abrir no Navegador</button>
+              <button class="btn btn-ghost btn-sm" onclick="baixarDocErp()">⬇️ Baixar HTML</button>
+            </div>
+          </div>
+        </div>
+        <div class="info-banner" style="margin-bottom:0;background:#f0f9ff;border-color:#bae6fd">
+          <span class="ib-icon">📱</span>
+          <div>
+            <strong>Integração via ZapDin PDV (local na máquina do cliente):</strong><br>
+            <div style="display:flex;gap:.5rem;margin-top:.4rem;flex-wrap:wrap">
+              <button class="btn btn-primary btn-sm" onclick="abrirDocPdvBrowser()">🌐 Abrir no Navegador</button>
+              <button class="btn btn-ghost btn-sm" onclick="baixarDocPdv()">⬇️ Baixar HTML</button>
+            </div>
+          </div>
+        </div>
+        <div class="info-banner info-banner-yellow" style="margin-bottom:0">
+          <span class="ib-icon">⚠️</span>
+          <div><strong>Telefone:</strong> envie apenas <strong>DDD + número</strong> (sem o 55). Ex: <code style="color:var(--accent)">"11999990000"</code></div>
+        </div>
+      </div>
+
+      <!-- Autenticação + Endpoints lado a lado -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.25rem">
+
+        <div class="card" style="margin-bottom:0">
+          <div class="section-header">
+            <div class="section-header-icon shi-orange">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+            </div>
+            <h2>Autenticação</h2>
+          </div>
+          <p style="font-size:.84rem;color:var(--text-mid);margin-bottom:.75rem">Envie o token no header de toda requisição:</p>
+          <div class="code-block">
+<span class="cb-header">x-token:</span> <span class="cb-string">rYq1OWgra44Nx_nlaSWF...</span></div>
+          <div style="display:flex;flex-direction:column;gap:.4rem;font-size:.82rem">
+            <div style="display:flex;align-items:center;gap:.5rem;padding:.4rem .65rem;background:#fef2f2;border-radius:6px;color:#b91c1c">
+              <span>❌</span> <code>401</code> Token inválido ou ausente
+            </div>
+            <div style="display:flex;align-items:center;gap:.5rem;padding:.4rem .65rem;background:#fff7ed;border-radius:6px;color:#c2410c">
+              <span>⚠️</span> <code>503</code> Sem sessão WhatsApp ativa
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:0">
+          <div class="section-header">
+            <div class="section-header-icon shi-blue">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            </div>
+            <h2>Endpoints</h2>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:.5rem">
+            <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .875rem;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #bbf7d0;border-radius:8px">
+              <span class="chip chip-green" style="flex-shrink:0">POST</span>
+              <div><code style="font-size:.8rem">/api/erp/venda</code><br><span style="font-size:.75rem;color:var(--text-mid)">Envia mensagem de venda</span></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .875rem;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #bbf7d0;border-radius:8px">
+              <span class="chip chip-green" style="flex-shrink:0">POST</span>
+              <div><code style="font-size:.8rem">/api/erp/arquivo</code><br><span style="font-size:.75rem;color:var(--text-mid)">Envia arquivo em base64</span></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .875rem;background:linear-gradient(135deg,#fffbeb,#fef9c3);border:1px solid #fde68a;border-radius:8px">
+              <span class="chip chip-yellow" style="flex-shrink:0">GET</span>
+              <div><code style="font-size:.8rem">/api/erp/status</code><br><span style="font-size:.75rem;color:var(--text-mid)">Última conexão ERP</span></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .875rem;background:linear-gradient(135deg,#fffbeb,#fef9c3);border:1px solid #fde68a;border-radius:8px">
+              <span class="chip chip-yellow" style="flex-shrink:0">GET</span>
+              <div><code style="font-size:.8rem">/api/arquivos &nbsp; /api/stats</code><br><span style="font-size:.75rem;color:var(--text-mid)">Listagem e estatísticas</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- POST /api/erp/venda -->
+      <div class="card" style="margin-bottom:1.25rem">
+        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem">
+          <span class="chip chip-green" style="font-size:.82rem">POST</span>
+          <h3 style="font-size:1rem;font-weight:700;margin:0;font-family:monospace">/api/erp/venda</h3>
+          <span style="font-size:.8rem;color:var(--text-mid)">— Notifica cliente com dados da venda</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem">
+          <div>
+            <table style="margin-bottom:.5rem">
+              <thead><tr><th>Campo</th><th>Req.</th><th>Tipo</th></tr></thead>
+              <tbody>
+                <tr><td><code>telefone</code></td><td><span class="chip chip-green">Sim</span></td><td>string</td></tr>
+                <tr><td><code>nome</code></td><td><span class="chip chip-green">Sim</span></td><td>string</td></tr>
+                <tr><td><code>produtos</code></td><td><span class="chip chip-gray">Não</span></td><td>array</td></tr>
+                <tr><td><code>valor_total_itens</code></td><td><span class="chip chip-gray">Não</span></td><td>string</td></tr>
+                <tr><td><code>valor_total</code></td><td><span class="chip chip-gray">Não</span></td><td>string</td></tr>
+                <tr><td><code>data</code></td><td><span class="chip chip-gray">Não</span></td><td>string</td></tr>
+                <tr><td><code>mensagem_custom</code></td><td><span class="chip chip-gray">Não</span></td><td>string</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div class="code-block"><span class="cb-method">POST</span> <span class="cb-path">/api/erp/venda</span>
+<span class="cb-header">x-token:</span> <span class="cb-string">SEU_TOKEN</span>
+
+{
+  <span class="cb-key">"telefone"</span>: <span class="cb-string">"11999990000"</span>,
+  <span class="cb-key">"nome"</span>: <span class="cb-string">"João Silva"</span>,
+  <span class="cb-key">"produtos"</span>: [
+    { <span class="cb-key">"nome"</span>: <span class="cb-string">"Gasolina"</span>, <span class="cb-key">"quantidade"</span>: <span class="cb-num">40</span> }
+  ],
+  <span class="cb-key">"valor_total"</span>: <span class="cb-string">"281,60"</span>
+}</div>
+            <div style="font-size:.78rem;color:var(--text-mid);padding:.4rem .65rem;background:var(--accent-soft);border-radius:6px">✅ Resposta: <code style="color:var(--accent)">{"ok": true, "queued": true}</code></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- POST /api/erp/arquivo -->
+      <div class="card" style="margin-bottom:1.25rem">
+        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem">
+          <span class="chip chip-green" style="font-size:.82rem">POST</span>
+          <h3 style="font-size:1rem;font-weight:700;margin:0;font-family:monospace">/api/erp/arquivo</h3>
+          <span style="font-size:.8rem;color:var(--text-mid)">— Envia arquivo via WhatsApp (base64)</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem">
+          <div>
+            <table>
+              <thead><tr><th>Campo</th><th>Req.</th><th>Descrição</th></tr></thead>
+              <tbody>
+                <tr><td><code>telefone</code></td><td><span class="chip chip-green">Sim</span></td><td>DDD + número</td></tr>
+                <tr><td><code>nome_arquivo</code></td><td><span class="chip chip-green">Sim</span></td><td>Ex: nota_fiscal.pdf</td></tr>
+                <tr><td><code>conteudo_base64</code></td><td><span class="chip chip-green">Sim</span></td><td>Arquivo em base64</td></tr>
+                <tr><td><code>mensagem</code></td><td><span class="chip chip-gray">Não</span></td><td>Legenda do arquivo</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div class="code-block"><span class="cb-method">POST</span> <span class="cb-path">/api/erp/arquivo</span>
+<span class="cb-header">x-token:</span> <span class="cb-string">SEU_TOKEN</span>
+
+{
+  <span class="cb-key">"telefone"</span>: <span class="cb-string">"11999990000"</span>,
+  <span class="cb-key">"nome_arquivo"</span>: <span class="cb-string">"nf_001.pdf"</span>,
+  <span class="cb-key">"conteudo_base64"</span>: <span class="cb-string">"JVBERi0..."</span>,
+  <span class="cb-key">"mensagem"</span>: <span class="cb-string">"Sua nota fiscal"</span>
+}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Variáveis -->
+      <div class="card">
+        <div class="section-header">
+          <div class="section-header-icon shi-purple">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+          </div>
+          <h2>Variáveis do Template</h2>
+        </div>
+        <p style="font-size:.84rem;color:var(--text-mid);margin-bottom:1rem">Use estas variáveis em <strong>Configurar Mensagem</strong> para personalizar automaticamente o texto enviado.</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.5rem">
+          <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .875rem;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px">
+            <code style="color:#4338ca;font-size:.85rem;font-weight:700">{nome}</code>
+            <span style="font-size:.82rem;color:var(--text-mid)">Nome completo do cliente</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .875rem;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px">
+            <code style="color:#4338ca;font-size:.85rem;font-weight:700">{telefone}</code>
+            <span style="font-size:.82rem;color:var(--text-mid)">Número com DDI</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .875rem;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px">
+            <code style="color:#4338ca;font-size:.85rem;font-weight:700">{data}</code>
+            <span style="font-size:.82rem;color:var(--text-mid)">Data da compra</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .875rem;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px">
+            <code style="color:#4338ca;font-size:.85rem;font-weight:700">{produtos}</code>
+            <span style="font-size:.82rem;color:var(--text-mid)">Lista de itens da venda</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .875rem;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px">
+            <code style="color:#4338ca;font-size:.85rem;font-weight:700">{valor_total_itens}</code>
+            <span style="font-size:.82rem;color:var(--text-mid)">Soma dos itens</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .875rem;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px">
+            <code style="color:#4338ca;font-size:.85rem;font-weight:700">{valor_total}</code>
+            <span style="font-size:.82rem;color:var(--text-mid)">Total final da compra</span>
+          </div>
+        </div>
+      </div>
+    </div>

@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 import socketio
 import uvicorn
 from fastapi import Depends, FastAPI, Request
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -331,13 +331,23 @@ async def evo_webhook(request: Request):
 # ── Arquivos estáticos ────────────────────────────────────────────────────────
 _static_dir = os.path.join(os.path.dirname(__file__), "static")
 _logo_dir = os.path.join(_static_dir, "logo")
-# Serve CSS, JS e outros assets estáticos (css/, js/, etc.)
-# Este mount deve ficar antes do spa_fallback (/{full_path:path}) para ter prioridade.
-fastapi_app.mount("/static", StaticFiles(directory=_static_dir), name="static")
-if os.path.isdir(_logo_dir):
-    fastapi_app.mount("/logo", StaticFiles(directory=_logo_dir), name="logo")
 
-_NO_CACHE = {"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache"}
+_NO_CACHE = {"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
+APP_BUILD = "20260518c"
+
+
+from starlette.middleware.base import BaseHTTPMiddleware
+
+class NoCacheStaticMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        if request.url.path.startswith("/static/") or request.url.path.startswith("/logo/"):
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        return response
+
+fastapi_app.add_middleware(NoCacheStaticMiddleware)
 
 
 @fastapi_app.get("/login")
@@ -345,13 +355,34 @@ async def serve_login():
     return FileResponse(os.path.join(_static_dir, "login.html"), headers=_NO_CACHE)
 
 
+@fastapi_app.get("/static/pages/{page_name}")
+async def serve_page(page_name: str):
+    pages_dir = os.path.join(_static_dir, "pages")
+    page_file = os.path.join(pages_dir, page_name)
+    if not os.path.exists(page_file) or not page_name.endswith(".html"):
+        return JSONResponse({"error": "Not found"}, status_code=404)
+    with open(page_file, "r", encoding="utf-8") as f:
+        content = f.read()
+    return HTMLResponse(content=content, headers=_NO_CACHE)
+
+
+# Serve CSS, JS e outros assets estáticos (css/, js/, etc.)
+# Este mount deve ficar antes do spa_fallback (/{full_path:path}) para ter prioridade.
+# NOTA: serve_page (/static/pages/) deve ficar ANTES deste mount para ter prioridade.
+fastapi_app.mount("/static", StaticFiles(directory=_static_dir), name="static")
+if os.path.isdir(_logo_dir):
+    fastapi_app.mount("/logo", StaticFiles(directory=_logo_dir), name="logo")
+
+
 @fastapi_app.get("/{full_path:path}")
-async def spa_fallback(full_path: str):
+async def spa_fallback(request: Request, full_path: str):
     if full_path.startswith("api/") or full_path.startswith("internal/"):
         return JSONResponse({"error": "Not found"}, status_code=404)
     index = os.path.join(_static_dir, "index.html")
     if os.path.exists(index):
-        return FileResponse(index, headers=_NO_CACHE)
+        with open(index, "r", encoding="utf-8") as f:
+            content = f.read().replace("__BUILD__", APP_BUILD)
+        return HTMLResponse(content=content, headers=_NO_CACHE)
     return JSONResponse({"error": "Frontend not found"}, status_code=404)
 
 

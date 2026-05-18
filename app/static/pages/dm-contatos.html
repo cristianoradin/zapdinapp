@@ -1,0 +1,248 @@
+<div class="page" id="page-dm-contatos">
+
+      <div class="page-hero hero-green">
+        <div class="page-hero-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div class="page-hero-text">
+          <h1>Contatos e Grupos</h1>
+          <p>Cadastre números de WhatsApp e organize-os em grupos para facilitar os disparos em massa.</p>
+        </div>
+      </div>
+
+      <div class="alert" id="alertContatos"></div>
+
+      <!-- Abas: Contatos / Grupos -->
+      <div style="display:flex;gap:.5rem;margin-bottom:1rem;border-bottom:2px solid var(--border);padding-bottom:0">
+        <button id="tabBtnContatos" onclick="switchContatosTab('contatos')"
+          style="display:inline-flex;align-items:center;gap:.4rem;padding:.5rem 1.25rem;font-size:.875rem;font-weight:600;border:none;background:none;cursor:pointer;border-bottom:3px solid var(--accent);color:var(--accent);margin-bottom:-2px">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Contatos
+        </button>
+        <button id="tabBtnGrupos" onclick="switchContatosTab('grupos')"
+          style="display:inline-flex;align-items:center;gap:.4rem;padding:.5rem 1.25rem;font-size:.875rem;font-weight:600;border:none;background:none;cursor:pointer;border-bottom:3px solid transparent;color:var(--text-mid);margin-bottom:-2px">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          Grupos
+        </button>
+      </div>
+
+      <!-- Painel Contatos -->
+      <div id="tabPanelContatos">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem">
+          <div class="section-header" style="margin-bottom:0">
+            <div class="section-header-icon shi-green">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            </div>
+            <h2>Contatos Cadastrados</h2>
+          </div>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm" id="btnImportarCsv" style="display:inline-flex;align-items:center;gap:.35rem">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Importar CSV
+            </button>
+            <input type="file" id="csvInput" accept=".csv,.txt" style="display:none">
+            <button class="btn btn-primary btn-sm" id="btnNovoContato" style="display:inline-flex;align-items:center;gap:.35rem">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Novo Contato
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:1.25rem">
+          <input type="text" id="searchContatos" placeholder="Buscar por nome ou telefone…" />
+        </div>
+
+        <!-- Barra de ação de seleção múltipla -->
+        <div id="contatosActionBar" style="display:none;align-items:center;gap:.75rem;background:var(--accent-soft);border:1.5px solid var(--accent-light);border-radius:10px;padding:.6rem 1rem;margin-bottom:.75rem;flex-wrap:wrap">
+          <span style="font-weight:700;color:var(--accent);font-size:.88rem">
+            <span id="contatosSelCount">0</span> contato(s) selecionado(s)
+          </span>
+          <button class="btn btn-primary btn-sm" onclick="abrirPickGrupo()" style="display:inline-flex;align-items:center;gap:.35rem">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/><line x1="20" y1="8" x2="20" y2="14"/></svg>
+            Adicionar ao Grupo
+          </button>
+          <button class="btn btn-ghost btn-sm" onclick="limparSelecaoContatos()" style="color:var(--text-mid)">✕ Limpar seleção</button>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th style="width:36px;text-align:center"><input type="checkbox" id="cbSelectAllContatos" style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer" title="Selecionar todos"></th>
+              <th>Telefone</th>
+              <th>Nome</th>
+              <th>Grupos</th>
+              <th style="width:70px;text-align:center">Fonte</th>
+              <th style="width:60px;text-align:center">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyContatos">
+            <tr><td colspan="6" style="text-align:center;padding:2.5rem;color:var(--text-mid)">Carregando…</td></tr>
+          </tbody>
+        </table>
+
+        <div class="info-banner info-banner-blue" style="margin-top:1.25rem;margin-bottom:0">
+          <span class="ib-icon">ℹ️</span>
+          <div>CSV: uma linha por contato no formato <code style="background:rgba(0,0,0,.06);padding:.05rem .35rem;border-radius:4px">DDD+numero,nome</code> — o prefixo 55 é adicionado automaticamente. Ex: <code style="background:rgba(0,0,0,.06);padding:.05rem .35rem;border-radius:4px">11999990000,João Silva</code></div>
+        </div>
+      </div>
+
+      </div> <!-- /tabPanelContatos -->
+
+      <!-- Painel Grupos -->
+      <div id="tabPanelGrupos" style="display:none">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem">
+            <div class="section-header" style="margin-bottom:0">
+              <div class="section-header-icon shi-green">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
+              </div>
+              <h2>Grupos de Contatos</h2>
+            </div>
+            <button class="btn btn-primary btn-sm" id="btnNovoGrupo" style="display:inline-flex;align-items:center;gap:.35rem">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Novo Grupo
+            </button>
+          </div>
+          <div id="listaGrupos">
+            <div style="text-align:center;padding:2.5rem;color:var(--text-mid)">Carregando…</div>
+          </div>
+        </div>
+
+        <!-- Painel de contatos do grupo selecionado -->
+        <div class="card" id="cardGrupoContatos" style="display:none;margin-top:1rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
+            <div class="section-header" style="margin-bottom:0">
+              <div class="section-header-icon shi-green">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+              </div>
+              <h2>Contatos do grupo: <strong id="grupoSelecionadoNome" style="color:var(--accent)">—</strong></h2>
+            </div>
+            <button class="btn btn-primary btn-sm" id="btnAddContatosGrupo" style="display:inline-flex;align-items:center;gap:.35rem">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Adicionar Contatos
+            </button>
+          </div>
+          <div id="tbodyGrupoContatos">
+            <div style="text-align:center;padding:2rem;color:var(--text-mid)">Selecione um grupo acima.</div>
+          </div>
+        </div>
+      </div> <!-- /tabPanelGrupos -->
+
+      <!-- Modal novo grupo -->
+      <div class="confirm-overlay" id="modalGrupoContato">
+        <div class="confirm-box" style="max-width:420px">
+          <div class="confirm-header">
+            <div class="confirm-icon-wrap info">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="confirm-text">
+              <div class="confirm-title" id="modalGrupoContatoTitulo">Novo Grupo</div>
+              <div class="confirm-body">Dê um nome para identificar este grupo de contatos.</div>
+            </div>
+          </div>
+          <div style="padding:1rem 1.5rem">
+            <div class="form-group" style="margin-bottom:0">
+              <label>Nome do grupo</label>
+              <input type="text" id="inpGrupoNome" placeholder="Ex: Clientes VIP" />
+            </div>
+          </div>
+          <div class="confirm-footer">
+            <button class="confirm-btn confirm-btn-cancel" id="btnCancelarGrupo">Cancelar</button>
+            <button class="confirm-btn confirm-btn-ok info" id="btnSalvarGrupo">Salvar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal adicionar contatos ao grupo -->
+      <div class="confirm-overlay" id="modalAddContatosGrupo">
+        <div class="confirm-box" style="max-width:520px;width:100%">
+          <div class="confirm-header">
+            <div class="confirm-icon-wrap info">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+            </div>
+            <div class="confirm-text">
+              <div class="confirm-title">Adicionar ao Grupo</div>
+              <div class="confirm-body">Selecione os contatos para adicionar.</div>
+            </div>
+          </div>
+          <div style="padding:.75rem 1.5rem">
+            <input type="text" id="searchAddContatos" placeholder="Buscar contato…" style="width:100%;padding:.45rem .75rem;border:1px solid var(--border);border-radius:8px;font-size:.85rem;font-family:inherit;outline:none;margin-bottom:.75rem;box-sizing:border-box" />
+            <div id="listaAddContatos" style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:.3rem;border:1px solid var(--border);border-radius:8px;padding:.5rem;background:var(--surface2)">
+              <div style="text-align:center;padding:1rem;color:var(--text-mid)">Carregando…</div>
+            </div>
+          </div>
+          <div class="confirm-footer">
+            <button class="confirm-btn confirm-btn-cancel" id="btnCancelarAddContatos">Cancelar</button>
+            <button class="confirm-btn confirm-btn-ok info" id="btnConfirmarAddContatos">Adicionar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal escolher grupo para seleção múltipla -->
+      <div class="confirm-overlay" id="modalPickGrupo">
+        <div class="confirm-box" style="max-width:420px;width:100%">
+          <div class="confirm-header">
+            <div class="confirm-icon-wrap info">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div class="confirm-text">
+              <div class="confirm-title">Adicionar ao Grupo</div>
+              <div class="confirm-body" id="modalPickGrupoDesc">Escolha o grupo de destino.</div>
+            </div>
+          </div>
+          <div style="padding:.75rem 1.5rem">
+            <div class="form-group" style="margin-bottom:.75rem">
+              <label>Grupo existente</label>
+              <select id="selPickGrupo" style="width:100%">
+                <option value="">Carregando…</option>
+              </select>
+            </div>
+            <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem">
+              <hr style="flex:1;border:none;border-top:1px solid var(--border)">
+              <span style="font-size:.75rem;color:var(--text-mid)">ou crie um novo</span>
+              <hr style="flex:1;border:none;border-top:1px solid var(--border)">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label>Nome do novo grupo</label>
+              <input type="text" id="inpPickGrupoNovo" placeholder="Ex: Clientes do ERP" />
+            </div>
+          </div>
+          <div class="confirm-footer">
+            <button class="confirm-btn confirm-btn-cancel" id="btnCancelarPickGrupo">Cancelar</button>
+            <button class="confirm-btn confirm-btn-ok info" id="btnConfirmarPickGrupo">Adicionar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal novo contato -->
+      <div class="confirm-overlay" id="modalContato">
+        <div class="confirm-box">
+          <div class="confirm-header">
+            <div class="confirm-icon-wrap info">👤</div>
+            <div class="confirm-text">
+              <div class="confirm-title">Novo Contato</div>
+              <div class="confirm-body">Informe o telefone e nome do contato.</div>
+            </div>
+          </div>
+          <div style="padding:1.25rem 1.5rem">
+            <div class="form-group">
+              <label>Telefone (DDD + número)</label>
+              <div style="display:flex;gap:.5rem;align-items:center">
+                <span style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:.625rem .875rem;color:var(--text-mid);font-size:.875rem;white-space:nowrap;flex-shrink:0">🇧🇷 +55</span>
+                <input type="text" id="inpContatoPhone" placeholder="11999990000" style="flex:1" />
+              </div>
+              <div style="font-size:.76rem;color:var(--text-mid);margin-top:.3rem">Digite apenas DDD + número, sem o 55. Ex: <strong>11999990000</strong></div>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label>Nome (opcional)</label>
+              <input type="text" id="inpContatoNome" placeholder="João Silva" />
+            </div>
+          </div>
+          <div class="confirm-footer">
+            <button class="confirm-btn confirm-btn-cancel" id="btnCancelarContato">Cancelar</button>
+            <button class="confirm-btn confirm-btn-ok info" id="btnSalvarContato">Salvar</button>
+          </div>
+        </div>
+      </div>
+    </div>

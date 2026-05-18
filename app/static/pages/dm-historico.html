@@ -1,0 +1,169 @@
+<div class="page" id="page-dm-historico">
+
+      <div class="page-hero hero-teal">
+        <div class="page-hero-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <div class="page-hero-text">
+          <h1>Campanhas</h1>
+          <p>Acompanhe o progresso de cada campanha, inicie ou pause disparos e gerencie os arquivos.</p>
+        </div>
+      </div>
+
+      <div class="alert" id="alertHistorico"></div>
+
+      <!-- Card de status do worker -->
+      <div class="card" id="workerStatusCard" style="margin-bottom:1rem;padding:.875rem 1.25rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:.75rem">
+            <div id="workerDot" style="width:10px;height:10px;border-radius:50%;background:var(--text-light);flex-shrink:0"></div>
+            <div>
+              <div style="font-size:.82rem;font-weight:600;color:var(--text)" id="workerLabel">Verificando worker…</div>
+              <div style="font-size:.75rem;color:var(--text-mid)" id="workerDetail"></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap">
+            <div style="text-align:center">
+              <div style="font-size:.72rem;color:var(--text-mid)">Mensagens</div>
+              <div style="font-size:.82rem;font-weight:600" id="wsqMsg">—</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-size:.72rem;color:var(--text-mid)">Arquivos</div>
+              <div style="font-size:.82rem;font-weight:600" id="wsqArq">—</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-size:.72rem;color:var(--text-mid)">Campanha</div>
+              <div style="font-size:.82rem;font-weight:600" id="wsqEnv">—</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" id="btnRestartWorker" style="display:inline-flex;align-items:center;gap:.3rem;font-size:.78rem">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              Reiniciar Worker
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
+          <div class="section-header" style="margin-bottom:0">
+            <div class="section-header-icon shi-teal">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <h2>Todas as Campanhas</h2>
+          </div>
+          <div style="display:flex;gap:.5rem;align-items:center">
+            <span style="font-size:.75rem;color:var(--text-mid);display:inline-flex;align-items:center;gap:.3rem">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              Auto-atualiza a cada 5s
+            </span>
+            <button class="btn btn-ghost btn-sm" onclick="loadCampanhas()" style="display:inline-flex;align-items:center;gap:.35rem">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              Atualizar
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="showPage('dm-campanha')" style="display:inline-flex;align-items:center;gap:.35rem">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nova Campanha
+            </button>
+          </div>
+        </div>
+
+        <div id="listaCampanhas">
+          <div style="text-align:center;padding:3rem;color:var(--text-mid)">Carregando…</div>
+        </div>
+      </div>
+
+      <!-- Modal seleção de contatos para iniciar campanha -->
+      <div class="confirm-overlay" id="modalSelecionarContatos">
+        <div class="confirm-box" style="max-width:560px;width:100%">
+          <div class="confirm-header">
+            <div class="confirm-icon-wrap info">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <div class="confirm-text">
+              <div class="confirm-title">Selecionar Contatos</div>
+              <div class="confirm-body" id="modalSelContatosCampNome">Escolha os destinatários desta campanha.</div>
+            </div>
+          </div>
+          <div style="padding:.75rem 1.5rem">
+            <!-- Seletor: Todos / Por Grupo / Contatos individuais -->
+            <div style="display:flex;gap:.5rem;margin-bottom:.85rem;border-bottom:1px solid var(--border);padding-bottom:.65rem">
+              <button id="selModoTodos" class="btn btn-primary btn-sm" onclick="_setSelModo('todos')" style="font-size:.78rem;display:inline-flex;align-items:center;gap:.35rem">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                Todos
+              </button>
+              <button id="selModoGrupo" class="btn btn-ghost btn-sm" onclick="_setSelModo('grupo')" style="font-size:.78rem;display:inline-flex;align-items:center;gap:.35rem">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                Por Grupo
+              </button>
+              <button id="selModoIndividual" class="btn btn-ghost btn-sm" onclick="_setSelModo('individual')" style="font-size:.78rem;display:inline-flex;align-items:center;gap:.35rem">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Individual
+              </button>
+            </div>
+
+            <!-- Modo: grupo -->
+            <div id="selPainelGrupo" style="display:none;margin-bottom:.75rem">
+              <label style="font-size:.82rem;font-weight:600;color:var(--text-mid);display:block;margin-bottom:.35rem">Selecione o grupo:</label>
+              <select id="selGrupoId" style="width:100%;padding:.5rem .75rem;border:1px solid var(--border);border-radius:8px;font-size:.875rem;font-family:inherit;outline:none;background:var(--surface)">
+                <option value="">Carregando grupos…</option>
+              </select>
+            </div>
+
+            <!-- Modo: individual — busca + ações -->
+            <div id="selPainelIndividual" style="display:none">
+              <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.75rem">
+                <input type="text" id="searchSelContatos" placeholder="Buscar contato…" style="flex:1;padding:.45rem .75rem;border:1px solid var(--border);border-radius:8px;font-size:.85rem;font-family:inherit;outline:none" />
+                <button class="btn btn-ghost btn-sm" id="btnSelecionarTodos">Todos</button>
+                <button class="btn btn-ghost btn-sm" id="btnDesmarcarTodos">Nenhum</button>
+              </div>
+              <!-- Contador -->
+              <div style="font-size:.8rem;color:var(--text-mid);margin-bottom:.5rem">
+                <span id="selContatosCount">0</span> contatos selecionados de <span id="selContatosTotal">0</span>
+              </div>
+              <!-- Lista de contatos com checkbox -->
+              <div id="listaSelContatos" style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:.3rem;border:1px solid var(--border);border-radius:8px;padding:.5rem;background:var(--surface2)">
+                <div style="text-align:center;padding:1rem;color:var(--text-mid)">Carregando…</div>
+              </div>
+            </div>
+
+            <!-- Modo: todos — mensagem informativa -->
+            <div id="selPainelTodos">
+              <div class="info-banner info-banner-blue" style="margin:0">
+                <span class="ib-icon">ℹ️</span>
+                <div>O disparo será enviado para <strong>todos os contatos ativos</strong> da sua lista.</div>
+              </div>
+            </div>
+          </div>
+          <div class="confirm-footer">
+            <button class="confirm-btn confirm-btn-cancel" id="btnCancelarSelContatos">Cancelar</button>
+            <button class="confirm-btn confirm-btn-ok info" id="btnConfirmarIniciar">
+              ▶ Iniciar Disparo
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal arquivos campanha -->
+      <div class="confirm-overlay" id="modalCampArq">
+        <div class="confirm-box" style="max-width:520px">
+          <div class="confirm-header">
+            <div class="confirm-icon-wrap info">📎</div>
+            <div class="confirm-text">
+              <div class="confirm-title">Arquivos da Campanha</div>
+              <div class="confirm-body" id="modalCampArqNome"></div>
+            </div>
+          </div>
+          <div style="padding:1rem 1.5rem">
+            <div id="modalCampArqLista" style="max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:.4rem;margin-bottom:1rem"></div>
+            <input type="file" id="inpModalCampArquivo" multiple style="display:none">
+            <button class="btn btn-ghost btn-sm" id="btnModalAddArq" style="display:inline-flex;align-items:center;gap:.35rem">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Adicionar arquivo
+            </button>
+          </div>
+          <div class="confirm-footer">
+            <button class="confirm-btn confirm-btn-ok info" id="btnFecharModalArq">Fechar</button>
+          </div>
+        </div>
+      </div>
+    </div>
