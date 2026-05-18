@@ -736,6 +736,21 @@
     }
     .btn-ghost:hover { color: var(--text); background: var(--surface2); opacity: 1; box-shadow: var(--shadow-sm); }
     .btn-sm { padding: .35rem .75rem; font-size: .8rem; }
+    /* ── Botões de ação com ícone + label (padrão ZapDin) ──────────────────── */
+    .btn-icon-act {
+      height: 32px; padding: 0 .65rem; border-radius: 9px;
+      display: inline-flex; align-items: center; gap: .32rem;
+      border: 1.5px solid var(--border); background: var(--surface);
+      color: var(--text-mid); cursor: pointer;
+      font-size: .74rem; font-weight: 600; font-family: inherit; white-space: nowrap;
+      transition: background .15s, color .15s, border-color .15s, box-shadow .15s, transform .12s;
+      flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    }
+    .btn-icon-act:hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,.1); }
+    .btn-icon-act.success:hover { background: #f0fdf4; color: #16a34a; border-color: #86efac; }
+    .btn-icon-act.danger:hover  { background: #fef2f2; color: var(--red); border-color: #fca5a5; }
+    .btn-icon-act.v-blue:hover  { background: #eff6ff; color: #2563eb; border-color: #93c5fd; }
+    .btn-icon-act.v-amber:hover { background: #fffbeb; color: #d97706; border-color: #fcd34d; }
     /* ── Dashboard Campanhas ────────────────────────────────────────────────── */
     .dash-kpi-card {
       padding: 1.1rem 1.25rem;
