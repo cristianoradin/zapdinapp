@@ -75,7 +75,7 @@
     }
 
     .sidebar-logo {
-      padding: .75rem .25rem;
+      padding: .3rem .25rem;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -193,6 +193,35 @@
       pointer-events: none; /* cliques passam pelo container mas os filhos reativam */
     }
     .floating-topbar-right > * { pointer-events: auto; }
+
+    /* ── Botão IA Central no topbar ──────────────────────────────────────── */
+    .topbar-ia-pill {
+      display: flex; align-items: center; gap: .45rem;
+      padding: .28rem .7rem .28rem .45rem;
+      background: linear-gradient(135deg, rgba(6,10,18,.92), rgba(15,30,12,.88));
+      border: 1px solid rgba(124,220,68,.35);
+      border-radius: 20px;
+      cursor: pointer;
+      box-shadow: 0 0 12px rgba(124,220,68,.12);
+      transition: border-color .2s, box-shadow .2s;
+      position: relative; overflow: hidden;
+    }
+    .topbar-ia-pill:hover {
+      border-color: rgba(124,220,68,.65);
+      box-shadow: 0 0 20px rgba(124,220,68,.22);
+    }
+    .topbar-ia-pill.active {
+      border-color: rgba(124,220,68,.8);
+      box-shadow: 0 0 24px rgba(124,220,68,.3);
+    }
+    .topbar-ia-orb {
+      position: relative; width: 22px; height: 22px; flex-shrink: 0;
+    }
+    .topbar-ia-label {
+      font-size: .775rem; font-weight: 600;
+      color: rgba(180,255,130,.9); letter-spacing: .02em;
+      white-space: nowrap;
+    }
 
     .topbar-status-pill {
       display: flex;

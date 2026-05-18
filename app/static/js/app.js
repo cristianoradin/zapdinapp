@@ -112,13 +112,13 @@
 
   function navigate(page) {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.querySelectorAll('.ia-nav-btn').forEach(n => n.classList.remove('active'));
     document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
-    // Marca nav-item normal ou o botão fixo da IA Central
+    // Marca nav-item normal
     const navItem = document.querySelector(`.nav-item[data-page="${page}"]`);
-    const iaBtn   = document.querySelector(`.ia-nav-btn[data-page="${page}"]`);
     if (navItem) navItem.classList.add('active');
-    if (iaBtn)   iaBtn.classList.add('active');
+    // Marca botão IA no topbar quando página ia-central está ativa
+    const topbarIaBtn = document.getElementById('topbarIaBtn');
+    if (topbarIaBtn) topbarIaBtn.classList.toggle('active', page === 'ia-central');
     const pageEl = document.getElementById('page-' + page);
     if (pageEl) pageEl.classList.add('active');
     _setTopbarPage(page);

@@ -52,23 +52,6 @@
   <div class="nav-item" data-page="sistema"><span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg></span> Sistema</div>
   </div><!-- /sidebar-nav-scroll -->
 
-  <!-- IA Central — botão fixo, não rola com o menu -->
-  <div class="ia-nav-fixed">
-    <div class="ia-nav-btn" data-page="ia-central" onclick="navigate('ia-central')">
-      <div class="ia-nav-orb">
-        <div class="ia-nav-ring"></div>
-        <div class="ia-nav-ring2"></div>
-        <div class="ia-nav-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a8 8 0 0 1 8 8v1a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4v-1a8 8 0 0 1 8-8z"/><circle cx="9" cy="10" r="1" fill="#fff"/><circle cx="15" cy="10" r="1" fill="#fff"/><path d="M9 21v-4a3 3 0 0 1 6 0v4"/></svg>
-        </div>
-      </div>
-      <div class="ia-nav-label">
-        <span class="ia-nav-title">IA Central</span>
-        <span class="ia-nav-sub">Assistente do sistema</span>
-      </div>
-      <div class="ia-nav-pulse"></div>
-    </div>
-  </div>
 
   <div style="padding-top:.5rem;flex-shrink:0">
     <div style="height:1px;background:var(--border);margin:0 1.25rem .75rem"></div>
@@ -95,6 +78,16 @@
         <span class="topbar-client-cnpj" id="topbarClientCnpj"></span>
       </div>
     </div>
+    <button class="topbar-ia-pill" id="topbarIaBtn" onclick="navigate('ia-central')" title="IA Central">
+      <div class="topbar-ia-orb">
+        <div class="ia-nav-ring" style="inset:-3px;border-width:.75px"></div>
+        <div class="ia-nav-icon" style="inset:0;border-radius:50%">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a8 8 0 0 1 8 8v1a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4v-1a8 8 0 0 1 8-8z"/><circle cx="9" cy="10" r="1" fill="#fff"/><circle cx="15" cy="10" r="1" fill="#fff"/><path d="M9 21v-4a3 3 0 0 1 6 0v4"/></svg>
+        </div>
+      </div>
+      <span class="topbar-ia-label">IA Central</span>
+      <div class="ia-nav-pulse" style="width:5px;height:5px"></div>
+    </button>
     <div class="topbar-status-pill" id="topbarStatusPill">
       <span class="sdot"></span>
       <span id="topbarStatusText">Verificando…</span>
