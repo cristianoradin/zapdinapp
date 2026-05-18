@@ -104,7 +104,10 @@ async def check_cnpj(body: CNPJCheck, request: Request, db=Depends(get_db)):
         raise HTTPException(status_code=503, detail="Não foi possível conectar ao servidor de autenticação.")
 
     if r.status_code in (404, 403):
-        detail = r.json().get("detail", "CNPJ não autorizado.")
+        try:
+            detail = r.json().get("detail", "CNPJ não autorizado.")
+        except Exception:
+            detail = "CNPJ não autorizado."
         raise HTTPException(status_code=r.status_code, detail=detail)
     if r.status_code != 200:
         raise HTTPException(status_code=502, detail=f"Erro no servidor de autenticação ({r.status_code}).")
