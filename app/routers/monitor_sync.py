@@ -55,6 +55,27 @@ class AvatarPayload(BaseModel):
     avatar_url: str | None = None
 
 
+class EmpresaMenusPayload(BaseModel):
+    menus: list | None = None  # None = todos os menus; lista = só esses menus
+
+
+@router.put("/empresa/menus")
+async def update_empresa_menus(
+    body: EmpresaMenusPayload,
+    empresa_id: int = Depends(_get_empresa_id),
+    db=Depends(get_db),
+):
+    """Atualiza os menus permitidos para toda a empresa (cliente)."""
+    menus_json = json.dumps(body.menus) if body.menus is not None else None
+    await db.execute(
+        "UPDATE empresas SET menus = ? WHERE id = ?",
+        (menus_json, empresa_id),
+    )
+    await db.commit()
+    logger.info("[monitor-sync] Menus da empresa %s atualizados: %s", empresa_id, body.menus)
+    return {"ok": True}
+
+
 @router.get("/usuarios")
 async def list_usuarios(
     empresa_id: int = Depends(_get_empresa_id),

@@ -323,6 +323,11 @@ async def init_db() -> None:
             END $$;
         """)
 
+        # Adiciona coluna menus em empresas (permissões por cliente)
+        await conn.execute("""
+            ALTER TABLE empresas ADD COLUMN IF NOT EXISTS menus TEXT
+        """)
+
         # Adiciona coluna menus em usuarios (migração segura)
         await conn.execute("""
             DO $$ BEGIN

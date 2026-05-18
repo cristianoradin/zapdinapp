@@ -407,7 +407,7 @@ async def me(user: dict = Depends(get_current_user), db=Depends(get_db)):
 
     if empresa_id:
         async with db.execute(
-            "SELECT nome, cnpj FROM empresas WHERE id = ?", (empresa_id,)
+            "SELECT nome, cnpj, menus AS emp_menus FROM empresas WHERE id = ?", (empresa_id,)
         ) as cur:
             emp = await cur.fetchone()
         if emp:
@@ -419,11 +419,28 @@ async def me(user: dict = Depends(get_current_user), db=Depends(get_db)):
             (user["uid"], empresa_id),
         ) as cur:
             u = await cur.fetchone()
+
+        # ── Menus efetivos: intersecção (empresa ∩ usuário) ───────────────────
+        emp_menus = None
+        usr_menus = None
+        if emp and emp["emp_menus"]:
+            try:
+                emp_menus = json.loads(emp["emp_menus"])
+            except Exception:
+                pass
         if u and u["menus"]:
             try:
-                menus = json.loads(u["menus"])
+                usr_menus = json.loads(u["menus"])
             except Exception:
-                menus = None
+                pass
+
+        if emp_menus is not None and usr_menus is not None:
+            menus = [m for m in usr_menus if m in emp_menus]
+        elif emp_menus is not None:
+            menus = emp_menus
+        elif usr_menus is not None:
+            menus = usr_menus
+        # else: menus permanece None = todos os menus
 
     avatar_url = (u["avatar_url"] if u else None) if empresa_id else None
 
