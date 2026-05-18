@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/static/css/app.css?v=20260517o">
+  <link rel="stylesheet" href="/static/css/app.css?v=20260518a">
 </head>
 <body>
 
@@ -121,82 +121,100 @@
 
     <!-- Home -->
     <div class="page active" id="page-home">
-      <!-- LAYOUT 3 COLUNAS -->
-      <div class="home-grid">
+      <div class="home-wrapper">
 
-        <!-- COL 1: Clock + Clima + Calendário -->
-        <div class="home-col home-col-left">
+        <!-- ── TOP BAR: Relógio + Clima ─────────────────────── -->
+        <div class="home-topbar">
 
-          <!-- Card Relógio -->
+          <!-- Relógio compacto -->
           <div class="home-card home-clock-card">
-            <div class="home-clock-date" id="home-date">carregando...</div>
-            <div class="home-clock-time" id="home-time">00:00:00</div>
-            <div class="home-clock-day" id="home-day"></div>
+            <div class="home-clock-inner">
+              <div class="home-clock-left">
+                <div class="home-clock-time" id="home-time">00:00</div>
+                <div class="home-clock-secs" id="home-secs">00</div>
+              </div>
+              <div class="home-clock-right">
+                <div class="home-clock-date" id="home-date">carregando...</div>
+                <div class="home-clock-day" id="home-day"></div>
+              </div>
+            </div>
           </div>
 
-          <!-- Card Clima -->
+          <!-- Clima compacto -->
           <div class="home-card home-clima-card" id="home-clima-card">
-            <div class="home-clima-loading">
-              <div class="home-clima-city" id="home-clima-city">--</div>
-              <div class="home-clima-main">
+            <div class="home-clima-inner">
+              <div class="home-clima-main-block">
                 <div class="home-clima-icon" id="home-clima-icon">🌤️</div>
-                <div class="home-clima-temp" id="home-clima-temp">--°C</div>
+                <div>
+                  <div class="home-clima-temp" id="home-clima-temp">--°C</div>
+                  <div class="home-clima-city" id="home-clima-city">--</div>
+                </div>
               </div>
-              <div class="home-clima-desc" id="home-clima-desc">Carregando...</div>
-              <div class="home-clima-details">
-                <span>💧 <span id="home-clima-umid">--%</span></span>
-                <span>💨 <span id="home-clima-vento">-- km/h</span></span>
+              <div class="home-clima-sep"></div>
+              <div class="home-clima-details-block">
+                <div class="home-clima-desc" id="home-clima-desc">--</div>
+                <div class="home-clima-details">
+                  <span>💧 <span id="home-clima-umid">--</span></span>
+                  <span>💨 <span id="home-clima-vento">--</span></span>
+                </div>
               </div>
+              <div class="home-clima-sep"></div>
               <div class="home-clima-forecast" id="home-clima-forecast"></div>
+              <div class="home-clima-edit-btn" title="Configurar cidade" onclick="homeToggleClimaConfig()">⚙️</div>
             </div>
-            <div class="home-clima-config">
+            <div class="home-clima-config" id="home-clima-config" style="display:none">
               <input type="text" id="home-clima-cidade-input" placeholder="Cidade" class="home-input-sm">
-              <input type="text" id="home-clima-uf-input" placeholder="UF" class="home-input-sm" maxlength="2" style="width:60px">
-              <button onclick="homeSalvarCidade()" class="home-btn-sm">Salvar</button>
+              <input type="text" id="home-clima-uf-input" placeholder="UF" class="home-input-sm" maxlength="2" style="width:55px">
+              <button onclick="homeSalvarCidade()" class="home-btn-sm">✓ Salvar</button>
+              <button onclick="homeToggleClimaConfig()" class="home-btn-sm" style="background:#888">✕</button>
             </div>
-          </div>
-
-          <!-- Card Calendário -->
-          <div class="home-card home-cal-card">
-            <div class="home-cal-header">
-              <button class="home-cal-nav" onclick="homeCalNav(-1)">‹</button>
-              <span class="home-cal-month" id="home-cal-month">Maio 2026</span>
-              <button class="home-cal-nav" onclick="homeCalNav(1)">›</button>
-            </div>
-            <div class="home-cal-weekdays">
-              <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span>
-            </div>
-            <div class="home-cal-days" id="home-cal-days"></div>
           </div>
 
         </div>
 
-        <!-- COL 2: Post-its -->
-        <div class="home-col home-col-mid">
-          <div class="home-card home-postits-card">
-            <div class="home-section-header">
-              <h3>📝 Anotações</h3>
-              <button class="home-btn-add" onclick="homeNovoPostit()">+ Novo</button>
-            </div>
-            <div class="home-postits-grid" id="home-postits-grid">
-              <!-- post-its rendered here -->
+        <!-- ── CONTEÚDO: 3 colunas ────────────────────────── -->
+        <div class="home-content">
+
+          <!-- COL 1: Calendário -->
+          <div class="home-col home-col-left">
+            <div class="home-card home-cal-card">
+              <div class="home-cal-header">
+                <button class="home-cal-nav" onclick="homeCalNav(-1)">‹</button>
+                <span class="home-cal-month" id="home-cal-month">Maio 2026</span>
+                <button class="home-cal-nav" onclick="homeCalNav(1)">›</button>
+              </div>
+              <div class="home-cal-weekdays">
+                <span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
+              </div>
+              <div class="home-cal-days" id="home-cal-days"></div>
             </div>
           </div>
-        </div>
 
-        <!-- COL 3: Recados -->
-        <div class="home-col home-col-right">
-          <div class="home-card home-recados-card">
-            <div class="home-section-header">
-              <h3>📢 Avisos</h3>
-              <span class="home-badge" id="home-recados-badge">0</span>
-            </div>
-            <div class="home-recados-list" id="home-recados-list">
-              <div class="home-empty">Nenhum aviso no momento</div>
+          <!-- COL 2: Post-its -->
+          <div class="home-col home-col-mid">
+            <div class="home-card home-postits-card">
+              <div class="home-section-header">
+                <h3>📝 Anotações</h3>
+                <button class="home-btn-add" onclick="homeNovoPostit()">+ Novo</button>
+              </div>
+              <div class="home-postits-grid" id="home-postits-grid"></div>
             </div>
           </div>
-        </div>
 
+          <!-- COL 3: Recados -->
+          <div class="home-col home-col-right">
+            <div class="home-card home-recados-card">
+              <div class="home-section-header">
+                <h3>📢 Avisos</h3>
+                <span class="home-badge" id="home-recados-badge">0</span>
+              </div>
+              <div class="home-recados-list" id="home-recados-list">
+                <div class="home-empty">Nenhum aviso no momento</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
       </div>
 
       <!-- MODAL AGENDA -->
@@ -3977,7 +3995,7 @@
 <script src="/static/js/modules/syslog.js?v=20260517d"></script>
 
 <!-- App principal -->
-<script src="/static/js/app.js?v=20260517o"></script>
+<script src="/static/js/app.js?v=20260518a"></script>
 
 
 </body>

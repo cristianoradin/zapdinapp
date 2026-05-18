@@ -4032,11 +4032,19 @@ function _homeTick() {
   const mm = String(now.getMinutes()).padStart(2,'0');
   const ss = String(now.getSeconds()).padStart(2,'0');
   const el = document.getElementById('home-time');
-  if (el) el.textContent = `${hh}:${mm}:${ss}`;
+  if (el) el.textContent = `${hh}:${mm}`;
+  const elSecs = document.getElementById('home-secs');
+  if (elSecs) elSecs.textContent = ss;
   const elDate = document.getElementById('home-date');
-  if (elDate) elDate.textContent = `${now.getDate()} de ${_MESES_PT[now.getMonth()]} de ${now.getFullYear()}`;
+  if (elDate) elDate.textContent = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
   const elDay = document.getElementById('home-day');
   if (elDay) elDay.textContent = _DIAS_PT[now.getDay()];
+}
+
+function homeToggleClimaConfig() {
+  const cfg = document.getElementById('home-clima-config');
+  if (!cfg) return;
+  cfg.style.display = cfg.style.display === 'none' ? 'flex' : 'none';
 }
 
 // ── Clima ─────────────────────────────────────────────────────
@@ -4052,16 +4060,16 @@ async function homeCarregarClima() {
     const r = await fetch('/api/home/clima');
     const d = await r.json();
     if (!r.ok) return;
-    document.getElementById('home-clima-city').textContent = d.cidade || '--';
-    document.getElementById('home-clima-temp').textContent = `${Math.round(d.temperatura)}°C`;
-    document.getElementById('home-clima-desc').textContent = d.descricao_clima || '';
+    document.getElementById('home-clima-city').textContent = (d.cidade||'--').toUpperCase();
+    document.getElementById('home-clima-temp').textContent = `${Math.round(d.temperatura)}°`;
+    document.getElementById('home-clima-desc').textContent = d.descricao_clima || '--';
     document.getElementById('home-clima-icon').textContent = _CLIMA_ICONS[d.codigo_clima] || '🌤️';
     document.getElementById('home-clima-umid').textContent = `${d.umidade}%`;
-    document.getElementById('home-clima-vento').textContent = `${Math.round(d.vento)} km/h`;
-    // Previsão 3 dias
+    document.getElementById('home-clima-vento').textContent = `${Math.round(d.vento)}km/h`;
+    // Previsão 3 dias compacta
     const fc = document.getElementById('home-clima-forecast');
     if (fc && d.previsao) {
-      const dias = ['Hoje','Amanhã','Depois'];
+      const dias = ['Hj','Am','Dep'];
       fc.innerHTML = d.previsao.slice(0,3).map((p,i) => `
         <div class="home-clima-forecast-day">
           <div class="fc-label">${dias[i]}</div>

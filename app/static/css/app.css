@@ -2547,165 +2547,253 @@
   }
 
 /* ═══════════════════════════════════════════════════════════
-   HOME DASHBOARD
+   HOME DASHBOARD — layout redesenhado
    ═══════════════════════════════════════════════════════════ */
 
-.home-grid {
-  display: grid;
-  grid-template-columns: 300px 1fr 300px;
-  gap: 1rem;
-  padding: 1rem;
-  height: calc(100vh - 60px);
-  overflow: hidden;
-}
-
-.home-col {
+/* ── Container principal ── */
+.home-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  overflow-y: auto;
-  padding-right: 4px;
+  gap: .75rem;
+  padding: .75rem 1rem;
+  height: calc(100vh - 60px);
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
-.home-col::-webkit-scrollbar { width: 4px; }
-.home-col::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-
+/* ── Base card ── */
 .home-card {
   background: #fff;
-  border-radius: 16px;
-  padding: 1.2rem;
-  box-shadow: 0 2px 12px rgba(0,0,0,.06);
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.06);
   border: 1px solid var(--border);
+}
+
+/* ═══════════════════════════════════════
+   TOP BAR — Relógio + Clima (compactos)
+   ═══════════════════════════════════════ */
+.home-topbar {
+  display: flex;
+  gap: .75rem;
   flex-shrink: 0;
 }
 
-/* ── Clock Card ── */
+/* ── Clock compacto ── */
 .home-clock-card {
-  background: linear-gradient(135deg, #1a2e1a 0%, #0f2010 60%, #142814 100%);
+  background: linear-gradient(135deg, #152815 0%, #0d1f0d 60%, #1a2e1a 100%);
   color: #fff;
   position: relative;
   overflow: hidden;
-  padding: 1.4rem 1.2rem;
+  padding: .7rem 1.1rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
 }
 .home-clock-card::before {
   content: '';
   position: absolute; inset: 0;
-  background: radial-gradient(ellipse at 80% 20%, rgba(124,220,68,.15) 0%, transparent 60%);
+  background: radial-gradient(ellipse at 85% 30%, rgba(124,220,68,.18) 0%, transparent 55%);
+  pointer-events: none;
 }
-.home-clock-date {
-  font-size: .85rem;
-  color: rgba(255,255,255,.6);
-  letter-spacing: .05em;
-  text-transform: uppercase;
+.home-clock-inner {
+  display: flex;
+  align-items: center;
+  gap: .9rem;
+  position: relative;
+  z-index: 1;
+}
+.home-clock-left {
+  display: flex;
+  align-items: baseline;
+  gap: .2rem;
 }
 .home-clock-time {
-  font-size: 2.8rem;
+  font-size: 2rem;
   font-weight: 800;
-  letter-spacing: -.03em;
+  letter-spacing: -.04em;
   color: #fff;
   line-height: 1;
-  margin: .3rem 0 .1rem;
+}
+.home-clock-secs {
+  font-size: .95rem;
+  font-weight: 600;
+  color: var(--accent-light);
+  opacity: .8;
+  line-height: 1;
+  align-self: flex-end;
+  margin-bottom: .12rem;
+}
+.home-clock-right {
+  border-left: 1px solid rgba(255,255,255,.15);
+  padding-left: .9rem;
+}
+.home-clock-date {
+  font-size: .72rem;
+  color: rgba(255,255,255,.55);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 .home-clock-day {
-  font-size: .9rem;
+  font-size: .82rem;
   color: var(--accent-light);
-  font-weight: 500;
+  font-weight: 600;
+  margin-top: .1rem;
+  white-space: nowrap;
 }
 
-/* ── Clima Card ── */
+/* ── Clima compacto ── */
 .home-clima-card {
-  background: linear-gradient(135deg, #e8f5e9 0%, #f1f8f1 100%);
+  flex: 1;
+  background: linear-gradient(135deg, #edf7ed 0%, #f5faf5 100%);
   border-color: rgba(61,127,31,.15);
+  padding: .65rem 1rem;
+  overflow: hidden;
 }
-.home-clima-city {
-  font-size: .8rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  margin-bottom: .3rem;
-}
-.home-clima-main {
+.home-clima-inner {
   display: flex;
   align-items: center;
   gap: .8rem;
-  margin: .4rem 0;
+  height: 100%;
 }
-.home-clima-icon { font-size: 2.5rem; line-height: 1; }
-.home-clima-temp { font-size: 2.4rem; font-weight: 800; color: var(--accent); }
-.home-clima-desc { font-size: .85rem; color: var(--text-muted); margin-bottom: .5rem; }
+.home-clima-main-block {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex-shrink: 0;
+}
+.home-clima-icon { font-size: 2rem; line-height: 1; }
+.home-clima-temp {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1;
+}
+.home-clima-city {
+  font-size: .68rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-top: .1rem;
+}
+.home-clima-sep {
+  width: 1px;
+  height: 36px;
+  background: rgba(61,127,31,.2);
+  flex-shrink: 0;
+}
+.home-clima-details-block { flex-shrink: 0; }
+.home-clima-desc {
+  font-size: .75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: .2rem;
+}
 .home-clima-details {
   display: flex;
-  gap: 1rem;
-  font-size: .8rem;
+  gap: .7rem;
+  font-size: .72rem;
   color: #555;
-  margin-bottom: .8rem;
 }
 .home-clima-forecast {
   display: flex;
-  gap: .5rem;
-  flex-wrap: wrap;
+  gap: .4rem;
+  flex: 1;
+  overflow: hidden;
 }
 .home-clima-forecast-day {
   flex: 1;
-  min-width: 55px;
+  min-width: 44px;
+  max-width: 60px;
   text-align: center;
   background: rgba(255,255,255,.7);
-  border-radius: 10px;
-  padding: .4rem .3rem;
-  font-size: .72rem;
+  border-radius: 8px;
+  padding: .25rem .2rem;
+  font-size: .65rem;
 }
-.home-clima-forecast-day .fc-icon { font-size: 1.2rem; }
-.home-clima-forecast-day .fc-label { color: var(--text-muted); margin-bottom: .2rem; }
-.home-clima-forecast-day .fc-max { font-weight: 700; color: #e44; }
+.home-clima-forecast-day .fc-icon { font-size: .95rem; }
+.home-clima-forecast-day .fc-label { color: var(--text-muted); font-size: .6rem; }
+.home-clima-forecast-day .fc-max { font-weight: 700; color: #c33; }
 .home-clima-forecast-day .fc-min { color: #668; }
+.home-clima-edit-btn {
+  font-size: .9rem;
+  cursor: pointer;
+  opacity: .4;
+  flex-shrink: 0;
+  transition: opacity .15s;
+  padding: .2rem;
+  border-radius: 6px;
+}
+.home-clima-edit-btn:hover { opacity: 1; background: rgba(0,0,0,.06); }
 .home-clima-config {
   display: flex;
-  gap: .4rem;
+  gap: .35rem;
   align-items: center;
-  margin-top: .8rem;
-  padding-top: .8rem;
+  margin-top: .4rem;
+  padding-top: .4rem;
   border-top: 1px solid rgba(61,127,31,.15);
 }
 .home-input-sm {
   flex: 1;
-  padding: .3rem .5rem;
+  padding: .28rem .45rem;
   border: 1px solid var(--border);
-  border-radius: 7px;
-  font-size: .78rem;
+  border-radius: 6px;
+  font-size: .75rem;
   background: #fff;
   outline: none;
 }
 .home-btn-sm {
-  padding: .3rem .7rem;
+  padding: .28rem .6rem;
   background: var(--accent);
   color: #fff;
   border: none;
-  border-radius: 7px;
-  font-size: .78rem;
+  border-radius: 6px;
+  font-size: .75rem;
   cursor: pointer;
   white-space: nowrap;
 }
 
-/* ── Calendário Card ── */
-.home-cal-card { padding: 1rem; }
+/* ═══════════════════════════════════════
+   CONTEÚDO — 3 colunas
+   ═══════════════════════════════════════ */
+.home-content {
+  display: grid;
+  grid-template-columns: 240px 1fr 230px;
+  gap: .75rem;
+  flex: 1;
+  min-height: 0;
+}
+.home-col {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Calendário ── */
+.home-cal-card {
+  flex: 1;
+  padding: .85rem;
+  display: flex;
+  flex-direction: column;
+}
 .home-cal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: .8rem;
+  margin-bottom: .6rem;
 }
 .home-cal-month {
   font-weight: 700;
-  font-size: .95rem;
+  font-size: .88rem;
   color: var(--text);
 }
 .home-cal-nav {
   background: none;
   border: 1px solid var(--border);
   border-radius: 6px;
-  width: 26px; height: 26px;
+  width: 22px; height: 22px;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: .9rem;
   display: flex; align-items: center; justify-content: center;
   color: var(--text-muted);
   transition: all .15s;
@@ -2715,69 +2803,72 @@
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   text-align: center;
-  font-size: .68rem;
+  font-size: .62rem;
   color: var(--text-muted);
-  font-weight: 600;
-  text-transform: uppercase;
-  margin-bottom: .4rem;
-  letter-spacing: .03em;
+  font-weight: 700;
+  margin-bottom: .3rem;
+  letter-spacing: .02em;
 }
 .home-cal-days {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 2px;
+  flex: 1;
 }
 .home-cal-day {
   aspect-ratio: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: .8rem;
-  border-radius: 8px;
+  font-size: .75rem;
+  border-radius: 7px;
   cursor: pointer;
   position: relative;
   transition: all .15s;
   color: var(--text);
 }
-.home-cal-day:hover { background: rgba(61,127,31,.1); }
-.home-cal-day.today {
-  background: var(--accent);
-  color: #fff;
-  font-weight: 700;
-}
-.home-cal-day.other-month { color: var(--text-muted); opacity: .4; }
+.home-cal-day:hover { background: rgba(61,127,31,.12); }
+.home-cal-day.today { background: var(--accent); color: #fff; font-weight: 700; }
+.home-cal-day.other-month { color: var(--text-muted); opacity: .35; }
 .home-cal-day.has-event::after {
   content: '';
   position: absolute;
   bottom: 2px;
-  width: 4px; height: 4px;
+  width: 3px; height: 3px;
   border-radius: 50%;
-  background: var(--accent-light);
+  background: var(--accent);
 }
-.home-cal-day.today.has-event::after { background: #fff; }
+.home-cal-day.today.has-event::after { background: rgba(255,255,255,.8); }
 .home-cal-day.empty { cursor: default; }
 
 /* ── Post-its ── */
-.home-postits-card { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.home-postits-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: .85rem;
+  overflow: hidden;
+}
 .home-section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1rem;
+  margin-bottom: .65rem;
+  flex-shrink: 0;
 }
 .home-section-header h3 {
-  font-size: .95rem;
+  font-size: .85rem;
   font-weight: 700;
   color: var(--text);
   margin: 0;
 }
 .home-btn-add {
-  padding: .3rem .8rem;
+  padding: .25rem .65rem;
   background: var(--accent);
   color: #fff;
   border: none;
-  border-radius: 8px;
-  font-size: .8rem;
+  border-radius: 7px;
+  font-size: .75rem;
   cursor: pointer;
   font-weight: 600;
   transition: opacity .15s;
@@ -2785,102 +2876,116 @@
 .home-btn-add:hover { opacity: .85; }
 .home-postits-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: .7rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .5rem;
   overflow-y: auto;
   flex: 1;
-  padding-right: 2px;
+  align-content: start;
+  padding-bottom: 2px;
 }
 .home-postit {
-  border-radius: 12px;
-  padding: .9rem .8rem;
+  border-radius: 10px;
+  padding: .55rem .6rem;
   cursor: pointer;
   transition: transform .15s, box-shadow .15s;
-  position: relative;
-  box-shadow: 0 2px 8px rgba(0,0,0,.08);
-  min-height: 100px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.09);
+  min-height: 72px;
   display: flex;
   flex-direction: column;
 }
-.home-postit:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,.12); }
+.home-postit:hover { transform: translateY(-2px); box-shadow: 0 5px 14px rgba(0,0,0,.13); }
 .home-postit-titulo {
-  font-size: .78rem;
+  font-size: .7rem;
   font-weight: 700;
   color: #1a1d23;
-  margin-bottom: .3rem;
+  margin-bottom: .2rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .home-postit-conteudo {
-  font-size: .75rem;
-  color: #333;
-  line-height: 1.5;
+  font-size: .68rem;
+  color: #3a3a3a;
+  line-height: 1.45;
   flex: 1;
   overflow: hidden;
   display: -webkit-box;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
 }
 .home-postit-novo {
-  border: 2px dashed rgba(0,0,0,.15);
-  background: rgba(255,255,255,.5);
+  border: 2px dashed rgba(0,0,0,.14);
+  background: rgba(255,255,255,.4);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.8rem;
-  color: rgba(0,0,0,.2);
-  min-height: 100px;
+  font-size: 1.5rem;
+  color: rgba(0,0,0,.18);
+  min-height: 72px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all .15s;
 }
-.home-postit-novo:hover { background: rgba(255,255,255,.8); color: rgba(0,0,0,.4); }
+.home-postit-novo:hover { background: rgba(255,255,255,.75); color: rgba(0,0,0,.35); }
 
-/* ── Recados ── */
-.home-recados-card { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+/* ── Recados (Mural) ── */
+.home-recados-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: .85rem;
+  overflow: hidden;
+}
 .home-badge {
   background: var(--accent);
   color: #fff;
   border-radius: 50%;
-  width: 20px; height: 20px;
+  width: 18px; height: 18px;
   display: flex; align-items: center; justify-content: center;
-  font-size: .7rem;
+  font-size: .65rem;
   font-weight: 700;
 }
 .home-recados-list {
   display: flex;
   flex-direction: column;
-  gap: .7rem;
+  gap: .45rem;
   overflow-y: auto;
   flex: 1;
 }
 .home-recado-item {
-  border-radius: 12px;
-  padding: .9rem 1rem;
-  border-left: 4px solid;
+  border-radius: 9px;
+  padding: .5rem .65rem;
+  border-left: 3px solid;
   background: #f8f9fa;
   transition: transform .15s;
+  flex-shrink: 0;
 }
-.home-recado-item:hover { transform: translateX(2px); }
+.home-recado-item:hover { transform: translateX(2px); background: #f2f4f6; }
 .home-recado-titulo {
-  font-size: .85rem;
+  font-size: .76rem;
   font-weight: 700;
   color: var(--text);
-  margin-bottom: .3rem;
+  margin-bottom: .15rem;
 }
 .home-recado-conteudo {
-  font-size: .8rem;
+  font-size: .71rem;
   color: var(--text-muted);
-  line-height: 1.5;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .home-recado-data {
-  font-size: .7rem;
-  color: var(--text-muted);
-  margin-top: .4rem;
+  font-size: .63rem;
+  color: #bbb;
+  margin-top: .2rem;
 }
 .home-empty {
   text-align: center;
   color: var(--text-muted);
-  font-size: .85rem;
-  padding: 2rem 1rem;
+  font-size: .8rem;
+  padding: 1.5rem .5rem;
 }
 
 /* ── Modais ── */
