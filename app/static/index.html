@@ -129,7 +129,7 @@
     
 
     <!-- Token API -->
-    
+    <div class="page" id="page-token">
     <div id="sys-panel-token" class="sys-panel">
       <div class="sys-panel-header">
         <div class="sys-panel-title">Token de Integração ERP</div>
@@ -279,7 +279,7 @@
                 <div class="section-header-icon shi-blue">📋</div>
                 <h3 style="margin:0">Tokens Ativos</h3>
               </div>
-              <button class="btn btn-ghost btn-sm" onclick="loadPdvTokens()">↻</button>
+              <button class="btn btn-ghost btn-sm" onclick="tokenModule.init()">↻</button>
             </div>
             <div id="pdvTokensList">
               <div style="text-align:center;color:var(--text-mid);font-size:.85rem;padding:1.5rem">Carregando…</div>
@@ -300,6 +300,7 @@
       </div>
     </div>
     </div><!-- /sys-panel-token -->
+    </div><!-- /page-token -->
 
     <!-- Envio de Arquivo -->
     
@@ -1368,7 +1369,7 @@
       </div>
     </div>
 
-<div class="page" id="page-token" style="display:none!important"></div>
+<!-- page-token está na posição correta acima -->
 
 <div class="page" id="page-arquivo">
 
