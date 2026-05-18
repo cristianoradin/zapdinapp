@@ -75,17 +75,16 @@
     }
 
     .sidebar-logo {
-      padding: .3rem .25rem;
+      padding: .1rem .25rem .05rem;
       display: flex;
       align-items: center;
       justify-content: center;
     }
     .sidebar-logo img {
-      width: 283px;
-      max-width: none;
+      width: 170px;
+      max-width: 100%;
       height: auto;
       object-fit: contain;
-      /* logo colorida na sidebar branca */
       filter: none;
     }
     /* Nome removido — apenas logo */
@@ -94,7 +93,7 @@
     .sidebar-divider {
       height: 1px;
       background: var(--sb-divider);
-      margin: 0 1.25rem .75rem;
+      margin: 0 1.25rem .35rem;
     }
 
     .sidebar-section {
