@@ -1001,7 +1001,7 @@
     else if (page === 'token') { loadToken(); loadPdvTokens(); }
     else if (page === 'arquivo') loadArquivos();
     else if (page === 'teste') loadTeste();
-    else if (page === 'telegram') loadTelegram();
+    else if (page === 'telegram') telegramModule.init();
     else if (page === 'sistema') loadSistema();
     else if (page === 'dm-dashboard') loadDashboardCampanhas();
     else if (page === 'dm-contatos') loadContatos();
@@ -1016,48 +1016,7 @@
     else if (page === 'ia-central') { iaCentral.init(); }
   }
 
-  // ── Telegram ──────────────────────────────────────────────────────────────────
-  async function loadTelegram() {
-    const res = await fetch('/api/telegram/config');
-    if (!res.ok) return;
-    const d = await res.json();
-    document.getElementById('tgBotToken').value = d.bot_token || '';
-    document.getElementById('tgChatId').value   = d.chat_id   || '';
-    _setTgStatus(d.configured ? 'ok' : null, d.configured ? 'Telegram configurado e ativo' : '');
-  }
-
-  function _setTgStatus(type, msg) {
-    const el = document.getElementById('tgStatus');
-    if (!type) { el.style.display = 'none'; return; }
-    el.style.display = 'block';
-    const s = getComputedStyle(document.documentElement);
-    el.style.background = type === 'ok' ? s.getPropertyValue('--accent-soft').trim() : s.getPropertyValue('--red-soft').trim();
-    el.style.color      = type === 'ok' ? s.getPropertyValue('--accent').trim()      : s.getPropertyValue('--red').trim();
-    el.style.border     = type === 'ok' ? '1px solid ' + s.getPropertyValue('--accent-mid').trim() : '1px solid #fecaca';
-    el.textContent = msg;
-  }
-
-  document.getElementById('btnSalvarTelegram').addEventListener('click', async () => {
-    const token = document.getElementById('tgBotToken').value.trim();
-    const chatId = document.getElementById('tgChatId').value.trim();
-    if (!token || !chatId) { showAlert('alertTelegram', 'Preencha o Bot Token e o Chat ID.', 'error'); return; }
-    const res = await api('POST', '/api/telegram/config', { bot_token: token, chat_id: chatId });
-    if (res.ok) { showAlert('alertTelegram', 'Configuração salva!'); _setTgStatus('ok', 'Telegram configurado e ativo'); }
-    else showAlert('alertTelegram', 'Erro ao salvar', 'error');
-  });
-
-  document.getElementById('btnTestarTelegram').addEventListener('click', async () => {
-    _setTgStatus(null, '');
-    const res = await api('POST', '/api/telegram/test');
-    if (res.ok) _setTgStatus('ok', '✅ Mensagem de teste enviada com sucesso!');
-    else _setTgStatus('err', '❌ ' + (res.detail || 'Falha ao enviar. Verifique o token e chat_id.'));
-  });
-
-  document.getElementById('btnRelatorioParcial').addEventListener('click', async () => {
-    const res = await api('POST', '/api/telegram/report-now');
-    if (res.ok) _setTgStatus('ok', 'Relatório enviado com sucesso!');
-    else _setTgStatus('err', '❌ ' + (res.detail || 'Erro ao enviar relatório.'));
-  });
+  // Telegram → telegramModule em js/modules/telegram.js
 
   // ── Init ──────────────────────────────────────────────────────────────────────
   checkAuth().then(async () => {
