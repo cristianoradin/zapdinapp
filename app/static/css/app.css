@@ -1385,8 +1385,8 @@
     .page-title-bar {
       display: flex;
       align-items: center;
-      margin-bottom: 1.5rem;
-      padding-bottom: 1rem;
+      margin-bottom: .875rem;
+      padding-bottom: .625rem;
       border-bottom: 2px solid var(--border);
     }
     .page-title-bar h1 {
