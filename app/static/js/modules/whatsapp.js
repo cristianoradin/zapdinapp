@@ -285,7 +285,7 @@ window.whatsappModule = (() => {
       btn.textContent = 'Criando…';
       try {
         const res = await _post('/api/sessoes', { nome });
-        if (res && res.ok) {
+        if (res && (res.ok || res.id)) {
           document.getElementById('inputNovaSessao').value = '';
           _alert('alertWA', `Sessão "${nome}" criada! Escaneie o QR Code abaixo.`);
           await loadSessoes();

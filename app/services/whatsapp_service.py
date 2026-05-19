@@ -957,7 +957,7 @@ class WhatsAppSession:
             from ..core.database import get_db_direct
             async with get_db_direct() as db:
                 await db.execute(
-                    "UPDATE sessoes_wa SET status=?, phone=?, last_seen=NOW() WHERE id=? AND empresa_id=?",
+                    "UPDATE sessoes_wa SET status=?, phone=?, last_seen=CURRENT_TIMESTAMP WHERE id=? AND empresa_id=?",
                     (new_status, self.phone, self.session_id, self.empresa_id),
                 )
                 await db.commit()

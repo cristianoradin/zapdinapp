@@ -56,7 +56,7 @@ async def create_sessao(
     logger.info("[whatsapp] Sessão criada: id=%s nome=%s empresa=%s", sessao_id, body.nome, empresa_id)
     await log_event(empresa_id=empresa_id, nivel="info", modulo="whatsapp", acao="session_connect",
                     mensagem=f"WhatsApp conectado: {sessao_id}")
-    return {"id": sessao_id, "nome": body.nome, "status": "disconnected"}
+    return {"ok": True, "id": sessao_id, "nome": body.nome, "status": "disconnected"}
 
 
 @router.delete("/{sessao_id}", status_code=status.HTTP_204_NO_CONTENT)
