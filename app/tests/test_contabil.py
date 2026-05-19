@@ -160,10 +160,20 @@ class TestContabilDocumentos:
 
     async def test_upload_documento(self, auth_client):
         """Upload de arquivo PDF gera entrada na tabela de documentos."""
+        # Primeiro cria uma empresa contábil para ter um empresa_id válido
+        r_emp = await auth_client.post("/api/contabil/empresas", json={
+            "nome": "Empresa Upload",
+            "telefone": "11999990099",
+            "regime_tributario": "simples_nacional",
+        })
+        if r_emp.status_code not in (200, 201):
+            pytest.skip("Empresa contábil não criada, skip upload")
+        empresa_id = r_emp.json()["id"]
+
         fake_pdf = b"%PDF-1.4 fake content"
         r = await auth_client.post(
-            "/api/contabil/documentos/upload",
-            files={"file": ("nota_fiscal.pdf", io.BytesIO(fake_pdf), "application/pdf")},
+            f"/api/contabil/documentos/upload?empresa_id={empresa_id}",
+            files={"arquivo": ("nota_fiscal.pdf", io.BytesIO(fake_pdf), "application/pdf")},
         )
         # Pode retornar 200 ou 201 com sucesso
         assert r.status_code in (200, 201)

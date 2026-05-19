@@ -26,9 +26,10 @@ class TestArquivos:
         """Se houver arquivos no banco, devem ter os campos esperados."""
         await db_conn.execute(
             """INSERT INTO arquivos
-               (empresa_id, nome_original, tamanho, destinatario, status)
-               VALUES ($1, $2, $3, $4, $5)""",
+               (empresa_id, nome_original, nome_arquivo, tamanho, destinatario, status)
+               VALUES ($1, $2, $3, $4, $5, $6)""",
             empresa_usuario["empresa_id"],
+            "documento.pdf",
             "documento.pdf",
             1024,
             "11999990000",

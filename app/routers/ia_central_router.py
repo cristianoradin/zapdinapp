@@ -10,7 +10,7 @@ import logging
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from ..core.database import get_db
 from ..core.security import get_current_user
@@ -302,6 +302,13 @@ async def _call_groq(messages: list, api_key: str) -> str:
 class ChatBody(BaseModel):
     mensagem: str
     historico: list = []
+
+    @field_validator("mensagem")
+    @classmethod
+    def mensagem_nao_vazia(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Mensagem não pode ser vazia")
+        return v
 
 
 @router.post("/chat")

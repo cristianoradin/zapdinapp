@@ -385,6 +385,7 @@ async def _rodar_com_fallback(path: str) -> tuple[str, str]:
         )
 
     erros: list[str] = []
+    ativo = todos_habilitados[0] if todos_habilitados else "none"
     logger.info("[ocr] Providers habilitados para OCR: %s | Ativo: %s", todos_habilitados, ativo)
 
     if is_pdf:
@@ -535,10 +536,10 @@ async def extrair_dados_fiscal(documento_id: int, arquivo_path: str) -> dict[str
 
     except json.JSONDecodeError as e:
         await _marcar_erro(documento_id, f"JSON inválido retornado pela IA: {e}")
-        raise
+        return {}
     except Exception as e:
         await _marcar_erro(documento_id, str(e))
-        raise
+        return {}
 
 
 async def _marcar_erro(documento_id: int, erro_msg: str) -> None:

@@ -120,6 +120,14 @@ class AsyncPGAdapter:
             if s:
                 await self._conn.execute(s)
 
+    def __getattr__(self, name: str):
+        """
+        Delega métodos não definidos ao asyncpg.Connection subjacente.
+        Permite que routers que usam a API nativa do asyncpg (fetchrow,
+        fetchval, fetch, execute) funcionem sem alteração.
+        """
+        return getattr(self._conn, name)
+
 
 # ── FastAPI dependency ────────────────────────────────────────────────────────
 
@@ -976,7 +984,7 @@ async def init_db() -> None:
         )
 
         # ── P2: Worker heartbeats ─────────────────────────────────────────────
-        await db.execute(
+        await conn.execute(
             """
             CREATE TABLE IF NOT EXISTS worker_heartbeats (
                 worker_name TEXT PRIMARY KEY,

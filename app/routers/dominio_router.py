@@ -45,13 +45,13 @@ class DominioConfig(BaseModel):
 
 async def _get_config(db, empresa_id: int) -> dict[str, Any]:
     row = await db.fetchrow(
-        "SELECT valor FROM config WHERE empresa_id=$1 AND chave=$2",
+        "SELECT value FROM config WHERE empresa_id=$1 AND key=$2",
         empresa_id, _KEY,
     )
     if not row:
         return {}
     try:
-        return json.loads(row["valor"])
+        return json.loads(row["value"])
     except Exception:
         return {}
 
@@ -83,11 +83,11 @@ async def save_config(
 
     await db.execute(
         """
-        INSERT INTO config (empresa_id, chave, valor)
-        VALUES ($1, $2, $3)
-        ON CONFLICT (empresa_id, chave) DO UPDATE SET valor = EXCLUDED.valor
+        INSERT INTO config (empresa_id, key, value)
+        VALUES (?, ?, ?)
+        ON CONFLICT (empresa_id, key) DO UPDATE SET value = EXCLUDED.value
         """,
-        empresa_id, _KEY, json.dumps(payload),
+        (empresa_id, _KEY, json.dumps(payload)),
     )
     logger.info("Domínio config salva — empresa %s", empresa_id)
     return {"ok": True}

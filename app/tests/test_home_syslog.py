@@ -145,7 +145,7 @@ class TestHomePostits:
 
     async def test_cria_postit(self, auth_client):
         r = await auth_client.post("/api/home/postits", json={
-            "texto": "Lembrar de ligar para cliente",
+            "titulo": "Lembrar de ligar para cliente",
             "cor": "#ffff99",
         })
         assert r.status_code in (200, 201)
@@ -154,18 +154,18 @@ class TestHomePostits:
 
     async def test_postit_aparece_na_lista(self, auth_client):
         r = await auth_client.post("/api/home/postits", json={
-            "texto": "Post-it Listável",
+            "titulo": "Post-it Listável",
             "cor": "#99ffcc",
         })
         assert r.status_code in (200, 201)
 
         r2 = await auth_client.get("/api/home/postits")
-        textos = [p.get("texto", "") for p in r2.json()]
-        assert "Post-it Listável" in textos
+        titulos = [p.get("titulo", "") for p in r2.json()]
+        assert "Post-it Listável" in titulos
 
     async def test_atualiza_postit(self, auth_client):
         r = await auth_client.post("/api/home/postits", json={
-            "texto": "Texto Original",
+            "titulo": "Texto Original",
             "cor": "#ffffff",
         })
         assert r.status_code in (200, 201)
@@ -173,14 +173,14 @@ class TestHomePostits:
 
         if item_id:
             r2 = await auth_client.put(f"/api/home/postits/{item_id}", json={
-                "texto": "Texto Editado",
+                "titulo": "Texto Editado",
                 "cor": "#ffcccc",
             })
             assert r2.status_code == 200
 
     async def test_deleta_postit(self, auth_client):
         r = await auth_client.post("/api/home/postits", json={
-            "texto": "Para Deletar",
+            "titulo": "Para Deletar",
             "cor": "#cccccc",
         })
         assert r.status_code in (200, 201)
@@ -211,25 +211,32 @@ class TestSyslog:
     async def test_lista_logs(self, auth_client):
         r = await auth_client.get("/api/syslog")
         assert r.status_code == 200
-        assert isinstance(r.json(), list)
+        data = r.json()
+        # API retorna {"logs": [...], "total": ..., "offset": ..., "limit": ...}
+        assert isinstance(data, dict)
+        assert "logs" in data
+        assert isinstance(data["logs"], list)
 
     async def test_cria_evento_teste(self, auth_client):
         r = await auth_client.post("/api/syslog/teste")
         assert r.status_code == 200
 
     async def test_evento_aparece_na_lista(self, auth_client):
-        await auth_client.post("/api/syslog/teste")
+        # log_event usa pool global (None em testes) — apenas verifica que endpoint responde
+        r_post = await auth_client.post("/api/syslog/teste")
+        assert r_post.status_code == 200
         r = await auth_client.get("/api/syslog")
         assert r.status_code == 200
-        # Após criar evento de teste, lista não deve estar vazia
-        assert isinstance(r.json(), list)
+        data = r.json()
+        assert "logs" in data
+        assert isinstance(data["logs"], list)
 
     async def test_filtra_por_nivel(self, auth_client):
         r = await auth_client.get("/api/syslog?nivel=info")
         assert r.status_code == 200
         data = r.json()
-        assert isinstance(data, list)
-        for item in data:
+        assert "logs" in data
+        for item in data["logs"]:
             assert item.get("nivel") == "info"
 
     async def test_export_csv(self, auth_client):

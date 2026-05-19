@@ -253,8 +253,13 @@ class TestCampanhas:
         ids = [c["id"] for c in r2.json()]
         assert cid not in ids
 
-    async def test_iniciar_sem_contatos_retorna_400(self, auth_client):
-        """Campanha sem nenhum contato cadastrado não pode iniciar."""
+    async def test_iniciar_sem_contatos_retorna_400(self, auth_client, db_conn, empresa_usuario):
+        """Campanha sem nenhum contato ativo não pode iniciar."""
+        # Remove todos os contatos para garantir que a fila esteja vazia
+        await db_conn.execute(
+            "DELETE FROM contatos WHERE empresa_id = $1",
+            empresa_usuario["empresa_id"],
+        )
         camp_id = await _criar_campanha(auth_client, "Sem Contatos")
         r = await auth_client.post(f"/api/campanha/{camp_id}/iniciar", json={})
         assert r.status_code == 400

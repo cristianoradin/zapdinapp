@@ -228,7 +228,7 @@ class TestConversas:
 
     async def test_historico_com_mensagens(self, auth_client, db_conn, empresa_usuario):
         await db_conn.execute(
-            """INSERT INTO chat_historico (empresa_id, phone, role, content)
+            """INSERT INTO chat_historico (empresa_id, phone, role, conteudo)
                VALUES ($1, $2, $3, $4)""",
             empresa_usuario["empresa_id"],
             "11999990088",
@@ -241,7 +241,7 @@ class TestConversas:
 
     async def test_limpa_historico(self, auth_client, db_conn, empresa_usuario):
         await db_conn.execute(
-            """INSERT INTO chat_historico (empresa_id, phone, role, content)
+            """INSERT INTO chat_historico (empresa_id, phone, role, conteudo)
                VALUES ($1, $2, $3, $4)""",
             empresa_usuario["empresa_id"],
             "11999990077",
@@ -283,28 +283,29 @@ class TestMemoriaIA:
 
     async def test_cria_memoria(self, auth_client):
         r = await auth_client.post("/api/chatbot/memoria-ia", json={
-            "conteudo": "O cliente prefere contato pela manhã.",
-            "tipo": "preferencia",
+            "intencao": "preferencia contato manha",
+            "resposta_ideal": "O cliente prefere contato pela manhã.",
         })
         assert r.status_code == 200
         assert r.json().get("ok") is True or "id" in r.json()
 
     async def test_edita_memoria(self, auth_client, db_conn, empresa_usuario):
         mid = await db_conn.fetchval(
-            """INSERT INTO chatbot_memoria_ia (empresa_id, conteudo, tipo, aprovado)
+            """INSERT INTO chatbot_memoria_ia (empresa_id, intencao, resposta_ideal, aprovado)
                VALUES ($1, $2, $3, TRUE) RETURNING id""",
             empresa_usuario["empresa_id"],
             "Memória para editar",
             "geral",
         )
         r = await auth_client.patch(f"/api/chatbot/memoria-ia/{mid}", json={
-            "conteudo": "Memória editada com sucesso.",
+            "intencao": "Memória para editar",
+            "resposta_ideal": "Memória editada com sucesso.",
         })
         assert r.status_code == 200
 
     async def test_aprova_memoria(self, auth_client, db_conn, empresa_usuario):
         mid = await db_conn.fetchval(
-            """INSERT INTO chatbot_memoria_ia (empresa_id, conteudo, tipo, aprovado)
+            """INSERT INTO chatbot_memoria_ia (empresa_id, intencao, resposta_ideal, aprovado)
                VALUES ($1, $2, $3, FALSE) RETURNING id""",
             empresa_usuario["empresa_id"],
             "Memória para aprovar",
@@ -315,7 +316,7 @@ class TestMemoriaIA:
 
     async def test_deleta_memoria(self, auth_client, db_conn, empresa_usuario):
         mid = await db_conn.fetchval(
-            """INSERT INTO chatbot_memoria_ia (empresa_id, conteudo, tipo, aprovado)
+            """INSERT INTO chatbot_memoria_ia (empresa_id, intencao, resposta_ideal, aprovado)
                VALUES ($1, $2, $3, TRUE) RETURNING id""",
             empresa_usuario["empresa_id"],
             "Memória para deletar",
