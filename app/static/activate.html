@@ -4,19 +4,27 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ZapDin — Ativação do Sistema</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --green:   #25D366;
-      --green-d: #1ebe5a;
-      --dark:    #111b21;
-      --card:    #1e2b33;
-      --border:  #2a3942;
-      --text:    #e9edef;
-      --muted:   #8696a0;
-      --error:   #f15c6d;
-      --warn:    #ffc107;
+      --accent:       #3d7f1f;
+      --accent-light: #7cdc44;
+      --accent-blue:  #3b82f6;
+      --bg:           #f4f6f9;
+      --surface:      #ffffff;
+      --border:       #e4e6ea;
+      --text:         #1a1d23;
+      --text-muted:   #6b7280;
+      --error:        #dc2626;
+      --error-bg:     #fef2f2;
+      --success:      #16a34a;
+      --success-bg:   #f0fdf4;
+      --warn-bg:      #fffbeb;
+      --grad: linear-gradient(90deg, #3d7f1f 0%, #7cdc44 50%, #3b82f6 100%);
     }
 
     body {
@@ -24,254 +32,378 @@
       align-items: center;
       justify-content: center;
       min-height: 100vh;
-      background: var(--dark);
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
       color: var(--text);
     }
 
     .card {
-      background: var(--card);
+      background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 16px;
       padding: 48px 40px;
       width: 100%;
-      max-width: 440px;
-      box-shadow: 0 24px 48px rgba(0,0,0,.45);
+      max-width: 460px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.08), 0 1px 4px rgba(0,0,0,.04);
       animation: fadeUp .35s ease both;
     }
 
     @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(16px); }
+      from { opacity: 0; transform: translateY(14px); }
       to   { opacity: 1; transform: translateY(0); }
     }
 
-    .logo {
+    /* Logo */
+    .logo-wrap {
       display: flex;
       align-items: center;
-      gap: 12px;
-      margin-bottom: 32px;
+      gap: 14px;
+      margin-bottom: 36px;
     }
 
-    .logo-icon {
-      width: 48px; height: 48px;
-      background: var(--green);
-      border-radius: 12px;
-      display: flex; align-items: center; justify-content: center;
+    .logo-img {
+      height: 44px;
+      width: auto;
     }
 
-    .logo-icon svg { width: 28px; height: 28px; fill: #fff; }
+    .logo-text {
+      display: flex;
+      flex-direction: column;
+    }
 
-    .logo-text h1 { font-size: 22px; font-weight: 700; letter-spacing: -.3px; }
-    .logo-text p  { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .logo-name {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -.4px;
+      background: var(--grad);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.2;
+    }
 
-    h2 {
-      font-size: 18px;
-      font-weight: 600;
+    .logo-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Cabeçalho */
+    .card-title {
+      font-size: 20px;
+      font-weight: 700;
       margin-bottom: 8px;
+      letter-spacing: -.3px;
     }
 
-    .subtitle {
+    .card-subtitle {
       font-size: 14px;
-      color: var(--muted);
-      line-height: 1.55;
+      color: var(--text-muted);
+      line-height: 1.6;
       margin-bottom: 28px;
     }
 
+    /* Campo */
     label {
       display: block;
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: .6px;
+      letter-spacing: .7px;
       margin-bottom: 8px;
+    }
+
+    .input-wrap {
+      position: relative;
     }
 
     input[type="text"] {
       width: 100%;
-      background: var(--dark);
-      border: 1px solid var(--border);
+      background: var(--bg);
+      border: 1.5px solid var(--border);
       border-radius: 10px;
       padding: 14px 16px;
-      font-size: 15px;
+      font-size: 16px;
+      font-family: 'Inter', monospace;
+      font-weight: 500;
       color: var(--text);
-      letter-spacing: .08em;
+      letter-spacing: .12em;
       outline: none;
-      transition: border-color .2s;
+      transition: border-color .2s, box-shadow .2s;
     }
 
     input[type="text"]:focus {
-      border-color: var(--green);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(61,127,31,.12);
+      background: #fff;
+    }
+
+    input[type="text"].error {
+      border-color: var(--error);
+      box-shadow: 0 0 0 3px rgba(220,38,38,.1);
     }
 
     input[type="text"]::placeholder {
-      color: var(--border);
-      letter-spacing: 0;
+      color: #c9ced8;
+      letter-spacing: .04em;
+      font-weight: 400;
     }
 
+    /* Botão */
     .btn {
       width: 100%;
       margin-top: 20px;
-      padding: 14px;
-      background: var(--green);
+      padding: 15px;
+      background: var(--grad);
       color: #fff;
       font-size: 15px;
       font-weight: 600;
+      font-family: 'Inter', sans-serif;
       border: none;
       border-radius: 10px;
       cursor: pointer;
-      transition: background .2s, opacity .2s;
+      transition: opacity .2s, transform .1s;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
+      letter-spacing: -.1px;
     }
 
-    .btn:hover:not(:disabled) { background: var(--green-d); }
+    .btn:hover:not(:disabled) { opacity: .9; transform: translateY(-1px); }
+    .btn:active:not(:disabled) { transform: translateY(0); }
     .btn:disabled { opacity: .55; cursor: not-allowed; }
 
     .spinner {
       width: 18px; height: 18px;
-      border: 2.5px solid rgba(255,255,255,.35);
+      border: 2.5px solid rgba(255,255,255,.4);
       border-top-color: #fff;
       border-radius: 50%;
       animation: spin .7s linear infinite;
       display: none;
+      flex-shrink: 0;
     }
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* Alertas */
     .alert {
-      margin-top: 18px;
+      margin-top: 16px;
       padding: 12px 14px;
       border-radius: 8px;
       font-size: 14px;
-      line-height: 1.5;
+      line-height: 1.55;
       display: none;
     }
 
-    .alert.error   { background: rgba(241,92,109,.15); border: 1px solid rgba(241,92,109,.4); color: #f99; }
-    .alert.success { background: rgba(37,211,102,.12); border: 1px solid rgba(37,211,102,.35); color: #aeffcd; }
-    .alert.info    { background: rgba(134,150,160,.12); border: 1px solid var(--border); color: var(--muted); }
+    .alert.error   {
+      background: var(--error-bg);
+      border: 1px solid rgba(220,38,38,.25);
+      color: #b91c1c;
+    }
+    .alert.success {
+      background: var(--success-bg);
+      border: 1px solid rgba(22,163,74,.25);
+      color: #15803d;
+    }
 
-    .divider { height: 1px; background: var(--border); margin: 28px 0; }
+    /* Countdown pós-ativação */
+    .countdown-wrap {
+      margin-top: 16px;
+      padding: 14px 16px;
+      background: var(--success-bg);
+      border: 1px solid rgba(22,163,74,.25);
+      border-radius: 8px;
+      display: none;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .countdown-icon {
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    .countdown-text {
+      font-size: 14px;
+      color: #15803d;
+      line-height: 1.5;
+    }
+
+    .countdown-num {
+      font-weight: 700;
+      font-size: 16px;
+    }
+
+    /* Divider + footer */
+    .divider { height: 1px; background: var(--border); margin: 28px 0 20px; }
 
     .footer {
       font-size: 12px;
-      color: var(--muted);
+      color: var(--text-muted);
       text-align: center;
-      line-height: 1.6;
+      line-height: 1.7;
     }
+
+    .footer a { color: var(--accent); text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
 
 <div class="card">
-  <div class="logo">
-    <div class="logo-icon">
-      <!-- WhatsApp icon simplificado -->
-      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+
+  <!-- Logo -->
+  <div class="logo-wrap">
+    <img src="/logo/zapdin-logo.png" alt="ZapDin" class="logo-img"
+         onerror="this.style.display='none'; document.querySelector('.logo-fallback').style.display='flex'" />
+    <!-- fallback SVG caso a logo não exista -->
+    <div class="logo-fallback" style="display:none; width:44px; height:44px; border-radius:10px;
+         background:var(--grad); align-items:center; justify-content:center;">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="#fff">
         <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
         <path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.554 4.118 1.528 5.855L.057 23.882l6.188-1.444A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.003-1.368l-.36-.213-3.668.856.897-3.552-.234-.374A9.818 9.818 0 0112 2.182c5.425 0 9.818 4.393 9.818 9.818S17.425 21.818 12 21.818z"/>
       </svg>
     </div>
     <div class="logo-text">
-      <h1>ZapDin</h1>
-      <p>Sistema de mensagens WhatsApp</p>
+      <span class="logo-name">ZapDin</span>
+      <span class="logo-sub">Sistema de automação WhatsApp</span>
     </div>
   </div>
 
-  <h2>Ativação do sistema</h2>
-  <p class="subtitle">
+  <!-- Título -->
+  <h1 class="card-title">Ativação do sistema</h1>
+  <p class="card-subtitle">
     Este sistema precisa ser ativado antes do primeiro uso.<br>
-    Insira o token de ativação fornecido pelo seu representante.
+    Insira o token fornecido pelo seu representante ZapDin.
   </p>
 
+  <!-- Campo token -->
   <label for="token">Token de Ativação</label>
-  <input
-    type="text"
-    id="token"
-    placeholder="XXXX-XXXX-XXXX-XXXX"
-    autocomplete="off"
-    spellcheck="false"
-    autofocus
-  />
+  <div class="input-wrap">
+    <input
+      type="text"
+      id="token"
+      placeholder="XXXX-XXXX-XXXX-XXXX"
+      autocomplete="off"
+      spellcheck="false"
+      autofocus
+    />
+  </div>
 
-  <button class="btn" id="btn-activate" onclick="activate()">
+  <button class="btn" id="btn-activate" onclick="ativar()">
     <span class="spinner" id="spinner"></span>
     <span id="btn-text">Ativar sistema</span>
   </button>
 
   <div class="alert" id="alert"></div>
 
+  <!-- Countdown pós-ativação -->
+  <div class="countdown-wrap" id="countdown-wrap">
+    <span class="countdown-icon">🔄</span>
+    <div class="countdown-text">
+      Sistema ativado! Reiniciando em <span class="countdown-num" id="countdown-num">4</span>s…
+    </div>
+  </div>
+
   <div class="divider"></div>
   <div class="footer">
-    Token fornecido pelo painel administrativo ZapDin Monitor.<br>
-    Dúvidas? Entre em contato com o suporte.
+    Token disponível em <strong>ZapDin Monitor → Clientes → Token de Ativação</strong>.<br>
+    Dúvidas? <a href="mailto:suporte@zapdin.com.br">suporte@zapdin.com.br</a>
   </div>
+
 </div>
 
 <script>
-  // Formata token enquanto digita: XXXX-XXXX-XXXX-XXXX
-  document.getElementById('token').addEventListener('input', function () {
+  // ── Formata o token enquanto digita: XXXX-XXXX-XXXX-XXXX ─────────────────
+  const input = document.getElementById('token');
+
+  input.addEventListener('input', function () {
     let v = this.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-    let formatted = v.match(/.{1,4}/g)?.join('-') ?? v;
-    this.value = formatted.substring(0, 19);
+    let fmt = v.match(/.{1,4}/g)?.join('-') ?? v;
+    this.value = fmt.substring(0, 19);
+    this.classList.remove('error');
+    esconderAlerta();
   });
 
-  document.getElementById('token').addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') activate();
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') ativar();
   });
 
+  // ── UI helpers ────────────────────────────────────────────────────────────
   function setLoading(on) {
-    const btn = document.getElementById('btn-activate');
+    const btn     = document.getElementById('btn-activate');
     const spinner = document.getElementById('spinner');
-    const text = document.getElementById('btn-text');
-    btn.disabled = on;
+    const text    = document.getElementById('btn-text');
+    btn.disabled          = on;
     spinner.style.display = on ? 'block' : 'none';
-    text.textContent = on ? 'Validando…' : 'Ativar sistema';
+    text.textContent      = on ? 'Validando…' : 'Ativar sistema';
   }
 
-  function showAlert(msg, type = 'error') {
+  function mostrarAlerta(msg, tipo = 'error') {
     const el = document.getElementById('alert');
     el.textContent = msg;
-    el.className = `alert ${type}`;
+    el.className   = `alert ${tipo}`;
     el.style.display = 'block';
+    if (tipo === 'error') input.classList.add('error');
   }
 
-  function hideAlert() {
+  function esconderAlerta() {
     document.getElementById('alert').style.display = 'none';
+    input.classList.remove('error');
   }
 
-  async function activate() {
-    const token = document.getElementById('token').value.replace(/-/g, '').trim();
+  function iniciarCountdown(segundos) {
+    const wrap = document.getElementById('countdown-wrap');
+    const num  = document.getElementById('countdown-num');
+    wrap.style.display = 'flex';
+    num.textContent = segundos;
+
+    const intervalo = setInterval(() => {
+      segundos -= 1;
+      num.textContent = segundos;
+      if (segundos <= 0) {
+        clearInterval(intervalo);
+        window.location.href = '/';
+      }
+    }, 1000);
+  }
+
+  // ── Ativação ──────────────────────────────────────────────────────────────
+  async function ativar() {
+    const token = input.value.replace(/-/g, '').trim();
+
     if (token.length < 8) {
-      showAlert('Token muito curto. Verifique e tente novamente.');
+      mostrarAlerta('Token muito curto. Verifique e tente novamente.');
+      input.focus();
       return;
     }
 
-    hideAlert();
+    esconderAlerta();
     setLoading(true);
 
     try {
-      const res = await fetch('/api/activate', {
-        method: 'POST',
+      const res  = await fetch('/api/activate', {
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token }),
+        body:    JSON.stringify({ token }),
       });
       const data = await res.json();
 
       if (data.ok) {
-        showAlert('✅ ' + data.message, 'success');
-        document.getElementById('btn-activate').disabled = true;
-        // Aguarda 3s e redireciona — o servidor reiniciará no backend
-        setTimeout(() => { window.location.href = '/'; }, 4000);
+        // Esconde o botão, mostra countdown
+        document.getElementById('btn-activate').style.display = 'none';
+        input.disabled = true;
+        iniciarCountdown(4);
       } else {
-        showAlert(data.error ?? 'Erro desconhecido.');
+        const msg = data.error ?? 'Erro desconhecido. Tente novamente.';
+        mostrarAlerta(msg);
         setLoading(false);
+        input.focus();
       }
-    } catch (err) {
-      showAlert('Não foi possível conectar ao sistema. Verifique se o serviço está rodando.');
+    } catch {
+      mostrarAlerta('Não foi possível conectar ao sistema. Verifique se o serviço está rodando.');
       setLoading(false);
     }
   }
