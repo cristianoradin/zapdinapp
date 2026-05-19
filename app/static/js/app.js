@@ -188,9 +188,9 @@
       if (!keysRes.ok) throw new Error('no keys');
       const keys = await keysRes.json();
       const nomes = { openai: 'OpenAI', gemini: 'Gemini', anthropic: 'Claude', groq: 'Groq' };
-      // Providers com chave configurada E habilitados para OCR ou Chat
+      // Providers com chave configurada (uso é configuração interna, não afeta disponibilidade)
       const ativos = ['openai','gemini','anthropic','groq'].filter(
-        p => keys[p]?.configurado && (keys[p]?.uso?.ocr || keys[p]?.uso?.chat)
+        p => keys[p]?.configurado
       );
       if (ativos.length === 0) {
         pill.classList.remove('active');
@@ -970,8 +970,11 @@
         }
         // Restaura pills de uso
         const uso = info.uso || {};
-        _aiSetUsoPill(p, 'ocr',  uso.ocr  === true);
-        _aiSetUsoPill(p, 'chat', uso.chat === true);
+        // Se chave configurada mas nenhum uso ativo, liga OCR por padrão
+        const ocrAtivo  = uso.ocr  === true || (info.configurado && !uso.ocr && !uso.chat);
+        const chatAtivo = uso.chat === true;
+        _aiSetUsoPill(p, 'ocr',  ocrAtivo);
+        _aiSetUsoPill(p, 'chat', chatAtivo);
       }
     } catch {}
   }
