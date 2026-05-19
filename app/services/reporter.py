@@ -32,6 +32,38 @@ logger = logging.getLogger(__name__)
 # Task do loop de heartbeat, guardada para poder cancelar no shutdown
 _task: asyncio.Task | None = None
 
+# ── P2: Watchdog de workers ───────────────────────────────────────────────────
+_WORKER_STALE_MINUTES = 5   # alerta se sem heartbeat por mais de 5 minutos
+_WATCHED_WORKERS = ["queue_worker"]
+
+
+async def _check_worker_heartbeats() -> None:
+    """Verifica se workers estão enviando heartbeat. Alerta via Telegram se estale."""
+    try:
+        from ..core.database import get_db_direct
+        from .telegram_service import notify_worker_stuck
+        async with get_db_direct() as db:
+            async with db.execute(
+                """SELECT worker_name,
+                          EXTRACT(EPOCH FROM (NOW() - last_seen)) / 60 AS minutes_ago,
+                          status, detail
+                   FROM worker_heartbeats
+                   WHERE worker_name = ANY(?)""",
+                (_WATCHED_WORKERS,),
+            ) as cur:
+                rows = {r["worker_name"]: r for r in await cur.fetchall()}
+
+        for worker in _WATCHED_WORKERS:
+            if worker not in rows:
+                # Nunca enviou heartbeat — pode ter acabado de subir, ignora
+                continue
+            minutes_ago = int(rows[worker]["minutes_ago"] or 0)
+            if minutes_ago >= _WORKER_STALE_MINUTES:
+                logger.warning("[watchdog] %s sem heartbeat há %d min", worker, minutes_ago)
+                await notify_worker_stuck(worker, minutes_ago)
+    except Exception as exc:
+        logger.debug("[watchdog] Erro ao checar heartbeats: %s", exc)
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  Utilitários internos
@@ -329,6 +361,7 @@ async def _loop() -> None:
 
     while True:
         await _send_heartbeat()
+        asyncio.create_task(_check_worker_heartbeats())  # P2: watchdog — fire-and-forget
         _cleanup_tick += 1
         if _cleanup_tick >= _CLEANUP_INTERVAL:
             _cleanup_tick = 0

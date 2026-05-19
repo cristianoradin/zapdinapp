@@ -52,6 +52,7 @@ _setup_logging()
 from .core.database import init_db, get_db, get_db_direct
 from .core.http_client import close_http_client
 from .routers import whatsapp, erp, config_router, arquivos, stats, telegram_router
+from .routers.ai_config_router import router as ai_config_router
 from .routers.auth_login import router as auth_login_router
 from .routers.auth_empresa import router as auth_empresa_router
 from .routers.auth_usuarios import router as auth_usuarios_router
@@ -259,6 +260,7 @@ fastapi_app.include_router(auth_usuarios_router) # /api/auth/usuarios — CRUD u
 fastapi_app.include_router(whatsapp.router)
 fastapi_app.include_router(erp.router)
 fastapi_app.include_router(config_router.router)
+fastapi_app.include_router(ai_config_router)        # /api/config/ai-keys, ai-key, ai-uso
 fastapi_app.include_router(arquivos.router)
 fastapi_app.include_router(stats.router)
 fastapi_app.include_router(telegram_router.router)

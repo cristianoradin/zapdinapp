@@ -94,8 +94,9 @@ class WhatsAppSession:
         self._pw      = None
         self._browser = None
         self._page    = None
-        self._lock    = asyncio.Lock()
-        self._running = False
+        self._lock        = asyncio.Lock()
+        self._running     = False
+        self._crash_count = 0          # P3: contador de crashes do Playwright
 
     async def start(self) -> None:
         if self._running:
@@ -205,6 +206,7 @@ class WhatsAppSession:
                                 stuck_since = None
                                 self.status = "connected"
                                 self.qr_data = None
+                                self._crash_count = 0  # P3: reset ao conectar
                                 # Extrai número do WhatsApp conectado via window.Store
                                 try:
                                     raw = await self._page.evaluate(
@@ -286,7 +288,11 @@ class WhatsAppSession:
             if not self._running:
                 break
 
-            await asyncio.sleep(RECONNECT_WAIT)
+            # P3: backoff exponencial — 10s, 20s, 40s … max 300s
+            wait = min(RECONNECT_WAIT * (2 ** self._crash_count), 300)
+            logger.info("Sessão %s — aguardando %ds antes de reconectar (crash #%d)",
+                        self.session_id, wait, self._crash_count)
+            await asyncio.sleep(wait)
 
             # Tenta recuperar: primeiro a página, se falhar reinicia Playwright completo
             recovered = False
@@ -300,12 +306,34 @@ class WhatsAppSession:
                     await self._page.add_init_script(_WEBDRIVER_SCRIPT)
                     logger.info("Sessão %s — página recriada, reconectando…", self.session_id)
                     recovered = True
+                    self._crash_count = 0   # reset após recuperação bem-sucedida
             except Exception:
                 pass
 
             if not recovered:
+                # P3: incrementa contador de crashes antes de reiniciar Playwright
+                self._crash_count += 1
+                _MAX_CRASHES = 3
+
+                if self._crash_count > _MAX_CRASHES:
+                    # Esgotou tentativas — marca como error e para
+                    logger.error(
+                        "Sessão %s — %d crashes consecutivos, encerrando",
+                        self.session_id, self._crash_count,
+                    )
+                    self.status = "error"
+                    asyncio.create_task(
+                        telegram_service.notify_api_error(
+                            f"🔴 Sessão <b>{self.nome}</b> encerrada após "
+                            f"{self._crash_count} crashes consecutivos do Chromium. "
+                            f"Reinicie a sessão manualmente no painel."
+                        )
+                    )
+                    return
+
                 # Browser crashou (EPIPE, etc.) — reinicia Playwright completo
-                logger.warning("Sessão %s — reiniciando Playwright completo…", self.session_id)
+                logger.warning("Sessão %s — reiniciando Playwright completo (crash %d/%d)…",
+                               self.session_id, self._crash_count, _MAX_CRASHES)
                 try:
                     if self._browser:
                         await self._browser.close()
@@ -339,7 +367,8 @@ class WhatsAppSession:
                         else await self._browser.new_page()
                     )
                     await self._page.add_init_script(_WEBDRIVER_SCRIPT)
-                    logger.info("Sessão %s — Playwright reiniciado com sucesso", self.session_id)
+                    logger.info("Sessão %s — Playwright reiniciado com sucesso (crash %d/%d)",
+                                self.session_id, self._crash_count, _MAX_CRASHES)
                 except Exception as exc:
                     logger.error("Sessão %s — falha ao reiniciar Playwright: %s", self.session_id, exc)
                     self.status = "error"

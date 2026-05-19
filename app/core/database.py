@@ -975,4 +975,16 @@ async def init_db() -> None:
             "ON postits(empresa_id, usuario_id)"
         )
 
+        # ── P2: Worker heartbeats ─────────────────────────────────────────────
+        await db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS worker_heartbeats (
+                worker_name TEXT PRIMARY KEY,
+                last_seen   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                status      TEXT NOT NULL DEFAULT 'ok',
+                detail      TEXT
+            )
+            """
+        )
+
         logger.info("[db] Schema DBA inicializado — índices, constraints e migrations ok")

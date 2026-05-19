@@ -41,6 +41,10 @@ _send_errors: int = 0
 _last_queue_blocked_alert: float = 0.0
 _QUEUE_BLOCKED_COOLDOWN = 30 * 60   # 30 minutos
 
+# Throttle para "worker travado" — no máximo 1 alerta a cada 60min por worker
+_last_worker_stuck_alert: dict[str, float] = {}
+_WORKER_STUCK_COOLDOWN = 60 * 60    # 60 minutos
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  Configuração
@@ -182,6 +186,27 @@ async def notify_queue_blocked(pending_count: int) -> None:
         f"📨 {pending_count} mensagem(ns) aguardando envio.\n"
         f"❌ Nenhuma sessão WhatsApp conectada.\n"
         f"Acesse o painel para reconectar.\n"
+        f"🕐 {_now()}"
+    )
+
+
+async def notify_worker_stuck(worker_name: str, minutes: int) -> None:
+    """
+    Worker sem heartbeat por mais de N minutos.
+    Throttle: no máximo 1 alerta por worker a cada 60 minutos.
+    """
+    global _last_worker_stuck_alert
+    now = time.time()
+    last = _last_worker_stuck_alert.get(worker_name, 0.0)
+    if now - last < _WORKER_STUCK_COOLDOWN:
+        return
+    _last_worker_stuck_alert[worker_name] = now
+    await send(
+        f"⚠️ <b>ZapDin — Worker Inativo</b>\n"
+        f"{_header()}\n\n"
+        f"🔴 <b>{worker_name}</b> sem heartbeat há {minutes} minuto(s).\n"
+        f"O processo pode ter travado ou encerrado inesperadamente.\n"
+        f"Verifique o status do serviço no servidor.\n"
         f"🕐 {_now()}"
     )
 

@@ -156,3 +156,34 @@ async def queue_health(db=Depends(get_db), user: dict = Depends(get_current_user
         "wa_connected":   len(conectadas) > 0,
         "sessoes_ativas": len(conectadas),
     }
+
+
+@router.get("/workers")
+async def workers_status(db=Depends(get_db), user: dict = Depends(get_current_user)):
+    """
+    P2: Retorna status dos workers com base nos heartbeats gravados no banco.
+    Usado pelo painel Sistema para exibir saúde dos processos em background.
+    """
+    async with db.execute(
+        """SELECT worker_name,
+                  last_seen,
+                  EXTRACT(EPOCH FROM (NOW() - last_seen)) / 60 AS minutes_ago,
+                  status,
+                  detail
+           FROM worker_heartbeats
+           ORDER BY worker_name"""
+    ) as cur:
+        rows = await cur.fetchall()
+
+    result = []
+    for r in rows:
+        minutes_ago = int(r["minutes_ago"] or 0)
+        result.append({
+            "worker":      r["worker_name"],
+            "last_seen":   r["last_seen"].strftime("%d/%m/%Y %H:%M:%S") if r["last_seen"] else None,
+            "minutes_ago": minutes_ago,
+            "status":      r["status"],
+            "detail":      r["detail"] or "",
+            "alert":       minutes_ago >= 5,   # alerta se > 5 min sem heartbeat
+        })
+    return result

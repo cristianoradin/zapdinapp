@@ -27,6 +27,24 @@ from typing import Dict
 logger = logging.getLogger(__name__)
 from .log_service import log_event_sync
 
+# ── Heartbeat (P2) ────────────────────────────────────────────────────────────
+_HEARTBEAT_INTERVAL = 30   # escreve no banco a cada 30 iterações de ~1s
+
+async def _write_heartbeat(get_db_direct, status: str = "ok", detail: str = "") -> None:
+    """Persiste timestamp no banco para watchdog do reporter."""
+    try:
+        async with get_db_direct() as db:
+            await db.execute(
+                """INSERT INTO worker_heartbeats (worker_name, last_seen, status, detail)
+                   VALUES ('queue_worker', NOW(), ?, ?)
+                   ON CONFLICT (worker_name) DO UPDATE
+                   SET last_seen = NOW(), status = EXCLUDED.status, detail = EXCLUDED.detail""",
+                (status, detail),
+            )
+            await db.commit()
+    except Exception as exc:
+        logger.debug("[worker] heartbeat falhou: %s", exc)
+
 UPLOAD_DIR = "data/arquivos"
 
 
@@ -177,6 +195,7 @@ async def _loop() -> None:
 
     logger.info("Queue worker loop iniciado")
     _bv_check_counter = 0  # verifica pendentes a cada ~30s (30 ciclos de 1s)
+    _hb_counter = 0        # escreve heartbeat a cada _HEARTBEAT_INTERVAL ciclos
     while True:
         try:
             dispatched = await _process_next(wa_manager, settings, get_db_direct)
@@ -188,6 +207,13 @@ async def _loop() -> None:
             _last_error = str(exc)
             logger.error("Queue worker erro: %s", exc, exc_info=True)
             dispatched = False
+
+        # Heartbeat a cada ~30s
+        _hb_counter += 1
+        if _hb_counter >= _HEARTBEAT_INTERVAL:
+            _hb_counter = 0
+            status = "error" if _last_error else "ok"
+            asyncio.create_task(_write_heartbeat(get_db_direct, status, _last_error[:200]))
 
         # Verifica boas-vindas WA pendentes a cada ~30 ciclos de sleep(1s)
         _bv_check_counter += 1
