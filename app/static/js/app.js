@@ -1679,6 +1679,7 @@
     if (target) target.classList.add('active');
     if (panel === 'dominio' && window.dominio) dominio.carregar();
     if (panel === 'log' && window.syslog) syslog.carregar(true);
+    if (panel === 'token' && window.tokenModule) tokenModule.init();
   }
 
   // ── Usuário ──────────────────────────────────────────────────────────────────
