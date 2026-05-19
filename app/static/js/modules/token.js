@@ -2,22 +2,40 @@
 // Gerencia Token ERP e Tokens PDV.
 // init() chamado pelo onPageLoad em app.js.
 // revogarPdvToken() e copiarPdvToken() expostos globalmente (usados em onclick inline).
-// Depende de: api(), showAlert(), showConfirm() — globais em app.js.
+// Autossuficiente: usa fetch diretamente, sem depender de api() de app.js.
 
 window.tokenModule = (() => {
   let _initialized = false;
+
+  // ── Helpers internos ─────────────────────────────────────────────────────────
+
+  async function _fetch(method, url, body) {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(url, opts);
+    if (res.status === 401) { window.location.href = '/login'; return null; }
+    try { return await res.json(); } catch { return null; }
+  }
+
+  function _alert(id, msg, type = 'success') {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = msg;
+    el.className = `alert alert-${type}`;
+    el.style.display = 'block';
+    setTimeout(() => { el.style.display = 'none'; }, 4000);
+  }
 
   // ── PDV Tokens ──────────────────────────────────────────────────────────────
 
   async function loadPdvTokens() {
     const el = document.getElementById('pdvTokensList');
     if (!el) return;
-    const res = await api('GET', '/api/pdv/tokens');
-    if (!res || res.detail) {
+    const tokens = await _fetch('GET', '/api/pdv/tokens');
+    if (!tokens || !Array.isArray(tokens)) {
       el.innerHTML = '<div style="color:#dc2626;font-size:.82rem">Erro ao carregar tokens.</div>';
       return;
     }
-    const tokens = Array.isArray(res) ? res : [];
     if (!tokens.length) {
       el.innerHTML = '<div style="text-align:center;color:var(--text-mid);font-size:.85rem;padding:1rem">Nenhum token gerado ainda.</div>';
       return;
@@ -77,13 +95,14 @@ window.tokenModule = (() => {
   // ── Eventos ──────────────────────────────────────────────────────────────────
 
   function _registerEvents() {
+    // Gerar token PDV
     document.getElementById('btnGerarPdvToken').addEventListener('click', async () => {
       const nome = document.getElementById('inputPdvNome').value.trim();
       if (!nome) {
-        showAlert('alertPdvToken', 'Informe o nome do caixa antes de gerar.', 'error');
+        _alert('alertPdvToken', 'Informe o nome do caixa antes de gerar.', 'error');
         return;
       }
-      const res = await api('POST', '/api/pdv/tokens', { nome });
+      const res = await _fetch('POST', '/api/pdv/tokens', { nome });
       if (res && res.token) {
         document.getElementById('pdvTokenValor').textContent = res.token;
         document.getElementById('pdvTokenEnvLine').textContent = `ZAPDIN_PDV_TOKEN=${res.token}`;
@@ -91,12 +110,18 @@ window.tokenModule = (() => {
         document.getElementById('inputPdvNome').value = '';
         loadPdvTokens();
       } else {
-        showAlert('alertPdvToken', 'Erro ao gerar token.', 'error');
+        _alert('alertPdvToken', 'Erro ao gerar token.', 'error');
       }
     });
 
+    // Gerar token ERP
     document.getElementById('btnGerarToken').addEventListener('click', async () => {
-      const ok = await showConfirm({
+      // Usa showConfirm se disponível, caso contrário usa confirm() nativo
+      const confirmar = typeof window.showConfirm === 'function'
+        ? window.showConfirm
+        : ({ title, body, okLabel }) => Promise.resolve(window.confirm(`${title}\n\n${body}`));
+
+      const ok = await confirmar({
         title: 'Gerar novo token API?',
         body: 'O token atual será invalidado imediatamente. Todas as integrações com o ERP precisarão ser atualizadas com o novo token.',
         okLabel: 'Sim, gerar novo',
@@ -104,25 +129,28 @@ window.tokenModule = (() => {
         icon: '⚠',
       });
       if (!ok) return;
-      const res = await api('POST', '/api/erp/gerar-token');
-      if (res.ok) {
+
+      const res = await _fetch('POST', '/api/erp/gerar-token');
+      if (res && res.token) {
         document.getElementById('inputToken').value = res.token;
-        showAlert('alertToken', 'Novo token gerado e salvo com sucesso!');
+        _alert('alertToken', 'Novo token gerado e salvo com sucesso!');
       } else {
-        showAlert('alertToken', 'Erro ao gerar token', 'error');
+        _alert('alertToken', 'Erro ao gerar token. Tente novamente.', 'error');
       }
     });
 
+    // Copiar token ERP
     document.getElementById('btnCopiarToken').addEventListener('click', () => {
       const val = document.getElementById('inputToken').value;
       if (!val) return;
       navigator.clipboard.writeText(val).then(() => {
         const btn = document.getElementById('btnCopiarToken');
         btn.textContent = '✅ Copiado!';
-        setTimeout(() => { btn.textContent = '📋 Copiar'; }, 2000);
+        setTimeout(() => { btn.textContent = '📋'; }, 2000);
       });
     });
 
+    // Atualizar status ERP
     document.getElementById('btnAtualizarErpStatus').addEventListener('click', async () => {
       const res = await fetch('/api/erp/status');
       if (res.ok) _renderErpStatus(await res.json());
@@ -143,20 +171,31 @@ window.tokenModule = (() => {
 
 // ── Globais para onclick inline no HTML gerado dinamicamente ─────────────────
 window.revogarPdvToken = async function(id) {
-  const ok = await showConfirm({
+  const confirmar = typeof window.showConfirm === 'function'
+    ? window.showConfirm
+    : ({ title, body }) => Promise.resolve(window.confirm(`${title}\n\n${body}`));
+
+  const ok = await confirmar({
     title: 'Revogar token PDV?',
     body: 'O PDV que usa este token ficará desconectado do App.',
     okLabel: 'Revogar', type: 'warning', icon: '⚠',
   });
   if (!ok) return;
-  await api('DELETE', `/api/pdv/tokens/${id}`);
-  tokenModule.init();
+
+  const res = await fetch(`/api/pdv/tokens/${id}`, { method: 'DELETE' });
+  if (res.ok) tokenModule.init();
 };
 
 window.copiarPdvToken = function() {
   const val = document.getElementById('pdvTokenValor').textContent;
   if (!val) return;
   navigator.clipboard.writeText(val).then(() => {
-    showAlert('alertPdvToken', 'Token copiado!');
+    const el = document.getElementById('alertPdvToken');
+    if (el) {
+      el.textContent = 'Token copiado!';
+      el.className = 'alert alert-success';
+      el.style.display = 'block';
+      setTimeout(() => { el.style.display = 'none'; }, 2000);
+    }
   });
 };
