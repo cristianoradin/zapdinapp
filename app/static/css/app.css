@@ -63,9 +63,9 @@
       overflow-y: auto;
       min-height: 0;
     }
-    .sidebar-nav-scroll::-webkit-scrollbar { width: 3px; }
+    .sidebar-nav-scroll::-webkit-scrollbar { width: 4px; }
     .sidebar-nav-scroll::-webkit-scrollbar-track { background: transparent; }
-    .sidebar-nav-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .sidebar-nav-scroll::-webkit-scrollbar-thumb { background: var(--accent-light); border-radius: 4px; opacity: .5; }
 
     /* Faixa decorativa no topo da sidebar — mesma lógica do topbar */
     .sidebar-top-bar {
@@ -97,8 +97,8 @@
     }
 
     .sidebar-section {
-      padding: .75rem 1.25rem .3rem;
-      font-size: .6rem;
+      padding: .45rem 1.25rem .15rem;
+      font-size: .58rem;
       font-weight: 700;
       color: var(--sb-section);
       text-transform: uppercase;
@@ -108,12 +108,12 @@
     .nav-item {
       display: flex;
       align-items: center;
-      gap: .625rem;
-      padding: .5rem 1rem;
-      margin: .1rem .6rem;
-      border-radius: 8px;
+      gap: .5rem;
+      padding: .35rem .875rem;
+      margin: .08rem .5rem;
+      border-radius: 7px;
       cursor: pointer;
-      font-size: .8375rem;
+      font-size: .8rem;
       font-weight: 500;
       color: var(--sb-text);
       letter-spacing: -.01em;
