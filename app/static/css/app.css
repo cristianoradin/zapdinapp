@@ -1366,6 +1366,8 @@
       padding-bottom: .625rem;
       border-bottom: 2px solid var(--border);
     }
+    /* Classe aplicada via JS quando home está ativa */
+    .page-title-bar.hidden { display: none !important; }
     .page-title-bar h1 {
       font-size: 1.45rem;
       font-weight: 800;
