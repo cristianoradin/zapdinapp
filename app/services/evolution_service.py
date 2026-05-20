@@ -122,6 +122,9 @@ class EvoSession:
             self._stop_reconnect()
             if phone:
                 self.phone = phone
+            elif not self.phone:
+                # Phone não veio no webhook → agenda busca via fetchInstances
+                asyncio.create_task(self._try_fetch_phone())
             # Notifica reconexão automática (só quando voltou de um estado não-conectado)
             if was_reconnecting and prev != "connected":
                 try:
@@ -328,6 +331,37 @@ class EvoSession:
                     self._start_reconnect()
                 await asyncio.sleep(20)
 
+    async def _try_fetch_phone(self) -> None:
+        """
+        Busca o número de telefone via fetchInstances quando phone ainda não foi extraído.
+        A Evolution API nem sempre inclui o phone no webhook CONNECTION_UPDATE — este
+        método consulta a lista de instâncias para obter o owner/wuid da sessão ativa.
+        Chamado periodicamente pelo heartbeat enquanto conectado mas sem phone.
+        """
+        inst = _instance_name(self.empresa_id, self.session_id)
+        try:
+            async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+                r = await client.get(_url("instance/fetchInstances"), headers=_h())
+            if r.status_code != 200:
+                return
+            for item in r.json():
+                # Suporta dois formatos da Evolution API: {instance:{...}} e {...} flat
+                i = item.get("instance") or item
+                if i.get("instanceName") != inst:
+                    continue
+                raw = (
+                    i.get("owner")
+                    or i.get("wuid")
+                    or i.get("phone")
+                    or ""
+                ).strip()
+                if raw:
+                    self.phone = raw.split("@")[0]
+                    logger.info("[evo] [%s] Número extraído via API: %s", self.session_id, self.phone)
+                return
+        except Exception as exc:
+            logger.debug("[evo] _try_fetch_phone [%s]: %s", self.session_id, exc)
+
     async def _check_state(self) -> None:
         """Consulta connectionState na Evolution API e atualiza o status local."""
         inst = _instance_name(self.empresa_id, self.session_id)
@@ -348,6 +382,9 @@ class EvoSession:
             # Estava conectado, agora não está → webhook perdido → inicia reconexão
             logger.warning("[evo] [%s] Heartbeat detectou queda — webhook perdido?", self.session_id)
             self.on_connection_update(state)
+        # Retry: conectado mas phone ainda não extraído → consulta fetchInstances
+        if self.status == "connected" and not self.phone:
+            await self._try_fetch_phone()
 
     # ─────────────────────────────────────────────────────────────────────────
     #  Busca QR inicial (startup ou quando front abre a página)
