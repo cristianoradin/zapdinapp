@@ -158,6 +158,8 @@ window.whatsappModule = (() => {
     const res = await fetch('/api/sessoes/live-status');
     if (!res.ok) return;
     const sessoes = await res.json();
+    // Atualiza o indicador do topo imediatamente (não espera o intervalo de 30s)
+    window._updateTopbarStatus?.();
     const cont = document.getElementById('listaSessoes');
     if (!cont) return;
     if (sessoes.length === 0) {

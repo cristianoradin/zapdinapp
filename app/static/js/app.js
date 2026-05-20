@@ -178,6 +178,9 @@
     } catch { /* silencioso */ }
   }
 
+  // Expõe para módulos externos (ex: whatsapp.js) atualizarem o topbar na hora
+  window._updateTopbarStatus = _updateTopbarStatus;
+
   // ── Status da IA (providers ativos) ─────────────────────────────────────────
   async function _updateAiStatus() {
     const pill = document.getElementById('topbarAiPill');
