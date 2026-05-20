@@ -220,6 +220,18 @@ class WhatsAppSession:
                                 except Exception:
                                     self.phone = None
                                 asyncio.create_task(self._sync_db_status("connected"))
+                            # Retry: se já conectado mas phone ainda não extraído, tenta de novo
+                            elif self.status == "connected" and not self.phone:
+                                try:
+                                    raw = await self._page.evaluate(
+                                        "() => { try { return window.Store && window.Store.Me ? window.Store.Me.wid._serialized || window.Store.Me.wid.user : null } catch(e) { return null } }"
+                                    )
+                                    if raw:
+                                        self.phone = raw.split("@")[0]
+                                        logger.info("Sessão %s — número extraído: %s", self.session_id, self.phone)
+                                        asyncio.create_task(self._sync_db_status("connected"))
+                                except Exception:
+                                    pass
                             await asyncio.sleep(15)
                             continue
 
