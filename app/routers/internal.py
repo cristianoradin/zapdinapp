@@ -240,6 +240,52 @@ async def trigger_rollback(request: Request):
     return result
 
 
+@router.post("/wa-restart/{sessao_id}")
+async def wa_restart_session(
+    sessao_id: str,
+    request: Request,
+    db=Depends(get_db),
+):
+    """
+    Reinicia uma sessão WhatsApp travada: remove do manager e recria.
+    Chamado pelo reporter.py quando o Monitor envia comando 'wa_restart'.
+    Protegido por IP: apenas localhost pode chamar.
+    """
+    _require_localhost(request)
+    logger.info("[wa-restart] Reiniciando sessão %s por comando remoto do Monitor", sessao_id)
+    try:
+        # Busca dados da sessão no banco para recriar depois
+        async with db.execute(
+            "SELECT id, nome, empresa_id FROM sessoes WHERE id = $1",
+            (sessao_id,),
+        ) as cur:
+            row = await cur.fetchone()
+
+        if not row:
+            logger.warning("[wa-restart] Sessão %s não encontrada no banco", sessao_id)
+            return {"ok": False, "erro": "Sessão não encontrada"}
+
+        empresa_id = row["empresa_id"]
+        nome = row["nome"]
+
+        # 1. Remove do manager (fecha Playwright, libera browser)
+        await wa_manager.remove_session(sessao_id, empresa_id)
+        logger.info("[wa-restart] Sessão %s removida do manager", sessao_id)
+
+        # 2. Aguarda 3s para o browser fechar completamente
+        import asyncio as _asyncio
+        await _asyncio.sleep(3)
+
+        # 3. Recria a sessão (vai para QR ou reconecta com sessão salva)
+        await wa_manager.create_session(sessao_id, empresa_id, nome)
+        logger.info("[wa-restart] Sessão %s recriada com sucesso", sessao_id)
+
+        return {"ok": True, "sessao_id": sessao_id}
+    except Exception as exc:
+        logger.error("[wa-restart] Erro ao reiniciar sessão %s: %s", sessao_id, exc)
+        return {"ok": False, "erro": str(exc)}
+
+
 @router.get("/daily-count/{sessao_id}")
 async def daily_count(
     sessao_id: str,

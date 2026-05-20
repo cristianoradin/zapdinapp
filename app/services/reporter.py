@@ -224,6 +224,24 @@ async def _send_heartbeat() -> None:
                             client_token=token,
                         ))
 
+                    # ── Verifica comando de reinício de sessão WA ──────────────
+                    wa_restart = resp_data.get("wa_restart")
+                    if wa_restart and isinstance(wa_restart, list):
+                        logger.info("[reporter] Comando wa_restart recebido: %s", wa_restart)
+                        import httpx as _httpx2
+                        import asyncio as _asyncio2
+                        async def _do_wa_restart(sessoes):
+                            async with _httpx2.AsyncClient(timeout=30.0) as _wc:
+                                for sid in sessoes:
+                                    try:
+                                        r = await _wc.post(
+                                            f"http://127.0.0.1:{settings.port}/internal/wa-restart/{sid}"
+                                        )
+                                        logger.info("[reporter] wa-restart %s: %s", sid, r.json())
+                                    except Exception as _we:
+                                        logger.error("[reporter] Falha wa-restart %s: %s", sid, _we)
+                        _asyncio2.create_task(_do_wa_restart(wa_restart))
+
                     # ── Fix 10: Verifica comando de rollback ────────────────────
                     rollback_cmd = resp_data.get("rollback")
                     if rollback_cmd:
