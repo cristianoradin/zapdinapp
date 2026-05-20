@@ -52,13 +52,13 @@ async function homeCarregarClima() {
     // Previsão 3 dias compacta
     const fc = document.getElementById('home-clima-forecast');
     if (fc && d.previsao) {
-      const dias = ['Hj','Am','Dep'];
+      const dias = ['Hoje','Amanhã','Depois'];
       fc.innerHTML = d.previsao.slice(0,3).map((p,i) => `
-        <div class="home-clima-forecast-day">
-          <div class="fc-label">${dias[i]}</div>
-          <div class="fc-icon">${_CLIMA_ICONS[p.codigo] || '🌤️'}</div>
-          <div class="fc-max">${Math.round(p.max)}°</div>
-          <div class="fc-min">${Math.round(p.min)}°</div>
+        <div class="hd-wf-day">
+          <div class="hd-wf-label">${dias[i]}</div>
+          <div class="hd-wf-icon">${_CLIMA_ICONS[p.codigo] || '🌤️'}</div>
+          <div class="hd-wf-max">${Math.round(p.max)}°</div>
+          <div class="hd-wf-min">${Math.round(p.min)}°</div>
         </div>`).join('');
     }
     // Preenche inputs de config
@@ -73,6 +73,31 @@ async function homeSalvarCidade() {
   if (!cidade) return;
   await fetch('/api/home/cidade', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({cidade, uf})});
   homeCarregarClima();
+}
+
+// ── KPIs ──────────────────────────────────────────────────────
+async function homeCarregarKPIs() {
+  try {
+    const [statsRes, waRes] = await Promise.all([
+      fetch('/api/stats'),
+      fetch('/api/sessoes/live-status'),
+    ]);
+    if (statsRes.ok) {
+      const s = await statsRes.json();
+      const hoje = document.getElementById('hd-kpi-hoje-val');
+      const total = document.getElementById('hd-kpi-total-val');
+      const fila  = document.getElementById('hd-kpi-fila-val');
+      if (hoje)  hoje.textContent  = (s.hoje  ?? s.today ?? '--');
+      if (total) total.textContent = (s.total_mensagens ?? '--');
+      if (fila)  fila.textContent  = (s.total_queued ?? '--');
+    }
+    if (waRes.ok) {
+      const sessoes = await waRes.json();
+      const connected = sessoes.filter(s => s.status === 'connected').length;
+      const waEl = document.getElementById('hd-kpi-wa-val');
+      if (waEl) waEl.textContent = connected;
+    }
+  } catch(e) {}
 }
 
 // ── Calendário ────────────────────────────────────────────────
@@ -91,7 +116,8 @@ function homeCalNav(delta) {
 
 function homeRenderCal() {
   const label = document.getElementById('home-cal-month');
-  if (label) label.textContent = `${_MESES_PT[_calMes]} ${_calAno}`;
+  const mesesCurtos = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  if (label) label.textContent = `${mesesCurtos[_calMes]} ${_calAno}`;
   const container = document.getElementById('home-cal-days');
   if (!container) return;
   const hoje = new Date();
@@ -99,24 +125,49 @@ function homeRenderCal() {
   const diasNoMes = new Date(_calAno, _calMes + 1, 0).getDate();
   const diasMesAnterior = new Date(_calAno, _calMes, 0).getDate();
   let html = '';
-  // Dias do mês anterior
-  for (let i = primeiroDia - 1; i >= 0; i--) {
+  for (let i = primeiroDia - 1; i >= 0; i--)
     html += `<div class="home-cal-day other-month">${diasMesAnterior - i}</div>`;
-  }
-  // Dias do mês atual
   for (let d = 1; d <= diasNoMes; d++) {
     const dataStr = `${_calAno}-${String(_calMes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const isToday = d === hoje.getDate() && _calMes === hoje.getMonth() && _calAno === hoje.getFullYear();
     const hasEv = _agendaDados[dataStr] && _agendaDados[dataStr].length > 0;
     html += `<div class="home-cal-day${isToday?' today':''}${hasEv?' has-event':''}" onclick="homeAbrirAgenda('${dataStr}')">${d}</div>`;
   }
-  // Completar última linha
   const total = primeiroDia + diasNoMes;
   const restante = total % 7 === 0 ? 0 : 7 - (total % 7);
-  for (let i = 1; i <= restante; i++) {
+  for (let i = 1; i <= restante; i++)
     html += `<div class="home-cal-day other-month">${i}</div>`;
-  }
   container.innerHTML = html;
+  // Próximos eventos
+  _renderNextEvents();
+}
+
+function _renderNextEvents() {
+  const el = document.getElementById('hd-next-events');
+  if (!el) return;
+  const hoje = new Date();
+  const eventos = [];
+  Object.entries(_agendaDados).forEach(([data, lista]) => {
+    const d = new Date(data + 'T12:00:00');
+    if (d >= new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()))
+      lista.forEach(ev => eventos.push({...ev, _data: data, _d: d}));
+  });
+  eventos.sort((a,b) => a._d - b._d || (a.hora_inicio||'').localeCompare(b.hora_inicio||''));
+  if (!eventos.length) {
+    el.innerHTML = '<div class="hd-next-empty">Nenhum compromisso próximo</div>'; return;
+  }
+  el.innerHTML = eventos.slice(0,5).map(ev => {
+    const [ano,mes,dia] = ev._data.split('-');
+    const eHoje = ev._data === `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
+    const label = eHoje ? 'Hoje' : `${dia}/${mes}`;
+    return `<div class="hd-next-event" onclick="homeAbrirAgenda('${ev._data}')">
+      <div class="hd-nev-dot" style="background:${ev.cor||'#3d7f1f'}"></div>
+      <div class="hd-nev-body">
+        <div class="hd-nev-titulo">${ev.titulo}</div>
+        <div class="hd-nev-hora">${label}${ev.hora_inicio ? ' · '+ev.hora_inicio : ''}</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 async function homeCarregarAgenda() {
@@ -294,33 +345,35 @@ async function homeCarregarRecados() {
     if (badge) badge.textContent = lista.length;
     const el = document.getElementById('home-recados-list');
     if (!el) return;
-    if (!lista.length) { el.innerHTML = '<div class="home-empty">Nenhum aviso no momento</div>'; return; }
+    if (!lista.length) {
+      el.innerHTML = `<div class="hd-empty">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:.25;margin-bottom:.4rem"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Nenhum aviso no momento
+      </div>`;
+      return;
+    }
     el.innerHTML = lista.map(rec => `
-      <div class="home-recado-item" style="border-left-color:${rec.cor||'#3d7f1f'}">
-        <div class="home-recado-titulo">${rec.titulo}</div>
-        <div class="home-recado-conteudo">${rec.conteudo}</div>
-        <div class="home-recado-data">📅 ${new Date(rec.created_at).toLocaleDateString('pt-BR')}</div>
+      <div class="hd-recado-item" style="border-left-color:${rec.cor||'#3d7f1f'}">
+        <div class="hd-recado-titulo">${rec.titulo}</div>
+        <div class="hd-recado-conteudo">${rec.conteudo}</div>
+        <div class="hd-recado-data">📅 ${new Date(rec.created_at).toLocaleDateString('pt-BR')}</div>
       </div>`).join('');
   } catch(e) {}
 }
 
 // ── Init Home ─────────────────────────────────────────────────
 function initHome() {
-  // Relógio
   if (_homeClockInterval) clearInterval(_homeClockInterval);
   _homeTick();
   _homeClockInterval = setInterval(_homeTick, 1000);
-  // Calendário
   _calAno = new Date().getFullYear();
   _calMes = new Date().getMonth();
   homeRenderCal();
   homeCarregarAgenda();
-  // Clima
   homeCarregarClima();
-  // Post-its
   homeCarregarPostits();
-  // Recados
   homeCarregarRecados();
+  homeCarregarKPIs();
 }
 
 // Inicializa conector visual no item já ativo ao carregar
