@@ -1014,6 +1014,7 @@
                 <div style="font-size:.68rem;color:var(--text-mid)">clique para inserir</div>
               </div>
               <div style="display:flex;flex-wrap:wrap;gap:.4rem">
+                <span class="var-tag var-tag-green"  data-var="{empresa}">{empresa}</span>
                 <span class="var-tag var-tag-green"  data-var="{nome}">{nome}</span>
                 <span class="var-tag var-tag-blue"   data-var="{telefone}">{telefone}</span>
                 <span class="var-tag var-tag-purple" data-var="{data}">{data}</span>
@@ -1760,6 +1761,10 @@
         </div>
         <p style="font-size:.84rem;color:var(--text-mid);margin-bottom:1rem">Use estas variáveis em <strong>Configurar Mensagem</strong> para personalizar automaticamente o texto enviado.</p>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.5rem">
+          <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .875rem;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px">
+            <code style="color:#4338ca;font-size:.85rem;font-weight:700">{empresa}</code>
+            <span style="font-size:.82rem;color:var(--text-mid)">Nome da empresa (cadastro)</span>
+          </div>
           <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .875rem;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px">
             <code style="color:#4338ca;font-size:.85rem;font-weight:700">{nome}</code>
             <span style="font-size:.82rem;color:var(--text-mid)">Nome completo do cliente</span>

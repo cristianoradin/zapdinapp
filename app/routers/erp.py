@@ -153,13 +153,15 @@ def _normalizar_telefone(telefone: str) -> str:
     return digits
 
 
-def _aplicar_template(template: str, body: VendaPayload, telefone_normalizado: str) -> str:
+def _aplicar_template(template: str, body: VendaPayload, telefone_normalizado: str,
+                       empresa_nome: str = "") -> str:
     data_str = body.data or datetime.now().strftime("%d/%m/%Y")
     valor_exibir = body.valor_total or body.valor or ""
     produtos_str = _montar_lista_produtos(body.produtos) if body.produtos else ""
 
     return (
         template
+        .replace("{empresa}", empresa_nome)
         .replace("{nome}", body.nome)
         .replace("{telefone}", telefone_normalizado)
         .replace("{valor}", valor_exibir)
@@ -242,10 +244,21 @@ async def receber_venda(
     telefone = _normalizar_telefone(body.telefone)
     nome = body.nome or ""
 
+    # Busca nome da empresa para uso no template {empresa}
+    async with db.execute("SELECT nome FROM empresas WHERE id=?", (empresa_id,)) as _cur:
+        _emp_row = await _cur.fetchone()
+    empresa_nome = _emp_row["nome"] if _emp_row else ""
+
     # Monta mensagem a partir do template (ou mensagem customizada do ERP)
     cfg_repo = ConfigRepository(db)
-    template = await cfg_repo.get_mensagem_padrao(empresa_id)
-    mensagem = body.mensagem_custom or _aplicar_template(template, body, telefone)
+    template_salvo = await cfg_repo.get(empresa_id, "mensagem_padrao")
+    if template_salvo:
+        # Template configurado no ZapDin sempre tem prioridade sobre mensagem_custom do ERP
+        mensagem = _aplicar_template(template_salvo, body, telefone, empresa_nome)
+    else:
+        # Sem template salvo: usa mensagem_custom do ERP, ou aplica template padrão
+        _default = "Olá {nome}, obrigado pela sua compra de {valor_total} em {data}!"
+        mensagem = body.mensagem_custom or _aplicar_template(_default, body, telefone, empresa_nome)
 
     # Anexa link de avaliação à mensagem (se recurso habilitado)
     try:
