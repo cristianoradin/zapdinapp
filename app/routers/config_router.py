@@ -9,7 +9,10 @@ Chaves de IA → ai_config_router.py
 Token ERP    → erp.py
 Chatbot      → chatbot_router.py
 """
+import json as _json
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
+from typing import Optional
 
 from ..core.config import settings
 from ..core.database import get_db
@@ -63,5 +66,79 @@ async def set_config(
                ON CONFLICT (empresa_id, key) DO UPDATE SET value = EXCLUDED.value""",
             (empresa_id, key, str(value)),
         )
+    await db.commit()
+    return {"ok": True}
+
+
+# ── Alerta Crítico de Avaliação ───────────────────────────────────────────────
+
+_ALERTA_KEY = "alerta_critico"
+
+_ALERTA_DEFAULT_MSG = (
+    "🚨 *Avaliação negativa recebida!*\n\n"
+    "👤 Cliente: {nome}\n"
+    "📞 Telefone: {telefone}\n"
+    "⭐ Nota: {nota} estrela(s)\n"
+    "👨‍💼 Vendedor: {vendedor}\n"
+    "💬 Comentário: {comentario}\n"
+    "📅 Data: {data}"
+)
+
+
+class AlertaCriticoConfig(BaseModel):
+    ativo: bool = False
+    sessao: Optional[str] = ""
+    telefone: Optional[str] = ""
+    mensagem: Optional[str] = _ALERTA_DEFAULT_MSG
+
+
+@router.get("/alerta-critico")
+async def get_alerta_critico(
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Retorna a configuração atual do alerta crítico de avaliação."""
+    empresa_id = user["empresa_id"]
+    async with db.execute(
+        "SELECT value FROM config WHERE empresa_id=? AND key=?",
+        (empresa_id, _ALERTA_KEY),
+    ) as cur:
+        row = await cur.fetchone()
+
+    if row:
+        try:
+            data = _json.loads(row["value"])
+        except Exception:
+            data = {}
+    else:
+        data = {}
+
+    return {
+        "ativo":    data.get("ativo", False),
+        "sessao":   data.get("sessao", ""),
+        "telefone": data.get("telefone", ""),
+        "mensagem": data.get("mensagem", _ALERTA_DEFAULT_MSG),
+    }
+
+
+@router.post("/alerta-critico")
+async def set_alerta_critico(
+    body: AlertaCriticoConfig,
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Salva a configuração do alerta crítico de avaliação."""
+    empresa_id = user["empresa_id"]
+    value = _json.dumps({
+        "ativo":    body.ativo,
+        "sessao":   body.sessao or "",
+        "telefone": body.telefone or "",
+        "mensagem": body.mensagem or _ALERTA_DEFAULT_MSG,
+    })
+    await db.execute(
+        """INSERT INTO config (empresa_id, key, value) VALUES (?, ?, ?)
+           ON CONFLICT (empresa_id, key) DO UPDATE SET value = EXCLUDED.value""",
+        (empresa_id, _ALERTA_KEY, value),
+    )
     await db.commit()
     return {"ok": True}

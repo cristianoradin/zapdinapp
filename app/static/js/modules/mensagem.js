@@ -263,6 +263,102 @@ window.mensagemModule = (() => {
     if (phoneEl) phoneEl.addEventListener('input', atualizarPreviewTeste);
   }
 
+  // ── Alerta Crítico de Avaliação ───────────────────────────────────────────────
+
+  const _ALERTA_DEFAULT_MSG =
+    '🚨 *Avaliação negativa recebida!*\n\n' +
+    '👤 Cliente: {nome}\n' +
+    '📞 Telefone: {telefone}\n' +
+    '⭐ Nota: {nota} estrela(s)\n' +
+    '👨‍💼 Vendedor: {vendedor}\n' +
+    '💬 Comentário: {comentario}\n' +
+    '📅 Data: {data}';
+
+  async function _refreshAlertaSessoes() {
+    try {
+      const res = await fetch('/api/sessoes/live-status');
+      if (!res.ok) return;
+      const sessoes = await res.json();
+      const sel = document.getElementById('alertaCriticoSessao');
+      if (!sel) return;
+      const connected = sessoes.filter(s => s.status === 'connected');
+      const prev = sel.value;
+      if (connected.length === 0) {
+        sel.innerHTML = '<option value="">Nenhuma sessão conectada</option>';
+      } else {
+        sel.innerHTML = '<option value="">Selecione uma sessão…</option>' +
+          connected.map(s =>
+            `<option value="${s.id}"${s.id === prev ? ' selected' : ''}>${s.nome}${s.phone ? ' — ' + s.phone : ''}</option>`
+          ).join('');
+      }
+    } catch(e) {}
+  }
+
+  async function loadAlertaCritico() {
+    try {
+      const res = await fetch('/api/config/alerta-critico');
+      if (!res.ok) return;
+      const cfg = await res.json();
+      const chk = document.getElementById('alertaCriticoAtivo');
+      const tel = document.getElementById('alertaCriticoTelefone');
+      const msg = document.getElementById('alertaCriticoMensagem');
+      if (chk) chk.checked = !!cfg.ativo;
+      if (tel) tel.value = cfg.telefone || '';
+      if (msg) msg.value = cfg.mensagem || _ALERTA_DEFAULT_MSG;
+      await _refreshAlertaSessoes();
+      // Seleciona sessão salva após popular o dropdown
+      if (cfg.sessao) {
+        const sel = document.getElementById('alertaCriticoSessao');
+        if (sel) sel.value = cfg.sessao;
+      }
+    } catch(e) {}
+  }
+
+  async function salvarAlertaCritico() {
+    const btn     = document.getElementById('btnSalvarAlertaCritico');
+    const resEl   = document.getElementById('alertaCriticoResult');
+    const ativo   = document.getElementById('alertaCriticoAtivo')?.checked || false;
+    const sessao  = document.getElementById('alertaCriticoSessao')?.value?.trim() || '';
+    const tel     = document.getElementById('alertaCriticoTelefone')?.value?.trim().replace(/\D/g,'') || '';
+    const msg     = document.getElementById('alertaCriticoMensagem')?.value || '';
+
+    const show = (type, txt) => {
+      const colors = {
+        ok:    { bg:'#f0fdf4', border:'#86efac', color:'#15803d' },
+        error: { bg:'#fef2f2', border:'#fca5a5', color:'#991b1b' },
+      };
+      const c = colors[type] || colors.ok;
+      resEl.style.cssText = `display:block;background:${c.bg};border:1px solid ${c.border};color:${c.color}`;
+      resEl.textContent = txt;
+      setTimeout(() => { resEl.style.display = 'none'; }, 4000);
+    };
+
+    if (ativo && !sessao) { show('error', 'Selecione uma sessão WhatsApp.'); return; }
+    if (ativo && tel.length < 10) { show('error', 'Informe o telefone de destino com DDD (ex: 11999998888).'); return; }
+
+    if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
+    try {
+      const res = await _fetch('POST', '/api/config/alerta-critico', { ativo, sessao, telefone: tel, mensagem: msg });
+      if (res && res.ok) show('ok', '✅ Configuração salva com sucesso!');
+      else show('error', '❌ Erro ao salvar configuração.');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Salvar Configuração';
+      }
+    }
+  }
+
+  // Insere variável no textarea do alerta na posição do cursor
+  function insertAlertaVar(v) {
+    const ta = document.getElementById('alertaCriticoMensagem');
+    if (!ta) return;
+    const s = ta.selectionStart, e = ta.selectionEnd;
+    ta.value = ta.value.slice(0, s) + v + ta.value.slice(e);
+    ta.selectionStart = ta.selectionEnd = s + v.length;
+    ta.focus();
+  }
+
   // ── Ponto de entrada ─────────────────────────────────────────────────────────
 
   function init() {
@@ -274,11 +370,14 @@ window.mensagemModule = (() => {
     Promise.all([loadAvaliacaoCfg(), _carregarLinkDemo()]).then(() => {
       loadMensagem();
       loadTesteMensagem();
+      loadAlertaCritico();
     });
   }
 
-  return { init, salvarAvaliacaoCfg };
+  return { init, salvarAvaliacaoCfg, salvarAlertaCritico, insertAlertaVar };
 })();
 
-// ── Global para onchange inline no HTML ──────────────────────────────────────
-window.salvarAvaliacaoCfg = () => mensagemModule.salvarAvaliacaoCfg();
+// ── Globais para chamadas inline no HTML ─────────────────────────────────────
+window.salvarAvaliacaoCfg  = () => mensagemModule.salvarAvaliacaoCfg();
+window.salvarAlertaCritico = () => mensagemModule.salvarAlertaCritico();
+window.insertAlertaVar     = (v) => mensagemModule.insertAlertaVar(v);

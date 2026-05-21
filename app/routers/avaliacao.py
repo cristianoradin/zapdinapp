@@ -1,3 +1,4 @@
+import asyncio
 import html as _html
 import json as _json
 import os as _os
@@ -173,6 +174,81 @@ class AvaliacaoResposta(BaseModel):
     comentario: Optional[str] = Field(default="", max_length=1000)
 
 
+async def _disparar_alerta_critico(
+    empresa_id: int,
+    nome: str,
+    telefone: str,
+    nota: int,
+    vendedor: str,
+    comentario: str,
+) -> None:
+    """
+    Dispara mensagem WA de alerta crítico quando nota <= 3.
+    Roda em background (create_task) — nunca bloqueia a resposta ao cliente.
+    Falhas são logadas silenciosamente.
+    """
+    try:
+        async with get_db_direct() as db:
+            async with db.execute(
+                "SELECT value FROM config WHERE empresa_id=? AND key='alerta_critico'",
+                (empresa_id,),
+            ) as cur:
+                row = await cur.fetchone()
+
+        if not row:
+            return
+
+        try:
+            cfg = _json.loads(row["value"])
+        except Exception:
+            return
+
+        if not cfg.get("ativo"):
+            return
+
+        sessao   = cfg.get("sessao", "").strip()
+        telefone_destino = cfg.get("telefone", "").strip()
+        template = cfg.get("mensagem", "")
+
+        if not sessao or not telefone_destino or not template:
+            logger.warning("[alerta_critico] config incompleta — sessao=%s tel=%s", sessao, bool(telefone_destino))
+            return
+
+        # Remove DDI 55 do telefone do cliente para exibição
+        tel_exibir = telefone.lstrip("+").lstrip("55") if telefone else "—"
+
+        mensagem = (
+            template
+            .replace("{nome}",       nome or "—")
+            .replace("{telefone}",   tel_exibir or "—")
+            .replace("{nota}",       str(nota))
+            .replace("{vendedor}",   vendedor or "—")
+            .replace("{comentario}", comentario or "—")
+            .replace("{data}",       datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M"))
+        )
+
+        # Remove DDI do telefone destino para envio
+        fone_envio = telefone_destino.lstrip("+").lstrip("55")
+
+        try:
+            from ..services.whatsapp_service import wa_manager
+        except ImportError:
+            try:
+                from ..services.evolution_service import evo_manager as wa_manager
+            except ImportError:
+                logger.warning("[alerta_critico] wa_manager não disponível")
+                return
+
+        ok, err = await wa_manager.send_text(sessao, empresa_id, fone_envio, mensagem)
+        if ok:
+            logger.info("[alerta_critico] alerta enviado nota=%d empresa=%d", nota, empresa_id)
+        else:
+            logger.warning("[alerta_critico] falha ao enviar: %s", err)
+
+    except Exception as exc:
+        logger.exception("[alerta_critico] erro inesperado: %s", exc)
+
+
 @router.post("/api/avaliacao/responder")
 async def responder_avaliacao(body: AvaliacaoResposta):
     if body.token.upper() == "DEMO":
@@ -186,7 +262,26 @@ async def responder_avaliacao(body: AvaliacaoResposta):
         if row["nota"] is not None:
             return JSONResponse({"ok": False, "detail": "Avaliação já registrada."}, status_code=409)
         await repo.responder(body.token, body.nota, body.comentario or "")
+        empresa_id  = row["empresa_id"]
+        nome        = row["nome_cliente"] or ""
+        telefone    = row["phone"] or ""
+        vendedor    = row["vendedor"] or ""
+
     logger.info("[avaliacao] nota=%d token=%s", body.nota, body.token[:8])
+
+    # Alerta crítico: dispara em background sem bloquear resposta
+    if body.nota <= 3:
+        asyncio.create_task(
+            _disparar_alerta_critico(
+                empresa_id=empresa_id,
+                nome=nome,
+                telefone=telefone,
+                nota=body.nota,
+                vendedor=vendedor,
+                comentario=body.comentario or "",
+            )
+        )
+
     return {"ok": True}
 
 
