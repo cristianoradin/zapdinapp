@@ -468,7 +468,7 @@
     }
 
 
-    .content { padding: 2rem 3.5rem; padding-top: 3.25rem; flex: 1; width: 100%; overflow-x: hidden; }
+    .content { padding: 2rem 3.5rem; padding-top: 1rem; flex: 1; width: 100%; overflow-x: hidden; }
 
     /* ─── Pages ───────────────────────────────────────────────────────────── */
     .page        { display: none; }

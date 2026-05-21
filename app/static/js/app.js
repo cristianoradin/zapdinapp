@@ -163,12 +163,6 @@
   }
 
   async function navigate(page) {
-    // Reseta scroll para o topo — .content é o container scrollável (overflow-x:hidden
-    // faz o browser computar overflow-y como auto), então é .content que rola, não window.
-    const contentEl = document.querySelector('.content');
-    if (contentEl) contentEl.scrollTop = 0;
-    window.scrollTo({ top: 0, behavior: 'instant' }); // por segurança, reseta window também
-
     // Só mostra loading se a página ainda não foi carregada (primeiro acesso)
     const isFirstLoad = !_loadedPages.has(page) && !document.getElementById('page-' + page);
     if (isFirstLoad) {
@@ -194,6 +188,18 @@
     onPageLoad(page);
     // Atualiza conector visual
     _updateNavConnector(navItem || null);
+
+    // ── Scroll reset ─────────────────────────────────────────────────────────
+    // Feito APÓS a transição de páginas (display:none→block recalcula layout),
+    // não antes — assim o browser não reposiciona o scroll durante o swap.
+    // requestAnimationFrame garante execução depois do próximo paint.
+    const _scrollReset = () => {
+      const c = document.querySelector('.content');
+      if (c) c.scrollTop = 0;
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    };
+    _scrollReset();
+    requestAnimationFrame(_scrollReset);
   }
 
   document.querySelectorAll('.nav-item').forEach(item => {
