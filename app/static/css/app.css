@@ -468,7 +468,7 @@
     }
 
 
-    .content { padding: 2rem 3.5rem; padding-top: 4.5rem; flex: 1; width: 100%; overflow-x: hidden; }
+    .content { padding: 2rem 3.5rem; padding-top: 3.25rem; flex: 1; width: 100%; overflow-x: hidden; }
 
     /* ─── Pages ───────────────────────────────────────────────────────────── */
     .page        { display: none; }
@@ -1355,8 +1355,15 @@
     .modal-result.err { display: block; background: var(--red-soft); color: var(--red); border: 1px solid #fecaca; }
 
     /* ─── Page Hero Banner ────────────────────────────────────────────────── */
-    /* ─── page-hero removido — display:none em todas as instâncias ─────────── */
-    .page-hero { display: none !important; }
+    /* ─── page-hero removido — colapso total para não criar espaço residual ─ */
+    .page-hero {
+      display: none !important;
+      height: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: 0 !important;
+      overflow: hidden !important;
+    }
 
     /* ─── Barra de título compartilhada — aparece no topo de toda página ──── */
     .page-title-bar {
