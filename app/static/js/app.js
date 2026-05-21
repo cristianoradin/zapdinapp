@@ -301,26 +301,19 @@
       const allowedMenus = Array.isArray(data.menus) ? data.menus : null;
       if (allowedMenus !== null) {
         let firstAllowed = null;
+
+        // 1ª passagem: determina firstAllowed ANTES de esconder qualquer item.
+        // (Sem isso, 'home' — primeiro item — sempre encontrava firstAllowed=null
+        //  e o redirecionamento nunca disparava.)
+        for (const item of document.querySelectorAll('.nav-item[data-page]')) {
+          if (allowedMenus.includes(item.dataset.page)) { firstAllowed = item.dataset.page; break; }
+        }
+
+        // 2ª passagem: aplica visibilidade
         document.querySelectorAll('.nav-item[data-page]').forEach(item => {
-          const page = item.dataset.page;
-          if (allowedMenus.includes(page)) {
-            item.style.display = '';
-            if (!firstAllowed) firstAllowed = page;
-          } else {
-            item.style.display = 'none';
-            // Se a página atual for bloqueada, navegar para a primeira permitida
-            if (item.classList.contains('active') && firstAllowed) {
-              document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-              document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
-              const targetItem = document.querySelector(`.nav-item[data-page="${firstAllowed}"]`);
-              if (targetItem) targetItem.classList.add('active');
-              const targetPage = document.getElementById('page-' + firstAllowed);
-              if (targetPage) targetPage.classList.add('active');
-              _setTopbarPage(firstAllowed);
-              onPageLoad(firstAllowed);
-            }
-          }
+          item.style.display = allowedMenus.includes(item.dataset.page) ? '' : 'none';
         });
+
         // Ocultar section labels da sidebar que ficaram sem itens visíveis
         document.querySelectorAll('.sidebar-section').forEach(section => {
           let next = section.nextElementSibling;
@@ -331,6 +324,13 @@
           }
           section.style.display = hasVisible ? '' : 'none';
         });
+
+        // 3ª passagem: redireciona se a página atual não está nas permitidas
+        // (feito APÓS o loop para que firstAllowed já esteja calculado)
+        const currentPage = document.querySelector('.nav-item.active[data-page]')?.dataset.page;
+        if (currentPage && !allowedMenus.includes(currentPage) && firstAllowed) {
+          navigate(firstAllowed);
+        }
       }
     } catch { window.location.href = '/login'; }
   }
