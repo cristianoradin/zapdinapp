@@ -30,6 +30,24 @@ window.mensagemModule = (() => {
 
   // ── Mensagem template ────────────────────────────────────────────────────────
 
+  // ── Status "template salvo / não salvo" ──────────────────────────────────────
+  function _setTemplateStatus(saved) {
+    const el   = document.getElementById('templateSaveStatus');
+    const icon = document.getElementById('templateSaveStatusIcon');
+    const txt  = document.getElementById('templateSaveStatusText');
+    if (!el) return;
+    if (saved) {
+      el.style.cssText   = 'display:flex;align-items:center;gap:.45rem;font-size:.8rem;font-weight:600;padding:.5rem .75rem;border-radius:8px;margin-top:.5rem;background:#f0fdf4;border:1px solid #86efac;color:#15803d';
+      icon.innerHTML     = '<polyline points="20 6 9 17 4 12"/>';
+      icon.setAttribute('viewBox','0 0 24 24');
+      txt.textContent    = '✅ Template salvo com sucesso';
+    } else {
+      el.style.cssText   = 'display:flex;align-items:center;gap:.45rem;font-size:.8rem;font-weight:600;padding:.5rem .75rem;border-radius:8px;margin-top:.5rem;background:#fffbeb;border:1px solid #fde68a;color:#92400e';
+      icon.innerHTML     = '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>';
+      txt.textContent    = 'Template não salvo — clique em Salvar Template';
+    }
+  }
+
   async function loadMensagem() {
     const res = await fetch('/api/config');
     if (!res.ok) return;
@@ -47,6 +65,9 @@ window.mensagemModule = (() => {
     document.getElementById('inputMensagem').value = tmpl;
     updatePreview(tmpl);
     atualizarPreviewTeste();
+
+    // Se já tem template salvo no servidor, mostra como "salvo"
+    _setTemplateStatus(!!tmpl);
   }
 
   function updatePreview(tmpl) {
@@ -198,8 +219,17 @@ window.mensagemModule = (() => {
       const header = _clientName ? '🏪 *' + _clientName + '*\n\n' : '';
       const val = header + corpo;
       const res = await _fetch('POST', '/api/config', { mensagem_padrao: val });
-      if (res && res.ok) _alert('alertMensagem', 'Mensagem salva com sucesso!');
-      else _alert('alertMensagem', 'Erro ao salvar', 'error');
+      if (res && res.ok) {
+        _alert('alertMensagem', 'Mensagem salva com sucesso!');
+        _setTemplateStatus(true);
+      } else {
+        _alert('alertMensagem', 'Erro ao salvar', 'error');
+      }
+    });
+
+    // Quando o usuário editar o textarea, volta ao estado "não salvo"
+    document.getElementById('inputMensagem').addEventListener('input', () => {
+      _setTemplateStatus(false);
     });
 
     // Enviar teste de mensagem
