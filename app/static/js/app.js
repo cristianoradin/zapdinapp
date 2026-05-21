@@ -163,8 +163,11 @@
   }
 
   async function navigate(page) {
-    // Reseta scroll para o topo — garante que toda página comece posicionada no início
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    // Reseta scroll para o topo — .content é o container scrollável (overflow-x:hidden
+    // faz o browser computar overflow-y como auto), então é .content que rola, não window.
+    const contentEl = document.querySelector('.content');
+    if (contentEl) contentEl.scrollTop = 0;
+    window.scrollTo({ top: 0, behavior: 'instant' }); // por segurança, reseta window também
 
     // Só mostra loading se a página ainda não foi carregada (primeiro acesso)
     const isFirstLoad = !_loadedPages.has(page) && !document.getElementById('page-' + page);
