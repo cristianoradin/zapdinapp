@@ -256,6 +256,31 @@ async def _send_heartbeat() -> None:
                         except Exception as _re:
                             logger.error("[reporter] Falha ao chamar /internal/rollback: %s", _re)
 
+                    # ── Sincroniza menus da empresa (piggyback) ────────────────
+                    # empresa_menus: None = todos liberados; lista = restrições
+                    # Atualiza empresas.menus no banco local para que checkAuth()
+                    # aplique as restrições corretamente no próximo carregamento.
+                    empresa_menus = resp_data.get("empresa_menus", "UNCHANGED")
+                    if empresa_menus != "UNCHANGED":
+                        empresa_id = emp.get("id")
+                        if empresa_id:
+                            try:
+                                from ..core.database import _pool as _pool_m
+                                if _pool_m is not None:
+                                    menus_json = json.dumps(empresa_menus) if empresa_menus is not None else None
+                                    async with _pool_m.acquire() as conn:
+                                        await conn.execute(
+                                            "UPDATE empresas SET menus = $1 WHERE id = $2",
+                                            menus_json,
+                                            empresa_id,
+                                        )
+                                    logger.debug(
+                                        "[reporter] Menus da empresa %s sincronizados: %s",
+                                        empresa_id, empresa_menus,
+                                    )
+                            except Exception as exc:
+                                logger.debug("[reporter] Erro ao sincronizar menus da empresa: %s", exc)
+
                     # ── Sincroniza avatares dos usuários ───────────────────────
                     # O Monitor inclui a lista de usuários (username + avatar_url)
                     # na resposta. O app atualiza o banco local para que o avatar
