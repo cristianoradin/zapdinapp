@@ -148,8 +148,9 @@ window.mensagemModule = (() => {
     const prevId = sel.value;
     if (connected.length === 0) {
       sel.innerHTML = '<option value="">Nenhuma sessão conectada</option>';
-      alertEl.style.cssText = 'display:block;background:var(--red-soft);border:1px solid #fecaca;color:var(--red)';
-      alertEl.textContent = 'Nenhuma sessão WhatsApp conectada. Vá em Conectar WhatsApp para escanear o QR Code.';
+      alertEl.style.cssText = 'display:flex;align-items:center;gap:.5rem;font-size:.82rem;font-weight:600;padding:.5rem .75rem;border-radius:8px;margin-bottom:1rem;background:#fffbeb;border:1px solid #fde68a;color:#92400e';
+      alertEl.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>' +
+        '<span>Nenhuma sessão WhatsApp conectada — <a href="#" onclick="navigate(\'whatsapp\');return false;" style="color:inherit;text-decoration:underline;font-weight:700">Conectar WhatsApp</a></span>';
     } else {
       sel.innerHTML = connected.map(s =>
         `<option value="${s.id}"${s.id === prevId ? ' selected' : ''}>${s.nome}${s.phone ? ' — ' + s.phone : ''}</option>`
