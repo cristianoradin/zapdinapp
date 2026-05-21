@@ -189,9 +189,16 @@ async def apply_monitor_update(
                 logger.info("[updater] Preservado %s em app_new/ ✓", preserve)
 
         # 2) Swap: app/ → app_old/ → app_new/ → app/
-        app_live.rename(app_old)
-        app_new.rename(app_live)
-        logger.info("[updater] app/ → app_old/ (backup), app_new/ → app/ ✓")
+        # Se app/ não existe (instalação sem pasta separada), pula o backup
+        # e apenas move app_new/ → app/. Isso ocorre na primeira atualização
+        # em máquinas onde o instalador usa estrutura diferente.
+        if app_live.exists():
+            app_live.rename(app_old)
+            app_new.rename(app_live)
+            logger.info("[updater] app/ → app_old/ (backup), app_new/ → app/ ✓")
+        else:
+            app_new.rename(app_live)
+            logger.warning("[updater] app/ não encontrada — update sem backup (primeira vez) ✓")
 
         # versao.json — salva backup antes de sobrescrever (usado pelo rollback)
         versao_json_live = root / "versao.json"
