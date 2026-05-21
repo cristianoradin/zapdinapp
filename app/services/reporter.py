@@ -281,6 +281,40 @@ async def _send_heartbeat() -> None:
                             except Exception as exc:
                                 logger.debug("[reporter] Erro ao sincronizar menus da empresa: %s", exc)
 
+                    # ── Sincroniza cidade/UF para widget de clima ─────────────
+                    # O Monitor retorna cidade e uf do cadastro do cliente.
+                    # Salva em config (empresa_cidade / empresa_uf) para que
+                    # GET /api/home/clima funcione sem configuração manual.
+                    empresa_cidade = resp_data.get("empresa_cidade")
+                    empresa_uf     = resp_data.get("empresa_uf")
+                    if empresa_cidade:
+                        empresa_id = emp.get("id")
+                        if empresa_id:
+                            try:
+                                from ..core.database import _pool as _pool_clima
+                                if _pool_clima is not None:
+                                    async with _pool_clima.acquire() as conn:
+                                        await conn.execute(
+                                            """INSERT INTO config (empresa_id, key, value)
+                                               VALUES ($1, 'empresa_cidade', $2)
+                                               ON CONFLICT (empresa_id, key)
+                                               DO UPDATE SET value = EXCLUDED.value""",
+                                            empresa_id, empresa_cidade,
+                                        )
+                                        await conn.execute(
+                                            """INSERT INTO config (empresa_id, key, value)
+                                               VALUES ($1, 'empresa_uf', $2)
+                                               ON CONFLICT (empresa_id, key)
+                                               DO UPDATE SET value = EXCLUDED.value""",
+                                            empresa_id, empresa_uf or "",
+                                        )
+                                    logger.debug(
+                                        "[reporter] Cidade da empresa %s sincronizada: %s/%s",
+                                        empresa_id, empresa_cidade, empresa_uf,
+                                    )
+                            except Exception as exc:
+                                logger.debug("[reporter] Erro ao sincronizar cidade: %s", exc)
+
                     # ── Sincroniza avatares dos usuários ───────────────────────
                     # O Monitor inclui a lista de usuários (username + avatar_url)
                     # na resposta. O app atualiza o banco local para que o avatar
