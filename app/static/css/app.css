@@ -1354,16 +1354,6 @@
     .modal-result.ok  { display: block; background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent-mid); }
     .modal-result.err { display: block; background: var(--red-soft); color: var(--red); border: 1px solid #fecaca; }
 
-    /* ─── Page Hero Banner ────────────────────────────────────────────────── */
-    /* ─── page-hero removido — colapso total para não criar espaço residual ─ */
-    .page-hero {
-      display: none !important;
-      height: 0 !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      border: 0 !important;
-      overflow: hidden !important;
-    }
 
     /* ─── Barra de título compartilhada — aparece no topo de toda página ──── */
     .page-title-bar {
@@ -1393,10 +1383,6 @@
       background: linear-gradient(180deg, var(--accent) 0%, #7cdc44 100%);
     }
 
-    .hero-sky    { background: linear-gradient(135deg, #f0f9ff 0%, #bae6fd 100%); border: 1px solid #7dd3fc; }
-    .hero-sky .page-hero-icon    { background: #bae6fd; }
-    .hero-sky .page-hero-text    { color: #0c4a6e; }
-    .hero-sky::after             { background: #0ea5e9; }
 
     /* ─── Step list ───────────────────────────────────────────────────────── */
     .step-list { display: flex; flex-direction: column; gap: .75rem; }
