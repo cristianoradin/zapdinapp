@@ -1,3 +1,26 @@
+  // ── Loading overlay ──────────────────────────────────────────────────────────
+  let _loadingTimer = null;
+
+  function showLoading(msg) {
+    const overlay = document.getElementById('globalLoadingOverlay');
+    const msgEl   = document.getElementById('globalLoadingMsg');
+    if (!overlay) return;
+    if (msgEl) msgEl.textContent = msg || 'Aguarde…';
+    overlay.classList.add('visible');
+    overlay.removeAttribute('aria-hidden');
+  }
+
+  function hideLoading() {
+    const overlay = document.getElementById('globalLoadingOverlay');
+    if (!overlay) return;
+    overlay.classList.remove('visible');
+    overlay.setAttribute('aria-hidden', 'true');
+  }
+
+  // Expõe globalmente para uso em outros módulos
+  window.showLoading = showLoading;
+  window.hideLoading = hideLoading;
+
   // ── Page lazy loader ────────────────────────────────────────────────────────
   const APP_BUILD = '__BUILD__';
   const _loadedPages = new Set();
@@ -140,7 +163,17 @@
   }
 
   async function navigate(page) {
-    await _loadPage(page);
+    // Só mostra loading se a página ainda não foi carregada (primeiro acesso)
+    const isFirstLoad = !_loadedPages.has(page) && !document.getElementById('page-' + page);
+    if (isFirstLoad) {
+      const label = pages[page] || page;
+      showLoading('Carregando ' + label + '…');
+    }
+    try {
+      await _loadPage(page);
+    } finally {
+      if (isFirstLoad) hideLoading();
+    }
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
     // Marca nav-item normal
