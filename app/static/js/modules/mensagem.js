@@ -297,14 +297,14 @@ window.mensagemModule = (() => {
     const msg   = document.getElementById('alertaCriticoMensagem')?.value || '';
 
     const show = (type, txt) => {
-      const colors = {
-        ok:    { bg:'#f0fdf4', border:'#86efac', color:'#15803d' },
-        error: { bg:'#fef2f2', border:'#fca5a5', color:'#991b1b' },
-      };
-      const c = colors[type] || colors.ok;
-      resEl.style.cssText = `display:block;background:${c.bg};border:1px solid ${c.border};color:${c.color}`;
-      resEl.textContent = txt;
-      setTimeout(() => { resEl.style.display = 'none'; }, 4000);
+      if (type === 'ok') {
+        resEl.style.cssText = 'display:flex;align-items:center;gap:.45rem;font-size:.8rem;font-weight:600;padding:.5rem .75rem;border-radius:8px;background:#f0fdf4;border:1px solid #86efac;color:#15803d';
+        resEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg>${txt}`;
+      } else {
+        resEl.style.cssText = 'display:flex;align-items:center;gap:.45rem;font-size:.8rem;font-weight:600;padding:.5rem .75rem;border-radius:8px;background:#fef2f2;border:1px solid #fca5a5;color:#991b1b';
+        resEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>${txt}`;
+        setTimeout(() => { resEl.style.display = 'none'; }, 5000);
+      }
     };
 
     if (ativo && tel.length < 10) { show('error', 'Informe o telefone de destino com DDD (ex: 11999998888).'); return; }
@@ -312,8 +312,8 @@ window.mensagemModule = (() => {
     if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
     try {
       const res = await _fetch('POST', '/api/config/alerta-critico', { ativo, telefone: tel, mensagem: msg });
-      if (res && res.ok) show('ok', '✅ Configuração salva com sucesso!');
-      else show('error', '❌ Erro ao salvar configuração.');
+      if (res && res.ok) show('ok', 'Configuração salva com sucesso');
+      else show('error', 'Erro ao salvar configuração.');
     } finally {
       if (btn) {
         btn.disabled = false;
