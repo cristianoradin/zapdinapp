@@ -1121,54 +1121,156 @@
     }
     .modal-close:hover { color: var(--text); }
 
-    /* ─── WA Config Modal ────────────────────────────────────────────────────── */
+    /* ─── WA Config — Page header ───────────────────────────────────────────── */
+    .wa-cfg-page-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      padding: 1rem 1.25rem 1.125rem;
+      background: linear-gradient(135deg, #f0fdf4 0%, #f8faff 100%);
+      border: 1px solid #bbf7d0;
+      border-radius: 12px;
+      margin-bottom: 1.25rem;
+    }
+    .wa-cfg-page-header-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+      border-radius: 11px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(61,127,31,.25);
+    }
+    .wa-cfg-page-header-title {
+      font-size: 1.0625rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -.02em;
+      line-height: 1.2;
+    }
+    .wa-cfg-page-header-sub {
+      font-size: .8rem;
+      color: var(--text-mid);
+      line-height: 1.5;
+      margin-top: .3rem;
+    }
+    .wa-cfg-protection-row {
+      display: flex;
+      gap: .5rem;
+      flex-wrap: wrap;
+      margin-top: .5rem;
+    }
+    .wa-cfg-prot-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: .28rem;
+      font-size: .72rem;
+      font-weight: 600;
+      padding: .22rem .6rem;
+      border-radius: 20px;
+    }
+    .wa-cfg-prot-chip.green  { background: #dcfce7; color: #15803d; }
+    .wa-cfg-prot-chip.blue   { background: #dbeafe; color: #1d4ed8; }
+    .wa-cfg-prot-chip.purple { background: #ede9fe; color: #6d28d9; }
+    .wa-cfg-prot-chip.orange { background: #ffedd5; color: #c2410c; }
+    .wa-cfg-prot-chip.teal   { background: #ccfbf1; color: #0f766e; }
+
+    /* ─── WA Config — Grid & Cards ──────────────────────────────────────────── */
     .wa-cfg-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 1rem;
     }
     .wa-cfg-section {
-      background: var(--surface2);
+      background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 1rem 1.125rem;
+      border-radius: 12px;
+      padding: 1.1rem 1.2rem 1rem;
       display: flex;
       flex-direction: column;
-      gap: .65rem;
+      gap: .6rem;
+      transition: box-shadow .15s, border-color .15s;
+    }
+    .wa-cfg-section:hover {
+      border-color: #c8e6c9;
+      box-shadow: 0 2px 12px rgba(61,127,31,.06);
+    }
+    .wa-cfg-section.featured {
+      border-color: #86efac;
+      border-left: 3px solid var(--accent);
+      background: linear-gradient(to right, #f0fdf4 0%, var(--surface) 30%);
+    }
+    .wa-cfg-section.featured:hover {
+      border-color: #4ade80;
+      box-shadow: 0 2px 16px rgba(61,127,31,.1);
     }
     .wa-cfg-title {
-      font-size: .8125rem;
+      font-size: .84rem;
       font-weight: 700;
       color: var(--text);
       letter-spacing: -.01em;
       display: flex;
       align-items: center;
-      gap: .4rem;
-      margin-bottom: .1rem;
+      gap: .45rem;
     }
+    .wa-cfg-title-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px; height: 28px;
+      border-radius: 7px;
+      flex-shrink: 0;
+    }
+    .wa-cfg-impact {
+      display: inline-flex;
+      align-items: center;
+      gap: .22rem;
+      font-size: .68rem;
+      font-weight: 600;
+      padding: .15rem .45rem;
+      border-radius: 20px;
+      margin-left: auto;
+      white-space: nowrap;
+    }
+    .wa-cfg-impact.high   { background: #dcfce7; color: #15803d; }
+    .wa-cfg-impact.med    { background: #fef9c3; color: #a16207; }
+    .wa-cfg-impact.low    { background: #f1f5f9; color: #475569; }
     .wa-cfg-desc {
-      font-size: .73rem;
+      font-size: .775rem;
       color: var(--text-mid);
-      line-height: 1.45;
+      line-height: 1.5;
+    }
+    .wa-cfg-hint {
+      display: inline-flex;
+      align-items: center;
+      gap: .25rem;
+      font-size: .7rem;
+      color: #15803d;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 6px;
+      padding: .2rem .55rem;
+      font-weight: 500;
     }
     .wa-cfg-row {
       display: flex;
       align-items: center;
       gap: .5rem;
     }
-    .wa-cfg-row label { font-size: .78rem; color: var(--text-mid); white-space: nowrap; min-width: 50px; }
+    .wa-cfg-row label { font-size: .78rem; color: var(--text-mid); white-space: nowrap; min-width: 50px; font-weight: 500; }
     .wa-cfg-input {
       width: 100%;
-      padding: .4rem .6rem;
+      padding: .42rem .65rem;
       border: 1px solid var(--border);
-      border-radius: 6px;
+      border-radius: 7px;
       background: var(--surface);
       color: var(--text);
       font-family: inherit;
       font-size: .875rem;
-      transition: border-color .15s;
+      transition: border-color .15s, box-shadow .15s;
     }
-    .wa-cfg-input:focus { outline: none; border-color: var(--accent); }
+    .wa-cfg-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(61,127,31,.1); }
     .wa-cfg-input[type="number"] { width: 80px; }
     .wa-cfg-input[type="time"]   { width: 110px; }
     /* Toggle switch */
@@ -1178,7 +1280,7 @@
       justify-content: space-between;
       gap: .75rem;
     }
-    .wa-toggle-label { font-size: .82rem; color: var(--text-mid); }
+    .wa-toggle-label { font-size: .82rem; color: var(--text); font-weight: 500; }
     .toggle-switch {
       position: relative;
       width: 38px; height: 22px;

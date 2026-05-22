@@ -1593,17 +1593,36 @@
 
       <div class="card">
 
+        <!-- Header da página -->
+        <div class="wa-cfg-page-header">
+          <div class="wa-cfg-page-header-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div style="flex:1">
+            <div class="wa-cfg-page-header-title">Proteção Anti-Ban</div>
+            <div class="wa-cfg-page-header-sub">Configure os limites abaixo para que os disparos se comportem como um humano real e evite o bloqueio do número no WhatsApp.</div>
+            <div class="wa-cfg-protection-row">
+              <span class="wa-cfg-prot-chip green">🛡️ Delay entre envios</span>
+              <span class="wa-cfg-prot-chip purple">📊 Limite diário</span>
+              <span class="wa-cfg-prot-chip teal">🕐 Horário humano</span>
+              <span class="wa-cfg-prot-chip green">💬 Simulação de digitação</span>
+              <span class="wa-cfg-prot-chip orange">🔀 Variação de texto</span>
+            </div>
+          </div>
+        </div>
+
         <div class="wa-cfg-grid">
 
           <!-- Delay Randômico -->
           <div class="wa-cfg-section">
             <div class="wa-cfg-title">
-              <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:5px;background:#dbeafe;color:#2563eb;flex-shrink:0">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
+              <span class="wa-cfg-title-icon" style="background:#dbeafe;color:#2563eb">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
               </span>
               Delay Randômico
+              <span class="wa-cfg-impact high">🛡️ Alto impacto</span>
             </div>
-            <div class="wa-cfg-desc">Intervalo de espera aleatório entre cada mensagem para evitar detecção.</div>
+            <div class="wa-cfg-desc">Tempo de espera aleatório entre cada mensagem. Simula o comportamento humano e é o principal mecanismo contra detecção de bots pelo WhatsApp.</div>
             <div class="wa-cfg-row">
               <label>Mínimo</label>
               <input type="number" class="wa-cfg-input" id="waCfgDelayMin" min="1" max="300" step="1" value="5" />
@@ -1614,33 +1633,37 @@
               <input type="number" class="wa-cfg-input" id="waCfgDelayMax" min="1" max="600" step="1" value="15" />
               <span style="font-size:.78rem;color:var(--text-mid)">s</span>
             </div>
+            <span class="wa-cfg-hint">✓ Recomendado: 8 a 20 segundos</span>
           </div>
 
           <!-- Limite Diário -->
           <div class="wa-cfg-section">
             <div class="wa-cfg-title">
-              <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:5px;background:#ede9fe;color:#7c3aed;flex-shrink:0">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              <span class="wa-cfg-title-icon" style="background:#ede9fe;color:#7c3aed">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
               </span>
               Limite Diário
+              <span class="wa-cfg-impact med">⚡ Médio impacto</span>
             </div>
-            <div class="wa-cfg-desc">Teto de mensagens enviadas por dia por número conectado. Use 0 para sem limite.</div>
+            <div class="wa-cfg-desc">Teto de mensagens enviadas por dia por número conectado. Números novos devem começar com limite baixo e aumentar gradualmente — esse processo é chamado de <strong>warm-up</strong>.</div>
             <div class="wa-cfg-row">
               <label>Máx/dia</label>
               <input type="number" class="wa-cfg-input" id="waCfgDailyLimit" min="0" max="9999" step="1" value="0" style="width:90px" />
               <span style="font-size:.72rem;color:var(--text-mid)">(0 = ilimitado)</span>
             </div>
+            <span class="wa-cfg-hint">✓ Recomendado: 200–500 msg/dia para números novos</span>
           </div>
 
           <!-- Horário de Funcionamento -->
           <div class="wa-cfg-section">
             <div class="wa-cfg-title">
-              <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:5px;background:#ccfbf1;color:#0d9488;flex-shrink:0">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span class="wa-cfg-title-icon" style="background:#ccfbf1;color:#0d9488">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               </span>
               Horário de Funcionamento
+              <span class="wa-cfg-impact med">⚡ Médio impacto</span>
             </div>
-            <div class="wa-cfg-desc">Disparos só dentro desta janela. Mensagens na fila aguardam automaticamente.</div>
+            <div class="wa-cfg-desc">Disparos só dentro desta janela. Mensagens na fila aguardam automaticamente fora do horário. Nenhum humano envia mensagens às 3h da madrugada — isso aumenta a credibilidade do número.</div>
             <div class="wa-cfg-row">
               <label>Início</label>
               <input type="time" class="wa-cfg-input" id="waCfgHoraInicio" value="08:00" />
@@ -1649,45 +1672,50 @@
               <label>Fim</label>
               <input type="time" class="wa-cfg-input" id="waCfgHoraFim" value="18:00" />
             </div>
-            <div class="wa-toggle-row" style="margin-top:.1rem">
-              <span class="wa-toggle-label">Restringir horário</span>
+            <div class="wa-toggle-row" style="margin-top:.15rem">
+              <span class="wa-toggle-label">Restringir ao horário acima</span>
               <label class="toggle-switch">
                 <input type="checkbox" id="waCfgHoraAtivo" />
                 <span class="toggle-slider"></span>
               </label>
             </div>
+            <span class="wa-cfg-hint">✓ Recomendado: 08:00 às 20:00</span>
           </div>
 
-          <!-- Simulação de Digitação -->
-          <div class="wa-cfg-section">
+          <!-- Simulação de Digitação — DESTAQUE -->
+          <div class="wa-cfg-section featured">
             <div class="wa-cfg-title">
-              <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:5px;background:#dcfce7;color:#16a34a;flex-shrink:0">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="9" y2="10"/><line x1="12" y1="10" x2="12" y2="10"/><line x1="15" y1="10" x2="15" y2="10"/></svg>
+              <span class="wa-cfg-title-icon" style="background:#dcfce7;color:#16a34a">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="9" y2="10"/><line x1="12" y1="10" x2="12" y2="10"/><line x1="15" y1="10" x2="15" y2="10"/></svg>
               </span>
               Simulação de Digitação
+              <span class="wa-cfg-impact high">⭐ Mais importante</span>
             </div>
             <div class="wa-toggle-row">
-              <span class="wa-toggle-label">Ativar "digitando…"</span>
+              <span class="wa-toggle-label">Ativar indicador "digitando…"</span>
               <label class="toggle-switch">
                 <input type="checkbox" id="waCfgComposing" checked />
                 <span class="toggle-slider"></span>
               </label>
             </div>
-            <div class="wa-cfg-desc" style="margin-top:.4rem">
-              Antes de enviar, aguarda um tempo proporcional ao tamanho da mensagem — o destinatário vê <strong>"digitando…"</strong> por 1 a 8 segundos. Comportamento idêntico ao de um humano.
+            <div class="wa-cfg-desc">
+              Antes de enviar, o sistema aguarda um tempo proporcional ao tamanho da mensagem. O destinatário vê <strong>"digitando…"</strong> por 1 a 8 segundos — comportamento idêntico ao de um humano real.
             </div>
-            <div class="wa-cfg-desc" style="margin-top:.35rem;font-size:.74rem;color:var(--text-muted)">
-              Exemplos: "Oi!" → ~1s &nbsp;·&nbsp; 50 chars → ~2.5s &nbsp;·&nbsp; 160+ chars → ~8s
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap;font-size:.72rem;color:var(--text-mid)">
+              <span style="background:#f1f5f9;border-radius:5px;padding:.15rem .45rem">"Oi!" → ~1s</span>
+              <span style="background:#f1f5f9;border-radius:5px;padding:.15rem .45rem">50 chars → ~2.5s</span>
+              <span style="background:#f1f5f9;border-radius:5px;padding:.15rem .45rem">160+ chars → ~8s</span>
             </div>
           </div>
 
           <!-- Spintax -->
           <div class="wa-cfg-section">
             <div class="wa-cfg-title">
-              <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:5px;background:#fed7aa;color:#c2410c;flex-shrink:0">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><line x1="21" y1="16" x2="21" y2="21"/><line x1="16" y1="21" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+              <span class="wa-cfg-title-icon" style="background:#ffedd5;color:#c2410c">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><line x1="21" y1="16" x2="21" y2="21"/><line x1="16" y1="21" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
               </span>
               Suporte a Spintax
+              <span class="wa-cfg-impact low">🔀 Variação</span>
             </div>
             <div class="wa-toggle-row">
               <span class="wa-toggle-label">Ativar variações de texto</span>
@@ -1696,11 +1724,15 @@
                 <span class="toggle-slider"></span>
               </label>
             </div>
-            <div class="wa-cfg-desc" style="margin-top:.1rem">
-              Use <code style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:.05rem .3rem;font-size:.75rem">{Olá|Oi|Bom dia}</code> na mensagem para variar o texto.
+            <div class="wa-cfg-desc">
+              Cada mensagem enviada usa uma variação diferente do texto, tornando o conteúdo único e reduzindo a chance de ser marcado como spam. Use a sintaxe abaixo:
             </div>
+            <div style="font-size:.76rem;color:var(--text-mid);background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:.45rem .65rem;font-family:monospace">
+              {Olá|Oi|Bom dia}, {nome}! Seu pedido foi confirmado.
+            </div>
+            <div style="font-size:.72rem;color:var(--text-mid);margin-top:-.2rem">Use <code style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:.05rem .3rem">{opção1|opção2|opção3}</code> para criar variações.</div>
             <textarea class="spin-test-area" id="spinTestInput" placeholder="{Olá|Oi|Bom dia} {nome}, tudo bem?&#10;Seu pedido de {R$|valor} foi confirmado!"></textarea>
-            <button class="btn btn-ghost btn-sm" onclick="previewSpintax()" style="align-self:flex-start">▶ Testar</button>
+            <button class="btn btn-ghost btn-sm" onclick="previewSpintax()" style="align-self:flex-start">▶ Testar variação</button>
             <div class="spin-preview-box" id="spinPreviewBox"></div>
           </div>
 
@@ -1708,8 +1740,12 @@
 
         <div id="waCfgAlert" style="display:none;padding:.6rem 1rem;border-radius:8px;font-size:.84rem;margin-top:1rem"></div>
 
-        <div style="display:flex;justify-content:flex-end;padding-top:1rem;border-top:1px solid var(--border);margin-top:1rem">
-          <button class="btn btn-primary" id="btnSalvarWACfg">Salvar Configurações</button>
+        <div style="display:flex;justify-content:flex-end;align-items:center;gap:.75rem;padding-top:1rem;border-top:1px solid var(--border);margin-top:1rem">
+          <span style="font-size:.78rem;color:var(--text-mid)">As configurações são aplicadas imediatamente no próximo envio.</span>
+          <button class="btn btn-primary" id="btnSalvarWACfg" style="display:inline-flex;align-items:center;gap:.4rem">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Salvar Configurações
+          </button>
         </div>
 
       </div>
