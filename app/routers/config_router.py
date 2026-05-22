@@ -75,13 +75,14 @@ async def set_config(
 _ALERTA_KEY = "alerta_critico"
 
 _ALERTA_DEFAULT_MSG = (
-    "🚨 *Avaliação negativa recebida!*\n\n"
-    "👤 Cliente: {nome}\n"
-    "📞 Telefone: {telefone}\n"
-    "⭐ Nota: {nota} estrela(s)\n"
-    "👨‍💼 Vendedor: {vendedor}\n"
-    "💬 Comentário: {comentario}\n"
-    "📅 Data: {data}"
+    "🚨 *Avaliação Negativa Recebida!*\n\n"
+    "👤 *Cliente:* {nome}\n"
+    "📞 *Telefone:* {telefone}\n"
+    "⭐ *Nota:* {nota} estrela(s)\n"
+    "👨‍💼 *Vendedor:* {vendedor}\n"
+    "💬 *Comentário:* {comentario}\n"
+    "📅 *Data:* {data}\n\n"
+    "⚠️ Entre em contato com o cliente para resolver a situação!"
 )
 
 
