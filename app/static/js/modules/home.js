@@ -343,6 +343,13 @@ async function homeDeletarPostit() {
 }
 
 // ── Alerta de Agenda WA ───────────────────────────────────────
+function homeToggleAgendaAlertaCfg() {
+  const panel = document.getElementById('home-agenda-alerta-cfg');
+  if (!panel) return;
+  const open = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : 'block';
+}
+
 let _agendaAlertaDebounce = null;
 
 async function homeCarregarAgendaAlerta() {
