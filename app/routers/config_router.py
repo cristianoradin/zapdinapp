@@ -87,7 +87,6 @@ _ALERTA_DEFAULT_MSG = (
 
 class AlertaCriticoConfig(BaseModel):
     ativo: bool = False
-    sessao: Optional[str] = ""
     telefone: Optional[str] = ""
     mensagem: Optional[str] = _ALERTA_DEFAULT_MSG
 
@@ -115,7 +114,6 @@ async def get_alerta_critico(
 
     return {
         "ativo":    data.get("ativo", False),
-        "sessao":   data.get("sessao", ""),
         "telefone": data.get("telefone", ""),
         "mensagem": data.get("mensagem", _ALERTA_DEFAULT_MSG),
     }
@@ -131,7 +129,6 @@ async def set_alerta_critico(
     empresa_id = user["empresa_id"]
     value = _json.dumps({
         "ativo":    body.ativo,
-        "sessao":   body.sessao or "",
         "telefone": body.telefone or "",
         "mensagem": body.mensagem or _ALERTA_DEFAULT_MSG,
     })

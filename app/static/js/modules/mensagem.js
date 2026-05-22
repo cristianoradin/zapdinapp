@@ -274,26 +274,6 @@ window.mensagemModule = (() => {
     '💬 Comentário: {comentario}\n' +
     '📅 Data: {data}';
 
-  async function _refreshAlertaSessoes() {
-    try {
-      const res = await fetch('/api/sessoes/live-status');
-      if (!res.ok) return;
-      const sessoes = await res.json();
-      const sel = document.getElementById('alertaCriticoSessao');
-      if (!sel) return;
-      const connected = sessoes.filter(s => s.status === 'connected');
-      const prev = sel.value;
-      if (connected.length === 0) {
-        sel.innerHTML = '<option value="">Nenhuma sessão conectada</option>';
-      } else {
-        sel.innerHTML = '<option value="">Selecione uma sessão…</option>' +
-          connected.map(s =>
-            `<option value="${s.id}"${s.id === prev ? ' selected' : ''}>${s.nome}${s.phone ? ' — ' + s.phone : ''}</option>`
-          ).join('');
-      }
-    } catch(e) {}
-  }
-
   async function loadAlertaCritico() {
     try {
       const res = await fetch('/api/config/alerta-critico');
@@ -305,22 +285,15 @@ window.mensagemModule = (() => {
       if (chk) chk.checked = !!cfg.ativo;
       if (tel) tel.value = cfg.telefone || '';
       if (msg) msg.value = cfg.mensagem || _ALERTA_DEFAULT_MSG;
-      await _refreshAlertaSessoes();
-      // Seleciona sessão salva após popular o dropdown
-      if (cfg.sessao) {
-        const sel = document.getElementById('alertaCriticoSessao');
-        if (sel) sel.value = cfg.sessao;
-      }
     } catch(e) {}
   }
 
   async function salvarAlertaCritico() {
-    const btn     = document.getElementById('btnSalvarAlertaCritico');
-    const resEl   = document.getElementById('alertaCriticoResult');
-    const ativo   = document.getElementById('alertaCriticoAtivo')?.checked || false;
-    const sessao  = document.getElementById('alertaCriticoSessao')?.value?.trim() || '';
-    const tel     = document.getElementById('alertaCriticoTelefone')?.value?.trim().replace(/\D/g,'') || '';
-    const msg     = document.getElementById('alertaCriticoMensagem')?.value || '';
+    const btn   = document.getElementById('btnSalvarAlertaCritico');
+    const resEl = document.getElementById('alertaCriticoResult');
+    const ativo = document.getElementById('alertaCriticoAtivo')?.checked || false;
+    const tel   = document.getElementById('alertaCriticoTelefone')?.value?.trim().replace(/\D/g,'') || '';
+    const msg   = document.getElementById('alertaCriticoMensagem')?.value || '';
 
     const show = (type, txt) => {
       const colors = {
@@ -333,12 +306,11 @@ window.mensagemModule = (() => {
       setTimeout(() => { resEl.style.display = 'none'; }, 4000);
     };
 
-    if (ativo && !sessao) { show('error', 'Selecione uma sessão WhatsApp.'); return; }
     if (ativo && tel.length < 10) { show('error', 'Informe o telefone de destino com DDD (ex: 11999998888).'); return; }
 
     if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
     try {
-      const res = await _fetch('POST', '/api/config/alerta-critico', { ativo, sessao, telefone: tel, mensagem: msg });
+      const res = await _fetch('POST', '/api/config/alerta-critico', { ativo, telefone: tel, mensagem: msg });
       if (res && res.ok) show('ok', '✅ Configuração salva com sucesso!');
       else show('error', '❌ Erro ao salvar configuração.');
     } finally {

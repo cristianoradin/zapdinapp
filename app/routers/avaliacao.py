@@ -206,12 +206,11 @@ async def _disparar_alerta_critico(
         if not cfg.get("ativo"):
             return
 
-        sessao   = cfg.get("sessao", "").strip()
         telefone_destino = cfg.get("telefone", "").strip()
         template = cfg.get("mensagem", "")
 
-        if not sessao or not telefone_destino or not template:
-            logger.warning("[alerta_critico] config incompleta — sessao=%s tel=%s", sessao, bool(telefone_destino))
+        if not telefone_destino or not template:
+            logger.warning("[alerta_critico] config incompleta — tel=%s", bool(telefone_destino))
             return
 
         # Remove DDI 55 do telefone do cliente para exibição
@@ -239,9 +238,17 @@ async def _disparar_alerta_critico(
                 logger.warning("[alerta_critico] wa_manager não disponível")
                 return
 
+        # Usa qualquer sessão conectada da empresa — não depende de config de sessão
+        sessoes = wa_manager.get_status(empresa_id)
+        conectadas = [s for s in sessoes if s["status"] == "connected"]
+        if not conectadas:
+            logger.warning("[alerta_critico] nenhuma sessão WA conectada para empresa=%d", empresa_id)
+            return
+
+        sessao = conectadas[0]["id"]
         ok, err = await wa_manager.send_text(sessao, empresa_id, fone_envio, mensagem)
         if ok:
-            logger.info("[alerta_critico] alerta enviado nota=%d empresa=%d", nota, empresa_id)
+            logger.info("[alerta_critico] alerta enviado via sessao=%s nota=%d empresa=%d", sessao, nota, empresa_id)
         else:
             logger.warning("[alerta_critico] falha ao enviar: %s", err)
 
