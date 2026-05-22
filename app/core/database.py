@@ -1024,6 +1024,26 @@ async def init_db() -> None:
             "ON agenda_compromissos(empresa_id, data) WHERE alerta_enviado_em IS NULL"
         )
 
+        # ── Migration 014: Agenda WA — multi-usuário ─────────────────────────
+        await conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS agenda_wa_usuarios (
+                id             SERIAL PRIMARY KEY,
+                empresa_id     INT NOT NULL,
+                phone          TEXT NOT NULL,
+                nome           TEXT NOT NULL DEFAULT '',
+                ativo          BOOLEAN NOT NULL DEFAULT TRUE,
+                recebe_alertas BOOLEAN NOT NULL DEFAULT TRUE,
+                created_at     TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE(empresa_id, phone)
+            )
+            """
+        )
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_agenda_wa_usuarios_emp "
+            "ON agenda_wa_usuarios(empresa_id, phone) WHERE ativo = TRUE"
+        )
+
         # ── P2: Worker heartbeats ─────────────────────────────────────────────
         await conn.execute(
             """

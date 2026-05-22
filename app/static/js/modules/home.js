@@ -342,15 +342,20 @@ async function homeDeletarPostit() {
   homeCarregarPostits();
 }
 
-// ── Alerta de Agenda WA ───────────────────────────────────────
-function homeToggleAgendaAlertaCfg() {
-  const panel = document.getElementById('home-agenda-alerta-cfg');
-  if (!panel) return;
-  const open = panel.style.display !== 'none';
-  panel.style.display = open ? 'none' : 'block';
+// ── Agenda WA Config Modal ────────────────────────────────────
+let _agendaAlertaDebounce = null;
+let _agwaUsuarios = [];
+
+function homeAbrirAgendaWaCfg() {
+  document.getElementById('agwa-overlay').classList.add('open');
+  homeCarregarAgendaAlerta();
+  agwaCarregarUsuarios();
 }
 
-let _agendaAlertaDebounce = null;
+function homeFecharAgendaWaCfg(event, force) {
+  if (!force && event && event.target !== document.getElementById('agwa-overlay')) return;
+  document.getElementById('agwa-overlay').classList.remove('open');
+}
 
 async function homeCarregarAgendaAlerta() {
   try {
@@ -359,32 +364,163 @@ async function homeCarregarAgendaAlerta() {
     const d = await r.json();
     const chk = document.getElementById('agendaAlertaAtivo');
     if (chk) chk.checked = !!d.ativo;
-    const numEl = document.getElementById('agendaAlertaNumero');
-    if (numEl) numEl.value = d.numero_alerta || '';
-    const donoEl = document.getElementById('agendaAlertaDono');
-    if (donoEl) donoEl.value = d.numero_dono || '';
     const msgEl = document.getElementById('agendaAlertaMensagem');
     if (msgEl) msgEl.value = d.mensagem || '';
   } catch(e) { console.log('[home] agenda-alerta error', e); }
 }
 
 async function homeSalvarAgendaAlerta() {
-  const ativo = (document.getElementById('agendaAlertaAtivo') || {}).checked || false;
-  const numero_alerta = (document.getElementById('agendaAlertaNumero') || {}).value || '';
-  const numero_dono = (document.getElementById('agendaAlertaDono') || {}).value || '';
+  const ativo    = (document.getElementById('agendaAlertaAtivo') || {}).checked || false;
   const mensagem = (document.getElementById('agendaAlertaMensagem') || {}).value || '';
   try {
     await fetch('/api/config/agenda-alerta', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ativo, numero_alerta, numero_dono, mensagem })
+      body: JSON.stringify({ ativo, mensagem })
     });
+    agwaToast('Configurações salvas ✓');
   } catch(e) { console.log('[home] salvar agenda-alerta error', e); }
 }
 
 function homeSalvarAgendaAlertaDebounce() {
   clearTimeout(_agendaAlertaDebounce);
-  _agendaAlertaDebounce = setTimeout(homeSalvarAgendaAlerta, 1200);
+  _agendaAlertaDebounce = setTimeout(homeSalvarAgendaAlerta, 1500);
+}
+
+// ── CRUD Usuários WA ──────────────────────────────────────────
+function agwaToast(msg) {
+  let t = document.getElementById('agwa-toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'agwa-toast';
+    t.style.cssText = 'position:fixed;bottom:1.5rem;right:1.5rem;background:#1a1d23;color:#fff;padding:.55rem 1.1rem;border-radius:10px;font-size:.8rem;font-weight:600;z-index:2000;opacity:0;transition:opacity .2s';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg; t.style.opacity = '1';
+  setTimeout(() => t.style.opacity = '0', 2200);
+}
+
+function agwaIniciais(nome) {
+  const parts = (nome || '?').trim().split(/\s+/);
+  return parts.length >= 2 ? parts[0][0] + parts[1][0] : parts[0].slice(0,2);
+}
+
+async function agwaCarregarUsuarios() {
+  try {
+    const r = await fetch('/api/config/agenda-wa-usuarios');
+    _agwaUsuarios = r.ok ? await r.json() : [];
+    agwaRenderUsuarios();
+  } catch(e) { _agwaUsuarios = []; agwaRenderUsuarios(); }
+}
+
+function agwaRenderUsuarios() {
+  const el = document.getElementById('agwa-usuarios-lista');
+  if (!el) return;
+  if (!_agwaUsuarios.length) {
+    el.innerHTML = `<div style="text-align:center;padding:1.2rem 0;color:var(--text-muted);font-size:.82rem">
+      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:.25;display:block;margin:0 auto .4rem"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Nenhum usuário cadastrado
+    </div>`;
+    return;
+  }
+  el.innerHTML = _agwaUsuarios.map(u => {
+    const ini  = agwaIniciais(u.nome).toUpperCase();
+    const atv  = u.ativo ? '<span class="agwa-badge agwa-badge-green">Ativo</span>' : '<span class="agwa-badge agwa-badge-gray">Inativo</span>';
+    const bell = u.recebe_alertas ? '<span class="agwa-badge agwa-badge-bell">🔔</span>' : '';
+    return `
+    <div class="agwa-user-card" id="agwa-card-${u.id}">
+      <div class="agwa-user-avatar">${ini}</div>
+      <div class="agwa-user-info">
+        <div class="agwa-user-nome">${u.nome}</div>
+        <div class="agwa-user-phone">📱 ${u.phone}</div>
+      </div>
+      <div class="agwa-user-badges">${atv}${bell}</div>
+      <div class="agwa-user-actions">
+        <button class="agwa-act-btn edit" title="Editar" onclick="agwaEditarUsuario(${u.id})">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <button class="agwa-act-btn del" title="Remover" onclick="agwaDeletarUsuario(${u.id},'${u.nome.replace(/'/g,\"\\'\")}')" >
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function agwaAdicionarUsuario() {
+  const nome  = (document.getElementById('agwa-add-nome') || {}).value?.trim() || '';
+  const phone = (document.getElementById('agwa-add-phone') || {}).value?.trim() || '';
+  const ativo = document.getElementById('agwa-add-ativo')?.checked ?? true;
+  const recebe_alertas = document.getElementById('agwa-add-alertas')?.checked ?? true;
+  if (!nome || !phone) return agwaToast('Preencha nome e telefone');
+  try {
+    const r = await fetch('/api/config/agenda-wa-usuarios', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({nome, phone, ativo, recebe_alertas})
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      return agwaToast(err.detail || 'Erro ao adicionar');
+    }
+    document.getElementById('agwa-add-nome').value  = '';
+    document.getElementById('agwa-add-phone').value = '';
+    document.getElementById('agwa-add-ativo').checked   = true;
+    document.getElementById('agwa-add-alertas').checked = true;
+    await agwaCarregarUsuarios();
+    agwaToast(nome + ' adicionado ✓');
+  } catch(e) { agwaToast('Erro de conexão'); }
+}
+
+function agwaEditarUsuario(id) {
+  const u = _agwaUsuarios.find(x => x.id === id);
+  if (!u) return;
+  const card = document.getElementById('agwa-card-' + id);
+  if (!card) return;
+  card.outerHTML = `
+    <div class="agwa-edit-form" id="agwa-edit-${id}">
+      <div style="display:flex;gap:.5rem">
+        <div class="agwa-field" style="flex:1;margin:0"><label>Nome</label>
+          <input id="agwa-e-nome-${id}" value="${u.nome.replace(/"/g,'&quot;')}" type="text"></div>
+        <div class="agwa-field" style="flex:1;margin:0"><label>WhatsApp</label>
+          <input id="agwa-e-phone-${id}" value="${u.phone}" type="text"></div>
+      </div>
+      <div class="agwa-add-checks">
+        <label><input type="checkbox" id="agwa-e-ativo-${id}" ${u.ativo?'checked':''}> Ativo</label>
+        <label><input type="checkbox" id="agwa-e-alertas-${id}" ${u.recebe_alertas?'checked':''}> Alertas</label>
+      </div>
+      <div style="display:flex;gap:.4rem;justify-content:flex-end">
+        <button onclick="agwaCarregarUsuarios()" style="background:#e5e7eb;color:var(--text);border:none;border-radius:7px;padding:.4rem .8rem;font-size:.78rem;cursor:pointer">Cancelar</button>
+        <button onclick="agwaSalvarEdicao(${id})" class="agwa-btn-add">Salvar</button>
+      </div>
+    </div>`;
+}
+
+async function agwaSalvarEdicao(id) {
+  const nome  = document.getElementById('agwa-e-nome-' + id)?.value?.trim() || '';
+  const phone = document.getElementById('agwa-e-phone-' + id)?.value?.trim() || '';
+  const ativo = document.getElementById('agwa-e-ativo-' + id)?.checked ?? true;
+  const recebe_alertas = document.getElementById('agwa-e-alertas-' + id)?.checked ?? true;
+  if (!nome || !phone) return agwaToast('Preencha nome e telefone');
+  try {
+    const r = await fetch(`/api/config/agenda-wa-usuarios/${id}`, {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({nome, phone, ativo, recebe_alertas})
+    });
+    if (!r.ok) return agwaToast('Erro ao salvar');
+    await agwaCarregarUsuarios();
+    agwaToast('Alterações salvas ✓');
+  } catch(e) { agwaToast('Erro de conexão'); }
+}
+
+async function agwaDeletarUsuario(id, nome) {
+  if (!confirm(`Remover "${nome}" da agenda WA?`)) return;
+  try {
+    await fetch(`/api/config/agenda-wa-usuarios/${id}`, {method:'DELETE'});
+    await agwaCarregarUsuarios();
+    agwaToast(nome + ' removido');
+  } catch(e) { agwaToast('Erro ao remover'); }
 }
 
 // ── Recados ───────────────────────────────────────────────────
@@ -425,7 +561,6 @@ function initHome() {
   homeCarregarPostits();
   homeCarregarRecados();
   homeCarregarKPIs();
-  homeCarregarAgendaAlerta();
 }
 
 // Inicializa conector visual no item já ativo ao carregar

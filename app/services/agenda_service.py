@@ -1,13 +1,15 @@
 """
-app/services/agenda_service.py — Agenda via WhatsApp.
+app/services/agenda_service.py — Agenda via WhatsApp (multi-usuário).
+
+Cada usuário cadastrado em `agenda_wa_usuarios` tem seus compromissos isolados.
+Identificação: agenda_compromissos.usuario_id = -(agenda_wa_usuarios.id)
+  → negativos = criados via WA  → positivos = criados via UI
 
 Funcionalidades:
-  1. processar_comando_agenda() — intercepta mensagens do número-dono e responde
-     com consultas (hoje/semana) ou cria agendamento via NL + IA.
-  2. _enviar_alertas_agenda() — chamado pelo reporter; envia alerta 1h antes.
-
-Este módulo é completamente isolado. Se qualquer erro ocorrer, o chatbot normal
-continua sem ser afetado (try/except no ponto de integração).
+  1. processar_comando_agenda() — identifica o sender na tabela de usuários WA;
+     saúda pelo nome; processa consultas (hoje/semana) e criação via NL + IA.
+  2. enviar_alertas_agenda()   — envia alertas 1h antes; por usuário WA ou para
+     o numero_alerta legado (compromissos da UI).
 """
 from __future__ import annotations
 
@@ -55,33 +57,54 @@ def _fmt_compromisso(c: dict) -> str:
     return linha
 
 
+def _traduz_dia(dia_en: str) -> str:
+    return (dia_en
+        .replace("Monday",    "Segunda")
+        .replace("Tuesday",   "Terça")
+        .replace("Wednesday", "Quarta")
+        .replace("Thursday",  "Quinta")
+        .replace("Friday",    "Sexta")
+        .replace("Saturday",  "Sábado")
+        .replace("Sunday",    "Domingo"))
+
+
+# ── Buscar usuário WA ─────────────────────────────────────────────────────────
+
+async def _buscar_wa_usuario(empresa_id: int, phone_norm: str, db) -> Optional[dict]:
+    """Retorna dict {id, nome} do usuário WA ativo, ou None."""
+    async with db.execute(
+        "SELECT id, nome FROM agenda_wa_usuarios "
+        "WHERE empresa_id=$1 AND phone=$2 AND ativo=true",
+        (empresa_id, phone_norm),
+    ) as cur:
+        row = await cur.fetchone()
+    return dict(row) if row else None
+
+
 # ── Consulta de agenda ────────────────────────────────────────────────────────
 
-async def _consultar_agenda(empresa_id: int, periodo: str, db) -> list[dict]:
-    """Retorna compromissos para 'hoje' ou 'semana'."""
+async def _consultar_agenda(
+    empresa_id: int, periodo: str, db, usuario_id: int
+) -> list[dict]:
+    """Retorna compromissos do usuário para 'hoje' ou 'semana'."""
     hoje = date.today()
-    if periodo == "hoje":
-        inicio = hoje
-        fim    = hoje
-    else:  # semana
-        inicio = hoje
-        fim    = hoje + timedelta(days=6)
+    inicio = hoje
+    fim    = hoje if periodo == "hoje" else hoje + timedelta(days=6)
 
     async with db.execute(
         "SELECT titulo, data, hora_inicio, hora_fim, descricao, link "
         "FROM agenda_compromissos "
-        "WHERE empresa_id=$1 AND data BETWEEN $2 AND $3 "
+        "WHERE empresa_id=$1 AND usuario_id=$2 AND data BETWEEN $3 AND $4 "
         "ORDER BY data, hora_inicio",
-        (empresa_id, inicio, fim),
+        (empresa_id, usuario_id, inicio, fim),
     ) as cur:
         rows = await cur.fetchall()
     return [dict(r) for r in rows]
 
 
-# ── Responder via WA ──────────────────────────────────────────────────────────
+# ── Enviar via WA ─────────────────────────────────────────────────────────────
 
 async def _wa_send(instance: str, phone: str, texto: str) -> None:
-    """Envia mensagem WA via Evolution API."""
     try:
         from .evolution_service import evo_manager
         await evo_manager.send_text(instance, phone, texto)
@@ -110,7 +133,6 @@ Regras:
 
 
 async def _parse_agendamento_ia(texto: str) -> Optional[dict]:
-    """Usa IA para extrair dados de agendamento de linguagem natural."""
     from .chatbot_service import _chat_providers, _call_ia
 
     providers = _chat_providers()
@@ -129,11 +151,9 @@ async def _parse_agendamento_ia(texto: str) -> Optional[dict]:
                 max_tokens=300,
             )
             if resposta:
-                # Extrai JSON mesmo que venha com texto extra
                 match = re.search(r'\{.*\}', resposta, re.DOTALL)
                 if match:
-                    data = _json.loads(match.group())
-                    return data
+                    return _json.loads(match.group())
         except Exception as exc:
             logger.debug("[agenda] Falha IA parse %s: %s", provider, exc)
             continue
@@ -142,13 +162,13 @@ async def _parse_agendamento_ia(texto: str) -> Optional[dict]:
 
 # ── Criar compromisso via IA ──────────────────────────────────────────────────
 
-async def _criar_via_ia(empresa_id: int, usuario_id: int, texto: str, db) -> Optional[dict]:
-    """Parseia texto com IA e insere compromisso no banco."""
+async def _criar_via_ia(
+    empresa_id: int, usuario_id: int, texto: str, db
+) -> Optional[dict]:
     dados = await _parse_agendamento_ia(texto)
     if not dados or not dados.get("titulo") or not dados.get("data"):
         return None
 
-    # Valida data
     try:
         data_obj = date.fromisoformat(dados["data"])
     except Exception:
@@ -174,7 +194,7 @@ async def _criar_via_ia(empresa_id: int, usuario_id: int, texto: str, db) -> Opt
     return dados
 
 
-# ── Ponto de entrada principal (chamado pelo chatbot_service) ─────────────────
+# ── Ponto de entrada principal ────────────────────────────────────────────────
 
 async def processar_comando_agenda(
     empresa_id: int,
@@ -184,53 +204,60 @@ async def processar_comando_agenda(
     usuario_id: int,
 ) -> bool:
     """
-    Verifica se a mensagem é do número-dono configurado e tenta processar
-    como comando de agenda.
-
-    Retorna True se o comando foi tratado (chatbot normal NÃO deve processar).
-    Retorna False em qualquer outro caso (chatbot continua normalmente).
+    Identifica o sender na tabela agenda_wa_usuarios.
+    Retorna True se o comando foi tratado (chatbot NÃO deve processar).
+    Retorna False em qualquer outro caso.
     """
     from ..core.database import get_db_direct
 
     try:
+        # Verifica se o recurso está ativo para a empresa
         async with get_db_direct() as db:
             async with db.execute(
                 "SELECT value FROM config WHERE empresa_id=$1 AND key='agenda_alerta'",
                 (empresa_id,),
             ) as cur:
-                row = await cur.fetchone()
+                cfg_row = await cur.fetchone()
 
-        if not row:
-            return False
-
-        try:
-            cfg = _json.loads(row["value"] or "{}")
-        except Exception:
-            return False
+        cfg: dict = {}
+        if cfg_row:
+            try:
+                cfg = _json.loads(cfg_row["value"] or "{}")
+            except Exception:
+                pass
 
         if not cfg.get("ativo"):
             return False
 
-        numero_dono = _normalizar_phone(cfg.get("numero_dono") or "")
-        if not numero_dono:
-            return False
-
         phone_norm = _normalizar_phone(phone_local)
-        if phone_norm != numero_dono:
-            return False  # não é o dono — chatbot normal continua
 
-        # ── É o dono — processa comando ───────────────────────────────────────
+        # ── Busca usuário na tabela multi-usuário ─────────────────────────────
+        async with get_db_direct() as db:
+            wa_user = await _buscar_wa_usuario(empresa_id, phone_norm, db)
+
+        # ── Fallback: número-dono legado (instalações antigas sem tabela) ─────
+        if not wa_user:
+            numero_dono = _normalizar_phone(cfg.get("numero_dono") or "")
+            if not numero_dono or phone_norm != numero_dono:
+                return False
+            nome_usuario  = "você"
+            effective_uid = 0  # legado: usuario_id genérico
+        else:
+            nome_usuario  = (wa_user["nome"] or "você").split()[0]  # primeiro nome
+            effective_uid = -(wa_user["id"])  # negativo = identificador WA
+
+        # ── Processa o comando ────────────────────────────────────────────────
         t = texto.lower().strip()
 
-        # Ajuda / menu
+        # Menu / ajuda
         if re.search(r'\bagenda\b|\bajuda\b|\bhelp\b|\bo que\b|\bmenu\b', t) and len(t) < 30:
             resp = (
-                "📅 *Agenda ZapDin*\n\n"
+                f"📅 *Olá, {nome_usuario}! Agenda ZapDin*\n\n"
                 "Comandos disponíveis:\n"
-                "• *agenda hoje* — compromissos de hoje\n"
+                "• *agenda hoje* — seus compromissos de hoje\n"
                 "• *agenda semana* — próximos 7 dias\n"
                 "• *agendar [descrição]* — criar compromisso\n\n"
-                "_Exemplo: agendar reunião com sócios dia 25/05 às 14h — link: meet.google.com/xxx_"
+                "_Exemplo: agendar reunião com sócios dia 25/05 às 14h_"
             )
             await _wa_send(instance, phone_local, resp)
             return True
@@ -238,12 +265,12 @@ async def processar_comando_agenda(
         # Consulta hoje
         if re.search(r'\bhoje\b|\btoday\b', t):
             async with get_db_direct() as db:
-                compromissos = await _consultar_agenda(empresa_id, "hoje", db)
+                compromissos = await _consultar_agenda(empresa_id, "hoje", db, effective_uid)
             hoje = date.today()
             if not compromissos:
-                resp = f"📅 Nenhum compromisso para hoje ({hoje.strftime('%d/%m/%Y')})."
+                resp = f"📅 Nenhum compromisso para hoje, {nome_usuario} ({hoje.strftime('%d/%m/%Y')})."
             else:
-                linhas = [f"📅 *Compromissos de hoje ({hoje.strftime('%d/%m/%Y')}):*\n"]
+                linhas = [f"📅 *{nome_usuario}, compromissos de hoje ({hoje.strftime('%d/%m/%Y')}):*\n"]
                 linhas += [_fmt_compromisso(c) for c in compromissos]
                 resp = "\n".join(linhas)
             await _wa_send(instance, phone_local, resp)
@@ -252,19 +279,17 @@ async def processar_comando_agenda(
         # Consulta semana
         if re.search(r'\bsemana\b|\bweek\b|\bpr[oó]ximos\b', t):
             async with get_db_direct() as db:
-                compromissos = await _consultar_agenda(empresa_id, "semana", db)
+                compromissos = await _consultar_agenda(empresa_id, "semana", db, effective_uid)
             if not compromissos:
-                resp = "📅 Nenhum compromisso nos próximos 7 dias."
+                resp = f"📅 Nenhum compromisso nos próximos 7 dias, {nome_usuario}."
             else:
-                # Agrupa por data
                 por_data: dict[str, list] = {}
                 for c in compromissos:
-                    k = str(c["data"])
-                    por_data.setdefault(k, []).append(c)
-                linhas = ["📅 *Compromissos da semana:*\n"]
+                    por_data.setdefault(str(c["data"]), []).append(c)
+                linhas = [f"📅 *{nome_usuario}, seus compromissos da semana:*\n"]
                 for data_str, lista in sorted(por_data.items()):
                     d = date.fromisoformat(data_str)
-                    linhas.append(f"*{d.strftime('%d/%m — %A').replace('Monday','Segunda').replace('Tuesday','Terça').replace('Wednesday','Quarta').replace('Thursday','Quinta').replace('Friday','Sexta').replace('Saturday','Sábado').replace('Sunday','Domingo')}*")
+                    linhas.append(f"*{_traduz_dia(d.strftime('%A'))}, {d.strftime('%d/%m')}*")
                     linhas += [_fmt_compromisso(c) for c in lista]
                     linhas.append("")
                 resp = "\n".join(linhas).strip()
@@ -272,14 +297,17 @@ async def processar_comando_agenda(
             return True
 
         # Criar agendamento
-        if re.search(r'\bagendar\b|\bmarcar\b|\badicion[ae]r compromisso\b|\bcriar compromisso\b|\bnovo compromisso\b', t):
+        if re.search(
+            r'\bagendar\b|\bmarcar\b|\badicion[ae]r compromisso\b'
+            r'|\bcriar compromisso\b|\bnovo compromisso\b', t
+        ):
             async with get_db_direct() as db:
-                dados = await _criar_via_ia(empresa_id, usuario_id, texto, db)
+                dados = await _criar_via_ia(empresa_id, effective_uid, texto, db)
             if dados:
                 hora_txt = dados.get("hora_inicio") or "Sem horário"
                 link_txt = f"\n🔗 {dados['link']}" if dados.get("link") else ""
                 resp = (
-                    f"✅ *Compromisso agendado!*\n\n"
+                    f"✅ *Compromisso agendado, {nome_usuario}!*\n\n"
                     f"📌 *{dados['titulo']}*\n"
                     f"📅 {date.fromisoformat(dados['data']).strftime('%d/%m/%Y')}\n"
                     f"🕐 {hora_txt}"
@@ -297,16 +325,16 @@ async def processar_comando_agenda(
     except Exception as exc:
         logger.warning("[agenda] Erro ao processar comando (chatbot continua): %s", exc)
 
-    return False  # não reconhecido — chatbot normal continua
+    return False
 
 
-# ── Worker de alertas (chamado pelo reporter) ─────────────────────────────────
+# ── Worker de alertas ─────────────────────────────────────────────────────────
 
 async def enviar_alertas_agenda() -> None:
     """
-    Envia alertas WA 1 hora antes de cada compromisso com hora definida.
-    Roda a cada ~1 minuto via reporter._loop().
-    Marca alerta_enviado_em para não reenviar.
+    Envia alertas 1h antes de cada compromisso.
+    • usuario_id < 0  → compromisso criado via WA → busca phone em agenda_wa_usuarios
+    • usuario_id >= 0 → compromisso criado via UI → envia para numero_alerta do config
     """
     try:
         from ..core.database import get_db_direct
@@ -318,11 +346,11 @@ async def enviar_alertas_agenda() -> None:
         import json as _j
 
         async with get_db_direct() as db:
-            # Compromissos cuja janela de alerta (1h antes) está nos próximos 2 min
             async with db.execute(
                 """
                 SELECT ac.id, ac.empresa_id, ac.titulo, ac.hora_inicio,
                        ac.hora_fim, ac.descricao, ac.link, ac.data,
+                       ac.usuario_id,
                        c.value AS cfg_json
                 FROM agenda_compromissos ac
                 LEFT JOIN config c
@@ -345,13 +373,14 @@ async def enviar_alertas_agenda() -> None:
 
         for row in pendentes:
             empresa_id = row["empresa_id"]
+            usuario_id = row["usuario_id"]
+
             try:
                 cfg = _j.loads(row["cfg_json"] or "{}")
             except Exception:
                 cfg = {}
 
             if not cfg.get("ativo"):
-                # Alerta desativado — marca para não verificar de novo
                 async with get_db_direct() as db:
                     await db.execute(
                         "UPDATE agenda_compromissos SET alerta_enviado_em = NOW() WHERE id = $1",
@@ -360,39 +389,73 @@ async def enviar_alertas_agenda() -> None:
                     await db.commit()
                 continue
 
-            numero_alerta = _normalizar_phone(cfg.get("numero_alerta") or "")
-            if not numero_alerta:
+            # Determina o número destino
+            numero_destino = None
+            nome_usuario   = ""
+            template       = cfg.get("mensagem", "")
+
+            if usuario_id is not None and usuario_id < 0:
+                # Compromisso criado via WA — busca usuário pelo ID negativo
+                wa_user_id = -usuario_id
+                async with get_db_direct() as db:
+                    async with db.execute(
+                        "SELECT phone, nome, recebe_alertas "
+                        "FROM agenda_wa_usuarios "
+                        "WHERE id=$1 AND empresa_id=$2",
+                        (wa_user_id, empresa_id),
+                    ) as cur:
+                        wa_row = await cur.fetchone()
+                if wa_row and wa_row["recebe_alertas"]:
+                    numero_destino = _normalizar_phone(wa_row["phone"])
+                    nome_usuario   = (wa_row["nome"] or "").split()[0]
+            else:
+                # Compromisso da UI — envia para numero_alerta do config
+                numero_destino = _normalizar_phone(cfg.get("numero_alerta") or "")
+
+            if not numero_destino:
+                async with get_db_direct() as db:
+                    await db.execute(
+                        "UPDATE agenda_compromissos SET alerta_enviado_em = NOW() WHERE id = $1",
+                        (row["id"],),
+                    )
+                    await db.commit()
                 continue
 
-            # Verifica sessão WA disponível
-            sessoes = evo_manager.get_status(empresa_id)
+            # Verifica sessão WA conectada
+            sessoes    = evo_manager.get_status(empresa_id)
             conectadas = [s for s in sessoes if s["status"] == "connected"]
             if not conectadas:
-                logger.debug("[agenda-alerta] empresa %s sem sessão WA conectada — pulando", empresa_id)
+                logger.debug("[agenda-alerta] empresa %s sem sessão WA — pulando", empresa_id)
                 continue
 
             instance = conectadas[0]["instance"]
-            template = cfg.get("mensagem", "")
-
-            hora  = row["hora_inicio"] or ""
-            desc  = (row["descricao"] or "").strip() or "—"
-            link  = (row["link"] or "").strip() or "—"
-            msg   = template.format(
-                titulo=row["titulo"],
-                hora=hora,
-                descricao=desc,
-                link=link,
-            )
+            hora     = row["hora_inicio"] or ""
+            desc     = (row["descricao"] or "").strip() or "—"
+            link     = (row["link"] or "").strip() or "—"
 
             try:
-                await evo_manager.send_text(instance, numero_alerta, msg)
-                logger.info("[agenda-alerta] Alerta enviado — empresa=%s compromisso=%s",
-                            empresa_id, row["id"])
+                msg = template.format(
+                    titulo=row["titulo"],
+                    hora=hora,
+                    descricao=desc,
+                    link=link,
+                    nome=nome_usuario,
+                )
+            except Exception:
+                msg = (
+                    f"📅 *Lembrete:* {row['titulo']}\n"
+                    f"🕐 {hora}\n"
+                    f"⏰ Começa em 1 hora!"
+                )
+
+            try:
+                await evo_manager.send_text(instance, numero_destino, msg)
+                logger.info("[agenda-alerta] Alerta — empresa=%s compromisso=%s → %s",
+                            empresa_id, row["id"], numero_destino)
             except Exception as exc:
-                logger.warning("[agenda-alerta] Falha ao enviar alerta %s: %s", row["id"], exc)
+                logger.warning("[agenda-alerta] Falha %s: %s", row["id"], exc)
                 continue
 
-            # Marca como enviado
             async with get_db_direct() as db:
                 await db.execute(
                     "UPDATE agenda_compromissos SET alerta_enviado_em = NOW() WHERE id = $1",

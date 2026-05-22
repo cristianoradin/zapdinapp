@@ -10,7 +10,7 @@ Token ERP    → erp.py
 Chatbot      → chatbot_router.py
 """
 import json as _json
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 
@@ -209,6 +209,95 @@ async def set_agenda_alerta(
         """INSERT INTO config (empresa_id, key, value) VALUES (?, ?, ?)
            ON CONFLICT (empresa_id, key) DO UPDATE SET value = EXCLUDED.value""",
         (empresa_id, _AGENDA_ALERTA_KEY, value),
+    )
+    await db.commit()
+    return {"ok": True}
+
+
+# ── Agenda — Usuários WA (multi-usuário) ─────────────────────────────────────
+
+def _norm_wa_phone(phone: str) -> str:
+    """Remove DDI 55 e caracteres não-numéricos."""
+    p = phone.strip().replace(" ", "").replace("-", "").replace("+", "").replace("(", "").replace(")", "")
+    if p.startswith("55") and len(p) >= 12:
+        p = p[2:]
+    return p
+
+
+class AgendaWaUsuarioPayload(BaseModel):
+    phone: str
+    nome: str
+    ativo: bool = True
+    recebe_alertas: bool = True
+
+
+@router.get("/agenda-wa-usuarios")
+async def list_agenda_wa_usuarios(
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    empresa_id = user["empresa_id"]
+    async with db.execute(
+        "SELECT id, phone, nome, ativo, recebe_alertas FROM agenda_wa_usuarios "
+        "WHERE empresa_id=? ORDER BY nome",
+        (empresa_id,),
+    ) as cur:
+        rows = await cur.fetchall()
+    return [dict(r) for r in rows]
+
+
+@router.post("/agenda-wa-usuarios")
+async def create_agenda_wa_usuario(
+    body: AgendaWaUsuarioPayload,
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    empresa_id = user["empresa_id"]
+    phone = _norm_wa_phone(body.phone)
+    if not phone or not body.nome.strip():
+        raise HTTPException(status_code=422, detail="Nome e telefone são obrigatórios")
+    try:
+        cur = await db.execute(
+            "INSERT INTO agenda_wa_usuarios(empresa_id,phone,nome,ativo,recebe_alertas) "
+            "VALUES(?,?,?,?,?)",
+            (empresa_id, phone, body.nome.strip(), body.ativo, body.recebe_alertas),
+        )
+        await db.commit()
+        return {"ok": True, "id": cur.lastrowid}
+    except Exception:
+        raise HTTPException(status_code=409, detail="Número já cadastrado para esta empresa")
+
+
+@router.put("/agenda-wa-usuarios/{uid}")
+async def update_agenda_wa_usuario(
+    uid: int,
+    body: AgendaWaUsuarioPayload,
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    empresa_id = user["empresa_id"]
+    phone = _norm_wa_phone(body.phone)
+    if not phone or not body.nome.strip():
+        raise HTTPException(status_code=422, detail="Nome e telefone são obrigatórios")
+    await db.execute(
+        "UPDATE agenda_wa_usuarios SET phone=?,nome=?,ativo=?,recebe_alertas=? "
+        "WHERE id=? AND empresa_id=?",
+        (phone, body.nome.strip(), body.ativo, body.recebe_alertas, uid, empresa_id),
+    )
+    await db.commit()
+    return {"ok": True}
+
+
+@router.delete("/agenda-wa-usuarios/{uid}")
+async def delete_agenda_wa_usuario(
+    uid: int,
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    empresa_id = user["empresa_id"]
+    await db.execute(
+        "DELETE FROM agenda_wa_usuarios WHERE id=? AND empresa_id=?",
+        (uid, empresa_id),
     )
     await db.commit()
     return {"ok": True}
