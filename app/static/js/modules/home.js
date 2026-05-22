@@ -246,7 +246,7 @@ function homeLimparAgendaForm() {
 async function homeSalvarAgenda() {
   const id = document.getElementById('home-agenda-id').value;
   const titulo = document.getElementById('home-agenda-titulo').value.trim();
-  if (!titulo) return alert('Informe o título');
+  if (!titulo) { agwaToast('⚠️ Informe o título do compromisso'); return; }
   const linkEl = document.getElementById('home-agenda-link');
   const body = {
     data: _agendaDataSel,
@@ -264,7 +264,8 @@ async function homeSalvarAgenda() {
 }
 
 async function homeDeletarAgenda(id) {
-  if (!confirm('Excluir compromisso?')) return;
+  const ok = await showConfirm({ title: 'Excluir compromisso?', body: 'Esta ação não pode ser desfeita.', okLabel: 'Excluir', type: 'danger', icon: '🗑️' });
+  if (!ok) return;
   await fetch(`/api/home/agenda/${id}`, {method:'DELETE'});
   await homeCarregarAgenda();
   homeRenderAgendaLista();
@@ -336,7 +337,9 @@ async function homeSalvarPostit() {
 
 async function homeDeletarPostit() {
   const id = document.getElementById('home-postit-id').value;
-  if (!id || !confirm('Excluir anotação?')) return;
+  if (!id) return;
+  const ok = await showConfirm({ title: 'Excluir anotação?', body: 'Esta ação não pode ser desfeita.', okLabel: 'Excluir', type: 'danger', icon: '🗑️' });
+  if (!ok) return;
   await fetch(`/api/home/postits/${id}`, {method:'DELETE'});
   homeFecharPostit(null, true);
   homeCarregarPostits();
@@ -424,7 +427,8 @@ function agwaRenderUsuarios() {
     return;
   }
   el.innerHTML = _agwaUsuarios.map(u => {
-    const ini  = agwaIniciais(u.nome).toUpperCase();
+    const ini     = agwaIniciais(u.nome).toUpperCase();
+    const nomeEsc = u.nome.replace(/'/g, '&#39;');
     const atv  = u.ativo ? '<span class="agwa-badge agwa-badge-green">Ativo</span>' : '<span class="agwa-badge agwa-badge-gray">Inativo</span>';
     const bell = u.recebe_alertas ? '<span class="agwa-badge agwa-badge-bell">🔔</span>' : '';
     return `
@@ -439,7 +443,7 @@ function agwaRenderUsuarios() {
         <button class="agwa-act-btn edit" title="Editar" onclick="agwaEditarUsuario(${u.id})">
           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
-        <button class="agwa-act-btn del" title="Remover" onclick="agwaDeletarUsuario(${u.id},'${u.nome.replace(/'/g,\"\\'\")}')" >
+        <button class="agwa-act-btn del" title="Remover" onclick="agwaDeletarUsuario(${u.id},'${nomeEsc}')">
           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
         </button>
       </div>
@@ -515,7 +519,8 @@ async function agwaSalvarEdicao(id) {
 }
 
 async function agwaDeletarUsuario(id, nome) {
-  if (!confirm(`Remover "${nome}" da agenda WA?`)) return;
+  const ok = await showConfirm({ title: 'Remover usuário?', body: `"${nome}" será removido da Agenda via WhatsApp.`, okLabel: 'Remover', cancelLabel: 'Cancelar', type: 'danger', icon: '👤' });
+  if (!ok) return;
   try {
     await fetch(`/api/config/agenda-wa-usuarios/${id}`, {method:'DELETE'});
     await agwaCarregarUsuarios();
