@@ -1736,6 +1736,8 @@
     if (panel === 'dominio' && window.dominio) dominio.carregar();
     if (panel === 'log' && window.syslog) syslog.carregar(true);
     if (panel === 'token' && window.tokenModule) tokenModule.init();
+    // Dispara evento para módulos externos (ex: usuarios.js)
+    document.dispatchEvent(new CustomEvent('sys-panel-activated', { detail: panel }));
   }
 
   // ── Usuário ──────────────────────────────────────────────────────────────────

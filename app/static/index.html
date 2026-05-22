@@ -2066,6 +2066,10 @@
             <span class="sys-menu-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
             Usuário
           </div>
+          <div class="sys-menu-item" data-panel="usuarios" onclick="sysNav(this,'usuarios')">
+            <span class="sys-menu-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+            Usuários
+          </div>
           <div class="sys-menu-item" data-panel="token" onclick="sysNav(this,'token')">
             <span class="sys-menu-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg></span>
             Token API
@@ -2354,6 +2358,87 @@
               <button class="btn btn-primary" onclick="salvarUsuario()">Salvar alterações</button>
             </div>
             <div class="alert" id="alertSysUsuario" style="margin-top:.75rem"></div>
+          </div>
+
+          <!-- Painel: Usuários -->
+          <div class="sys-panel" id="sys-panel-usuarios">
+            <div class="sys-panel-header">
+              <div class="sys-panel-title">Gerenciar Usuários</div>
+              <div class="sys-panel-sub">Adicione, altere a senha ou remova usuários de acesso ao ZapDin. Estes usuários são independentes do Monitor.</div>
+            </div>
+
+            <!-- Adicionar novo usuário -->
+            <div class="sys-panel-section-title" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-light);margin:0 0 .75rem">Adicionar usuário</div>
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">Novo usuário</div>
+                <div class="sys-row-desc">O nome de login não pode ser alterado depois.</div>
+              </div>
+              <div class="sys-row-control">
+                <input type="text" id="usrNovoUsername" placeholder="Nome de usuário" autocomplete="off" />
+              </div>
+            </div>
+            <div class="sys-divider"></div>
+            <div class="sys-row">
+              <div>
+                <div class="sys-row-title">Senha</div>
+                <div class="sys-row-desc">Mínimo 6 caracteres.</div>
+              </div>
+              <div class="sys-row-control">
+                <input type="password" id="usrNovoSenha" placeholder="Senha" autocomplete="new-password" />
+                <input type="password" id="usrNovoSenhaConf" placeholder="Confirmar senha" autocomplete="new-password" />
+              </div>
+            </div>
+            <div style="margin-top:1rem;display:flex;align-items:center;gap:.75rem">
+              <button class="btn btn-primary" onclick="usrCriar()">Adicionar usuário</button>
+              <span id="usrCriarMsg" style="font-size:.82rem"></span>
+            </div>
+
+            <!-- Lista de usuários -->
+            <div style="margin-top:2rem">
+              <div class="sys-panel-section-title" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-light);margin:0 0 .75rem">Usuários cadastrados</div>
+              <div id="usrListaWrap">
+                <div id="usrListaLoading" style="color:var(--text-muted);font-size:.85rem">Carregando…</div>
+                <table id="usrListaTable" style="display:none;width:100%;border-collapse:collapse">
+                  <thead>
+                    <tr style="border-bottom:2px solid var(--border)">
+                      <th style="text-align:left;padding:.5rem .75rem;font-size:.78rem;font-weight:600;color:var(--text-muted)">Usuário</th>
+                      <th style="text-align:left;padding:.5rem .75rem;font-size:.78rem;font-weight:600;color:var(--text-muted)">Criado em</th>
+                      <th style="text-align:right;padding:.5rem .75rem;font-size:.78rem;font-weight:600;color:var(--text-muted)">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody id="usrListaTbody"></tbody>
+                </table>
+                <div id="usrListaEmpty" style="display:none;color:var(--text-muted);font-size:.85rem">Nenhum usuário adicional cadastrado.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modal: Alterar senha -->
+          <div id="usrModalSenha" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;align-items:center;justify-content:center">
+            <div style="background:var(--surface);border-radius:12px;padding:1.5rem;width:360px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+              <div style="font-size:1rem;font-weight:700;margin-bottom:1rem">Alterar senha</div>
+              <div style="font-size:.85rem;color:var(--text-muted);margin-bottom:1rem">Usuário: <strong id="usrModalSenhaNome"></strong></div>
+              <input type="password" id="usrModalSenhaNova" placeholder="Nova senha (mín. 6 caracteres)" autocomplete="new-password" style="width:100%;margin-bottom:.75rem" />
+              <input type="password" id="usrModalSenhaConf" placeholder="Confirmar nova senha" autocomplete="new-password" style="width:100%;margin-bottom:1rem" />
+              <div id="usrModalSenhaMsg" style="font-size:.82rem;margin-bottom:.75rem"></div>
+              <div style="display:flex;gap:.75rem;justify-content:flex-end">
+                <button class="btn btn-ghost" onclick="usrModalSenhaFechar()">Cancelar</button>
+                <button class="btn btn-primary" onclick="usrSalvarSenha()">Salvar</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modal: Confirmar exclusão -->
+          <div id="usrModalDel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;align-items:center;justify-content:center">
+            <div style="background:var(--surface);border-radius:12px;padding:1.5rem;width:360px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+              <div style="font-size:1rem;font-weight:700;margin-bottom:.75rem">Remover usuário</div>
+              <div style="font-size:.88rem;margin-bottom:1.25rem">Tem certeza que deseja remover o usuário <strong id="usrModalDelNome"></strong>? Esta ação não pode ser desfeita.</div>
+              <div style="display:flex;gap:.75rem;justify-content:flex-end">
+                <button class="btn btn-ghost" onclick="usrModalDelFechar()">Cancelar</button>
+                <button class="btn" style="background:#ef4444;color:#fff" onclick="usrConfirmarDel()">Remover</button>
+              </div>
+            </div>
           </div>
 
           <!-- Painel: Domínio -->
@@ -4159,6 +4244,7 @@
 <script src="/static/js/modules/campanha.js?v=__BUILD__"></script>
 <script src="/static/js/modules/ia-central.js?v=__BUILD__"></script>
 <script src="/static/js/modules/home.js?v=__BUILD__"></script>
+<script src="/static/js/modules/usuarios.js?v=__BUILD__"></script>
 
 <!-- App principal -->
 <script src="/static/js/app.js?v=__BUILD__"></script>
