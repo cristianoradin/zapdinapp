@@ -258,6 +258,10 @@ window.mensagemModule = (() => {
     const cbAval = document.getElementById('testeMsgIncluirAval');
     if (cbAval) cbAval.addEventListener('change', atualizarPreviewTeste);
 
+    // Quando avaliação é ligada/desligada, sincroniza estado do alerta crítico
+    const toggleAval = document.getElementById('toggleAvaliacao');
+    if (toggleAval) toggleAval.addEventListener('change', _syncAlertaToggleState);
+
     // Preview de teste ao digitar número de telefone
     const phoneEl = document.getElementById('testeMsgPhone');
     if (phoneEl) phoneEl.addEventListener('input', atualizarPreviewTeste);
@@ -275,6 +279,24 @@ window.mensagemModule = (() => {
     '📅 *Data:* {data}\n\n' +
     '⚠️ Entre em contato com o cliente para resolver a situação!';
 
+  function _avaliacaoAtiva() {
+    return document.getElementById('toggleAvaliacao')?.checked === true;
+  }
+
+  function _syncAlertaToggleState() {
+    const chk     = document.getElementById('alertaCriticoAtivo');
+    const aviso   = document.getElementById('alertaCriticoAvisoAval');
+    if (!chk) return;
+    if (!_avaliacaoAtiva()) {
+      chk.checked  = false;
+      chk.disabled = true;
+      if (aviso) aviso.style.display = 'flex';
+    } else {
+      chk.disabled = false;
+      if (aviso) aviso.style.display = 'none';
+    }
+  }
+
   async function loadAlertaCritico() {
     try {
       const res = await fetch('/api/config/alerta-critico');
@@ -283,9 +305,11 @@ window.mensagemModule = (() => {
       const chk = document.getElementById('alertaCriticoAtivo');
       const tel = document.getElementById('alertaCriticoTelefone');
       const msg = document.getElementById('alertaCriticoMensagem');
-      if (chk) chk.checked = !!cfg.ativo;
       if (tel) tel.value = cfg.telefone || '';
       if (msg) msg.value = cfg.mensagem || _ALERTA_DEFAULT_MSG;
+      // Aplica o valor salvo só se avaliação estiver ativa
+      if (chk && _avaliacaoAtiva()) chk.checked = !!cfg.ativo;
+      _syncAlertaToggleState();
     } catch(e) {}
   }
 
