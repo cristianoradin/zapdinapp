@@ -1269,19 +1269,7 @@
 
             <div style="display:flex;flex-direction:column;gap:.85rem">
 
-              <!-- Telefone destino -->
-              <div class="form-group" style="margin-bottom:0">
-                <label>Telefone que receberá o alerta</label>
-                <div style="display:flex;align-items:center;gap:.5rem">
-                  <span style="padding:.55rem .7rem;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;color:#991b1b;font-size:.82rem;white-space:nowrap;font-weight:700;display:inline-flex;align-items:center;gap:.3rem">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.93 3.36 2 2 0 0 1 3.91 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 5.93 5.93l1.18-1.18a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                    +55
-                  </span>
-                  <input type="text" id="alertaCriticoTelefone" placeholder="11999998888" maxlength="11" style="flex:1" />
-                </div>
-              </div>
-
-              <!-- Toggle ativo -->
+              <!-- 1. Toggle ativo -->
               <div style="display:flex;align-items:center;justify-content:space-between;background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;padding:.6rem .875rem">
                 <div>
                   <div style="font-size:.84rem;font-weight:600;color:#991b1b;display:flex;align-items:center;gap:.4rem">
@@ -1296,23 +1284,36 @@
                 </label>
               </div>
 
-              <!-- Template da mensagem -->
+              <!-- 2. Variáveis -->
+              <div style="display:flex;flex-wrap:wrap;gap:.3rem;align-items:center">
+                <span style="font-size:.68rem;color:var(--text-mid);font-weight:600;margin-right:.1rem">Variáveis:</span>
+                <span class="var-tag var-tag-green"  onclick="insertAlertaVar('{nome}')">{nome}</span>
+                <span class="var-tag var-tag-blue"   onclick="insertAlertaVar('{telefone}')">{telefone}</span>
+                <span class="var-tag var-tag-red"    onclick="insertAlertaVar('{nota}')">{nota}</span>
+                <span class="var-tag var-tag-yellow" onclick="insertAlertaVar('{vendedor}')">{vendedor}</span>
+                <span class="var-tag var-tag-purple" onclick="insertAlertaVar('{comentario}')">{comentario}</span>
+                <span class="var-tag var-tag-teal"   onclick="insertAlertaVar('{data}')">{data}</span>
+              </div>
+
+              <!-- 3. Telefone destino -->
               <div class="form-group" style="margin-bottom:0">
-                <label>Mensagem do alerta</label>
-                <textarea id="alertaCriticoMensagem" rows="7" style="font-family:'JetBrains Mono','Fira Code',monospace;font-size:.8rem;resize:vertical"></textarea>
-                <!-- Variáveis — mesmo padrão visual da mensagem principal -->
-                <div style="margin-top:.5rem;display:flex;flex-wrap:wrap;gap:.3rem;align-items:center">
-                  <span style="font-size:.68rem;color:var(--text-mid);font-weight:600;margin-right:.1rem">Variáveis:</span>
-                  <span class="var-tag var-tag-green"  onclick="insertAlertaVar('{nome}')">{nome}</span>
-                  <span class="var-tag var-tag-blue"   onclick="insertAlertaVar('{telefone}')">{telefone}</span>
-                  <span class="var-tag var-tag-red"    onclick="insertAlertaVar('{nota}')">{nota}</span>
-                  <span class="var-tag var-tag-yellow" onclick="insertAlertaVar('{vendedor}')">{vendedor}</span>
-                  <span class="var-tag var-tag-purple" onclick="insertAlertaVar('{comentario}')">{comentario}</span>
-                  <span class="var-tag var-tag-teal"   onclick="insertAlertaVar('{data}')">{data}</span>
+                <label>Telefone que receberá o alerta</label>
+                <div style="display:flex;align-items:center;gap:.5rem">
+                  <span style="padding:.55rem .7rem;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;color:#991b1b;font-size:.82rem;white-space:nowrap;font-weight:700;display:inline-flex;align-items:center;gap:.3rem">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.93 3.36 2 2 0 0 1 3.91 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 5.93 5.93l1.18-1.18a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                    +55
+                  </span>
+                  <input type="text" id="alertaCriticoTelefone" placeholder="11999998888" maxlength="11" style="flex:1" />
                 </div>
               </div>
 
-              <!-- Botão salvar + feedback -->
+              <!-- 4. Template da mensagem -->
+              <div class="form-group" style="margin-bottom:0">
+                <label>Mensagem do alerta</label>
+                <textarea id="alertaCriticoMensagem" rows="7" style="font-family:'JetBrains Mono','Fira Code',monospace;font-size:.8rem;resize:vertical"></textarea>
+              </div>
+
+              <!-- 5. Botão salvar + feedback -->
               <div id="alertaCriticoResult" style="display:none;padding:.55rem .875rem;border-radius:8px;font-size:.83rem"></div>
               <button class="btn btn-primary" id="btnSalvarAlertaCritico"
                       onclick="salvarAlertaCritico()"
