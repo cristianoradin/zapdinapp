@@ -225,6 +225,8 @@ function homeEditarAgenda(id) {
   document.getElementById('home-agenda-inicio').value = c.hora_inicio || '';
   document.getElementById('home-agenda-fim').value = c.hora_fim || '';
   document.getElementById('home-agenda-desc').value = c.descricao || '';
+  const linkEl = document.getElementById('home-agenda-link');
+  if (linkEl) linkEl.value = c.link || '';
   const radio = document.querySelector(`input[name="agenda-cor"][value="${c.cor||'#3d7f1f'}"]`);
   if (radio) radio.checked = true;
 }
@@ -235,6 +237,8 @@ function homeLimparAgendaForm() {
   document.getElementById('home-agenda-inicio').value = '';
   document.getElementById('home-agenda-fim').value = '';
   document.getElementById('home-agenda-desc').value = '';
+  const linkEl = document.getElementById('home-agenda-link');
+  if (linkEl) linkEl.value = '';
   const r = document.querySelector('input[name="agenda-cor"][value="#3d7f1f"]');
   if (r) r.checked = true;
 }
@@ -243,13 +247,15 @@ async function homeSalvarAgenda() {
   const id = document.getElementById('home-agenda-id').value;
   const titulo = document.getElementById('home-agenda-titulo').value.trim();
   if (!titulo) return alert('Informe o título');
+  const linkEl = document.getElementById('home-agenda-link');
   const body = {
     data: _agendaDataSel,
     hora_inicio: document.getElementById('home-agenda-inicio').value || null,
     hora_fim: document.getElementById('home-agenda-fim').value || null,
     titulo,
     descricao: document.getElementById('home-agenda-desc').value || null,
-    cor: (document.querySelector('input[name="agenda-cor"]:checked') || {}).value || '#3d7f1f'
+    cor: (document.querySelector('input[name="agenda-cor"]:checked') || {}).value || '#3d7f1f',
+    link: (linkEl ? linkEl.value.trim() : '') || null
   };
   const url = id ? `/api/home/agenda/${id}` : '/api/home/agenda';
   const method = id ? 'PUT' : 'POST';
@@ -336,6 +342,44 @@ async function homeDeletarPostit() {
   homeCarregarPostits();
 }
 
+// ── Alerta de Agenda WA ───────────────────────────────────────
+let _agendaAlertaDebounce = null;
+
+async function homeCarregarAgendaAlerta() {
+  try {
+    const r = await fetch('/api/config/agenda-alerta');
+    if (!r.ok) return;
+    const d = await r.json();
+    const chk = document.getElementById('agendaAlertaAtivo');
+    if (chk) chk.checked = !!d.ativo;
+    const numEl = document.getElementById('agendaAlertaNumero');
+    if (numEl) numEl.value = d.numero_alerta || '';
+    const donoEl = document.getElementById('agendaAlertaDono');
+    if (donoEl) donoEl.value = d.numero_dono || '';
+    const msgEl = document.getElementById('agendaAlertaMensagem');
+    if (msgEl) msgEl.value = d.mensagem || '';
+  } catch(e) { console.log('[home] agenda-alerta error', e); }
+}
+
+async function homeSalvarAgendaAlerta() {
+  const ativo = (document.getElementById('agendaAlertaAtivo') || {}).checked || false;
+  const numero_alerta = (document.getElementById('agendaAlertaNumero') || {}).value || '';
+  const numero_dono = (document.getElementById('agendaAlertaDono') || {}).value || '';
+  const mensagem = (document.getElementById('agendaAlertaMensagem') || {}).value || '';
+  try {
+    await fetch('/api/config/agenda-alerta', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ativo, numero_alerta, numero_dono, mensagem })
+    });
+  } catch(e) { console.log('[home] salvar agenda-alerta error', e); }
+}
+
+function homeSalvarAgendaAlertaDebounce() {
+  clearTimeout(_agendaAlertaDebounce);
+  _agendaAlertaDebounce = setTimeout(homeSalvarAgendaAlerta, 1200);
+}
+
 // ── Recados ───────────────────────────────────────────────────
 async function homeCarregarRecados() {
   try {
@@ -374,6 +418,7 @@ function initHome() {
   homeCarregarPostits();
   homeCarregarRecados();
   homeCarregarKPIs();
+  homeCarregarAgendaAlerta();
 }
 
 // Inicializa conector visual no item já ativo ao carregar

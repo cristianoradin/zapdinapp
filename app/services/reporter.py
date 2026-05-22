@@ -540,7 +540,8 @@ async def _loop() -> None:
     _CLEANUP_INTERVAL = 2880  # 30s × 2880 = 24 horas
     _SESSION_CLEANUP_INTERVAL = 720  # 30s × 720 = 6 horas
     _OCR_INTERVAL = 2   # 30s × 2  = 1 minuto
-    _ALERTA_INTERVAL = 4  # 30s × 4 = 2 minutos
+    _ALERTA_INTERVAL  = 4  # 30s × 4  = 2 minutos
+    _AGENDA_INTERVAL  = 2  # 30s × 2  = 1 minuto
 
     while True:
         await _send_heartbeat()
@@ -561,6 +562,13 @@ async def _loop() -> None:
         if _cleanup_tick % _ALERTA_INTERVAL == 0:
             # Reenvio de alertas críticos pendentes a cada ~2 minutos
             asyncio.create_task(_processar_alertas_pendentes())
+        if _cleanup_tick % _AGENDA_INTERVAL == 0:
+            # Alertas de agenda (1h antes do compromisso) a cada ~1 minuto
+            try:
+                from .agenda_service import enviar_alertas_agenda
+                asyncio.create_task(enviar_alertas_agenda())
+            except Exception:
+                pass
         await asyncio.sleep(30)
 
 

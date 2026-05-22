@@ -1007,6 +1007,23 @@ async def init_db() -> None:
             "ON postits(empresa_id, usuario_id)"
         )
 
+        # ── Migration 013: Agenda — campo link + alerta_enviado_em ──────────────
+        for _col, _type, _default in [
+            ("link",              "TEXT",        "DEFAULT ''"),
+            ("alerta_enviado_em", "TIMESTAMPTZ", ""),
+        ]:
+            try:
+                await conn.execute(
+                    f"ALTER TABLE agenda_compromissos "
+                    f"ADD COLUMN IF NOT EXISTS {_col} {_type} {_default}"
+                )
+            except Exception:
+                pass  # coluna já existe — ignorar
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_agenda_alerta_pendente "
+            "ON agenda_compromissos(empresa_id, data) WHERE alerta_enviado_em IS NULL"
+        )
+
         # ── P2: Worker heartbeats ─────────────────────────────────────────────
         await conn.execute(
             """

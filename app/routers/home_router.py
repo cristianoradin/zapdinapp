@@ -206,6 +206,7 @@ class AgendaPayload(BaseModel):
     titulo: str
     descricao: Optional[str] = None
     cor: Optional[str] = "#3d7f1f"
+    link: Optional[str] = None
 
 
 @router.get("/agenda")
@@ -250,10 +251,10 @@ async def create_agenda(
     eid = _eid(user)
     uid = _uid(user)
     cur = await db.execute(
-        "INSERT INTO agenda_compromissos(empresa_id,usuario_id,data,hora_inicio,hora_fim,titulo,descricao,cor) "
-        "VALUES(?,?,?,?,?,?,?,?)",
+        "INSERT INTO agenda_compromissos(empresa_id,usuario_id,data,hora_inicio,hora_fim,titulo,descricao,cor,link) "
+        "VALUES(?,?,?,?,?,?,?,?,?)",
         (eid, uid, payload.data_date, payload.hora_inicio, payload.hora_fim,
-         payload.titulo, payload.descricao, payload.cor or "#3d7f1f"),
+         payload.titulo, payload.descricao, payload.cor or "#3d7f1f", payload.link or ""),
     )
     await db.commit()
     return {"ok": True, "id": cur.lastrowid}
@@ -269,10 +270,10 @@ async def update_agenda(
     eid = _eid(user)
     uid = _uid(user)
     await db.execute(
-        "UPDATE agenda_compromissos SET data=?,hora_inicio=?,hora_fim=?,titulo=?,descricao=?,cor=? "
+        "UPDATE agenda_compromissos SET data=?,hora_inicio=?,hora_fim=?,titulo=?,descricao=?,cor=?,link=? "
         "WHERE id=? AND empresa_id=? AND usuario_id=?",
         (payload.data_date, payload.hora_inicio, payload.hora_fim, payload.titulo,
-         payload.descricao, payload.cor or "#3d7f1f", item_id, eid, uid),
+         payload.descricao, payload.cor or "#3d7f1f", payload.link or "", item_id, eid, uid),
     )
     await db.commit()
     return {"ok": True}

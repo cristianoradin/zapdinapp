@@ -270,6 +270,17 @@ async def responder_mensagem(
         if phone_local.startswith("55") and len(phone_local) >= 12:
             phone_local = phone_local[2:]
 
+        # ── Agenda: verifica se mensagem é do número-dono ─────────────────────
+        # Hook completamente isolado — qualquer falha é ignorada e o chatbot
+        # continua normalmente. Retorna True apenas se o comando foi tratado.
+        try:
+            from .agenda_service import processar_comando_agenda
+            _uid = 0  # usuario_id genérico para criação via WA
+            if await processar_comando_agenda(empresa_id, phone_local, texto, instance, _uid):
+                return
+        except Exception as _exc:
+            logger.debug("[chatbot] agenda hook ignorado: %s", _exc)
+
         async with get_db_direct() as db:
             # ── Verifica se chatbot está ativo para a empresa ──────────────────
             async with db.execute(

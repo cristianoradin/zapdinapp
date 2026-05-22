@@ -140,3 +140,75 @@ async def set_alerta_critico(
     )
     await db.commit()
     return {"ok": True}
+
+
+# ── Agenda — Alertas WA ───────────────────────────────────────────────────────
+
+_AGENDA_ALERTA_KEY = "agenda_alerta"
+
+_AGENDA_ALERTA_DEFAULT_MSG = (
+    "📅 *Lembrete de Compromisso!*\n\n"
+    "📌 *{titulo}*\n"
+    "🕐 Horário: *{hora}*\n"
+    "📝 {descricao}\n"
+    "🔗 {link}\n\n"
+    "⏰ Começa em 1 hora!"
+)
+
+
+class AgendaAlertaConfig(BaseModel):
+    ativo: bool = False
+    numero_alerta: Optional[str] = ""   # número que recebe os alertas automáticos
+    numero_dono: Optional[str] = ""     # número que pode enviar comandos WA à agenda
+    mensagem: Optional[str] = _AGENDA_ALERTA_DEFAULT_MSG
+
+
+@router.get("/agenda-alerta")
+async def get_agenda_alerta(
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Retorna a configuração atual do alerta de agenda."""
+    empresa_id = user["empresa_id"]
+    async with db.execute(
+        "SELECT value FROM config WHERE empresa_id=? AND key=?",
+        (empresa_id, _AGENDA_ALERTA_KEY),
+    ) as cur:
+        row = await cur.fetchone()
+
+    data = {}
+    if row:
+        try:
+            data = _json.loads(row["value"])
+        except Exception:
+            data = {}
+
+    return {
+        "ativo":         data.get("ativo", False),
+        "numero_alerta": data.get("numero_alerta", ""),
+        "numero_dono":   data.get("numero_dono", ""),
+        "mensagem":      data.get("mensagem", _AGENDA_ALERTA_DEFAULT_MSG),
+    }
+
+
+@router.post("/agenda-alerta")
+async def set_agenda_alerta(
+    body: AgendaAlertaConfig,
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Salva a configuração do alerta de agenda."""
+    empresa_id = user["empresa_id"]
+    value = _json.dumps({
+        "ativo":         body.ativo,
+        "numero_alerta": body.numero_alerta or "",
+        "numero_dono":   body.numero_dono or "",
+        "mensagem":      body.mensagem or _AGENDA_ALERTA_DEFAULT_MSG,
+    })
+    await db.execute(
+        """INSERT INTO config (empresa_id, key, value) VALUES (?, ?, ?)
+           ON CONFLICT (empresa_id, key) DO UPDATE SET value = EXCLUDED.value""",
+        (empresa_id, _AGENDA_ALERTA_KEY, value),
+    )
+    await db.commit()
+    return {"ok": True}
