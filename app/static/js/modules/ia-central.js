@@ -304,12 +304,6 @@ const iaCentral = (() => {
     const msgsEl = document.getElementById('iaMsgs');
     if (!msgsEl) return;
 
-    // Esconde sugestões após primeira mensagem
-    if (role === 'user') {
-      const sug = document.getElementById('iaSugestoes');
-      if (sug) { sug.style.transition = 'opacity .3s'; sug.style.opacity = '0'; setTimeout(() => sug.style.display = 'none', 300); }
-    }
-
     if (role === 'user') {
       msgsEl.insertAdjacentHTML('beforeend', `
         <div class="ia-msg-user">
@@ -439,8 +433,6 @@ const iaCentral = (() => {
     _initialized = false;
     const msgsEl = document.getElementById('iaMsgs');
     if (msgsEl) msgsEl.innerHTML = '';
-    const sug = document.getElementById('iaSugestoes');
-    if (sug) sug.style.display = '';
     init();
   }
 
