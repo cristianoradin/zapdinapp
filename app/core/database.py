@@ -518,6 +518,30 @@ async def init_db() -> None:
             )
         """)
 
+        # ── Fila de alertas críticos pendentes ────────────────────────────────
+        # Quando avaliação negativa chega e nenhuma sessão WA está conectada,
+        # o alerta é salvo aqui e reenviado assim que uma sessão conectar.
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS alertas_criticos_pendentes (
+                id              BIGSERIAL PRIMARY KEY,
+                empresa_id      BIGINT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+                nome            TEXT DEFAULT '',
+                telefone_cliente TEXT DEFAULT '',
+                nota            INTEGER NOT NULL,
+                vendedor        TEXT DEFAULT '',
+                comentario      TEXT DEFAULT '',
+                data_avaliacao  TIMESTAMPTZ DEFAULT NOW(),
+                tentativas      INTEGER DEFAULT 0,
+                criado_em       TIMESTAMPTZ DEFAULT NOW(),
+                enviado_em      TIMESTAMPTZ
+            )
+        """)
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_alertas_criticos_empresa
+            ON alertas_criticos_pendentes(empresa_id)
+            WHERE enviado_em IS NULL
+        """)
+
         # ── Papel 5 — DBA: índices ausentes, constraints, audit trail ──────────
 
         # 1) Índices ausentes identificados por análise de query patterns

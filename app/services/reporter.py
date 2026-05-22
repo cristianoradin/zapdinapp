@@ -429,12 +429,118 @@ async def _cleanup_invalidated_sessions() -> None:
         logger.debug("[reporter] Falha ao limpar sessões revogadas: %s", exc)
 
 
+async def _processar_alertas_pendentes() -> None:
+    """
+    Tenta reenviar alertas críticos que ficaram na fila por falta de sessão WA.
+    Roda a cada ~2 minutos via reporter loop.
+    Marca enviado_em ao confirmar envio. Incrementa tentativas em cada falha.
+    Descarta após 48h sem envio (evita acúmulo indefinido).
+    """
+    try:
+        from ..core.database import get_db_direct
+        from .whatsapp_service import wa_manager
+    except ImportError:
+        try:
+            from ..core.database import get_db_direct
+            from .evolution_service import evo_manager as wa_manager
+        except ImportError:
+            return
+
+    try:
+        async with get_db_direct() as db:
+            # Busca pendentes não enviados, com menos de 48h, máx 20 por ciclo
+            async with db.execute(
+                """SELECT p.id, p.empresa_id, p.nome, p.telefone_cliente,
+                          p.nota, p.vendedor, p.comentario, p.data_avaliacao,
+                          c.value as cfg_json
+                   FROM alertas_criticos_pendentes p
+                   LEFT JOIN config c ON c.empresa_id = p.empresa_id
+                       AND c.key = 'alerta_critico'
+                   WHERE p.enviado_em IS NULL
+                     AND p.criado_em > NOW() - INTERVAL '48 hours'
+                   ORDER BY p.criado_em ASC
+                   LIMIT 20"""
+            ) as cur:
+                pendentes = await cur.fetchall()
+
+        if not pendentes:
+            return
+
+        import json as _j
+        from datetime import datetime, timezone
+
+        for row in pendentes:
+            empresa_id = row["empresa_id"]
+
+            # Verifica se há sessão conectada para essa empresa
+            sessoes = wa_manager.get_status(empresa_id)
+            conectadas = [s for s in sessoes if s["status"] == "connected"]
+            if not conectadas:
+                continue  # ainda sem sessão — tenta no próximo ciclo
+
+            # Carrega config do alerta
+            try:
+                cfg = _j.loads(row["cfg_json"] or "{}")
+            except Exception:
+                cfg = {}
+
+            if not cfg.get("ativo"):
+                # Alerta foi desativado — descarta pendente
+                async with get_db_direct() as db:
+                    await db.execute(
+                        "UPDATE alertas_criticos_pendentes SET enviado_em = NOW() WHERE id = ?",
+                        (row["id"],)
+                    )
+                    await db.commit()
+                continue
+
+            telefone_destino = cfg.get("telefone", "").strip().lstrip("+").lstrip("55")
+            template = cfg.get("mensagem", "")
+            if not telefone_destino or not template:
+                continue
+
+            tel_exibir = (row["telefone_cliente"] or "").lstrip("+").lstrip("55") or "—"
+            data_fmt = row["data_avaliacao"].strftime("%d/%m/%Y %H:%M") if row["data_avaliacao"] else "—"
+
+            mensagem = (
+                template
+                .replace("{nome}",       row["nome"] or "—")
+                .replace("{telefone}",   tel_exibir)
+                .replace("{nota}",       str(row["nota"]))
+                .replace("{vendedor}",   row["vendedor"] or "—")
+                .replace("{comentario}", row["comentario"] or "—")
+                .replace("{data}",       data_fmt)
+            )
+
+            sessao_id = conectadas[0]["id"]
+            ok, err = await wa_manager.send_text(sessao_id, empresa_id, telefone_destino, mensagem)
+
+            async with get_db_direct() as db:
+                if ok:
+                    await db.execute(
+                        "UPDATE alertas_criticos_pendentes SET enviado_em = NOW() WHERE id = ?",
+                        (row["id"],)
+                    )
+                    logger.info("[alertas_pendentes] enviado id=%d empresa=%d", row["id"], empresa_id)
+                else:
+                    await db.execute(
+                        "UPDATE alertas_criticos_pendentes SET tentativas = tentativas + 1 WHERE id = ?",
+                        (row["id"],)
+                    )
+                    logger.warning("[alertas_pendentes] falha id=%d: %s", row["id"], err)
+                await db.commit()
+
+    except Exception as exc:
+        logger.exception("[alertas_pendentes] erro no worker: %s", exc)
+
+
 async def _loop() -> None:
     """Loop infinito: envia heartbeat a cada 30s e executa limpeza diária de arquivos."""
     _cleanup_tick = 0
     _CLEANUP_INTERVAL = 2880  # 30s × 2880 = 24 horas
     _SESSION_CLEANUP_INTERVAL = 720  # 30s × 720 = 6 horas
-    _OCR_INTERVAL = 2  # 30s × 2 = 1 minuto
+    _OCR_INTERVAL = 2   # 30s × 2  = 1 minuto
+    _ALERTA_INTERVAL = 4  # 30s × 4 = 2 minutos
 
     while True:
         await _send_heartbeat()
@@ -452,6 +558,9 @@ async def _loop() -> None:
                 asyncio.create_task(processar_fila_ocr())
             except Exception:
                 pass
+        if _cleanup_tick % _ALERTA_INTERVAL == 0:
+            # Reenvio de alertas críticos pendentes a cada ~2 minutos
+            asyncio.create_task(_processar_alertas_pendentes())
         await asyncio.sleep(30)
 
 

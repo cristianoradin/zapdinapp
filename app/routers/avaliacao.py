@@ -174,6 +174,29 @@ class AvaliacaoResposta(BaseModel):
     comentario: Optional[str] = Field(default="", max_length=1000)
 
 
+async def _salvar_alerta_pendente(
+    empresa_id: int,
+    nome: str,
+    telefone: str,
+    nota: int,
+    vendedor: str,
+    comentario: str,
+) -> None:
+    """Salva alerta na fila persistente para reenvio quando WA conectar."""
+    try:
+        async with get_db_direct() as db:
+            await db.execute(
+                """INSERT INTO alertas_criticos_pendentes
+                   (empresa_id, nome, telefone_cliente, nota, vendedor, comentario)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (empresa_id, nome or "", telefone or "", nota, vendedor or "", comentario or ""),
+            )
+            await db.commit()
+        logger.info("[alerta_critico] enfileirado — empresa=%d nota=%d", empresa_id, nota)
+    except Exception as exc:
+        logger.exception("[alerta_critico] erro ao enfileirar: %s", exc)
+
+
 async def _disparar_alerta_critico(
     empresa_id: int,
     nome: str,
@@ -242,7 +265,8 @@ async def _disparar_alerta_critico(
         sessoes = wa_manager.get_status(empresa_id)
         conectadas = [s for s in sessoes if s["status"] == "connected"]
         if not conectadas:
-            logger.warning("[alerta_critico] nenhuma sessão WA conectada para empresa=%d", empresa_id)
+            # Sem sessão conectada → salva na fila para reenvio automático
+            await _salvar_alerta_pendente(empresa_id, nome, telefone, nota, vendedor, comentario)
             return
 
         sessao = conectadas[0]["id"]
@@ -250,7 +274,9 @@ async def _disparar_alerta_critico(
         if ok:
             logger.info("[alerta_critico] alerta enviado via sessao=%s nota=%d empresa=%d", sessao, nota, empresa_id)
         else:
-            logger.warning("[alerta_critico] falha ao enviar: %s", err)
+            # Falha no envio → também vai para a fila
+            logger.warning("[alerta_critico] falha ao enviar (%s) → enfileirando", err)
+            await _salvar_alerta_pendente(empresa_id, nome, telefone, nota, vendedor, comentario)
 
     except Exception as exc:
         logger.exception("[alerta_critico] erro inesperado: %s", exc)
