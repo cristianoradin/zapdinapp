@@ -297,6 +297,17 @@ window.mensagemModule = (() => {
     }
   }
 
+  function _alertaSetSalvo(salvo) {
+    const resEl = document.getElementById('alertaCriticoResult');
+    if (!resEl) return;
+    if (salvo) {
+      resEl.style.cssText = 'display:flex;align-items:center;gap:.45rem;font-size:.8rem;font-weight:600;padding:.5rem .75rem;border-radius:8px;background:#f0fdf4;border:1px solid #86efac;color:#15803d';
+      resEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg>Configuração salva com sucesso`;
+    } else {
+      resEl.style.display = 'none';
+    }
+  }
+
   async function loadAlertaCritico() {
     try {
       const res = await fetch('/api/config/alerta-critico');
@@ -307,9 +318,15 @@ window.mensagemModule = (() => {
       const msg = document.getElementById('alertaCriticoMensagem');
       if (tel) tel.value = cfg.telefone || '';
       if (msg) msg.value = cfg.mensagem || _ALERTA_DEFAULT_MSG;
-      // Aplica o valor salvo só se avaliação estiver ativa
       if (chk && _avaliacaoAtiva()) chk.checked = !!cfg.ativo;
       _syncAlertaToggleState();
+      // Mostra "salvo" ao carregar se já houver config no banco
+      _alertaSetSalvo(true);
+      // Ao editar qualquer campo, volta ao estado "não salvo"
+      const _onchange = () => _alertaSetSalvo(false);
+      if (tel) tel.addEventListener('input', _onchange);
+      if (msg) msg.addEventListener('input', _onchange);
+      if (chk) chk.addEventListener('change', _onchange);
     } catch(e) {}
   }
 
@@ -336,7 +353,7 @@ window.mensagemModule = (() => {
     if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
     try {
       const res = await _fetch('POST', '/api/config/alerta-critico', { ativo, telefone: tel, mensagem: msg });
-      if (res && res.ok) show('ok', 'Configuração salva com sucesso');
+      if (res && res.ok) _alertaSetSalvo(true);
       else show('error', 'Erro ao salvar configuração.');
     } finally {
       if (btn) {
