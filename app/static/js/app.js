@@ -77,9 +77,8 @@
     // Barra de título compartilhada (nova)
     const bar = document.getElementById('pageTitleText');
     if (bar) bar.textContent = label;
-    // Ocultar barra de título na Home (tem seu próprio hero)
     const titleBar = bar?.closest('.page-title-bar');
-    if (titleBar) titleBar.classList.toggle('hidden', p === 'home');
+    if (titleBar) titleBar.classList.remove('hidden');
     // Legados — null-safe
     const title = document.getElementById('pageTitle');
     if (title) title.textContent = label;
