@@ -660,7 +660,8 @@
     document.getElementById('waCfgHoraInicio').value  = cfg.wa_hora_inicio || '08:00';
     document.getElementById('waCfgHoraFim').value     = cfg.wa_hora_fim    || '18:00';
     document.getElementById('waCfgHoraAtivo').checked = !!(cfg.wa_hora_inicio && cfg.wa_hora_fim);
-    document.getElementById('waCfgSpintax').checked   = cfg.wa_spintax !== '0';
+    document.getElementById('waCfgSpintax').checked    = cfg.wa_spintax    !== '0';
+    document.getElementById('waCfgComposing').checked  = cfg.wa_composing  !== '0';
     document.getElementById('waCfgAlert').style.display = 'none';
     document.getElementById('spinPreviewBox').classList.remove('visible');
   }
@@ -672,7 +673,8 @@
     const inicio = document.getElementById('waCfgHoraInicio').value;
     const fim    = document.getElementById('waCfgHoraFim').value;
     const horaOn = document.getElementById('waCfgHoraAtivo').checked;
-    const spintax = document.getElementById('waCfgSpintax').checked ? '1' : '0';
+    const spintax   = document.getElementById('waCfgSpintax').checked   ? '1' : '0';
+    const composing = document.getElementById('waCfgComposing').checked ? '1' : '0';
 
     if (min >= max) {
       _waCfgAlert('error', 'O delay mínimo deve ser menor que o máximo.');
@@ -686,6 +688,7 @@
       wa_hora_inicio: horaOn ? inicio : '',
       wa_hora_fim:    horaOn ? fim    : '',
       wa_spintax:     spintax,
+      wa_composing:   composing,
     };
 
     const res = await api('POST', '/api/config', payload);

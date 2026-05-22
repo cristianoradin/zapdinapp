@@ -389,7 +389,7 @@ class WhatsAppSession:
         logger.info("Sessão %s — monitor encerrado", self.session_id)
 
     # ── Envio de texto ────────────────────────────────────────────────────────
-    async def send_text(self, phone: str, message: str) -> Tuple[bool, Optional[str]]:
+    async def send_text(self, phone: str, message: str, composing_delay: float = 0.0) -> Tuple[bool, Optional[str]]:
         if self.status != "connected":
             return False, "Sessão não conectada"
         try:
@@ -540,7 +540,11 @@ class WhatsAppSession:
                         await self._page.keyboard.type(line)
                     if i < len(lines) - 1:
                         await self._page.keyboard.press("Shift+Enter")
-                await asyncio.sleep(0.3)
+                # Simulação de digitação: mantém o indicator "digitando..." visível
+                # por um tempo proporcional ao tamanho da mensagem antes de enviar.
+                # O keyboard.type() acima já ativa o composing — apenas aguardamos.
+                settle = max(composing_delay, 0.3)
+                await asyncio.sleep(settle)
                 await self._page.keyboard.press("Enter")
                 await asyncio.sleep(2)
                 asyncio.create_task(self._return_home())
@@ -1059,13 +1063,14 @@ class WhatsAppManager:
         ]
 
     async def send_text(
-        self, session_id: str, empresa_id: int, phone: str, message: str
+        self, session_id: str, empresa_id: int, phone: str, message: str,
+        composing_delay: float = 0.0,
     ) -> Tuple[bool, Optional[str]]:
         key = self._key(empresa_id, session_id)
         sess = self._sessions.get(key)
         if not sess:
             return False, "Sessão não encontrada"
-        return await sess.send_text(phone, message)
+        return await sess.send_text(phone, message, composing_delay=composing_delay)
 
     async def send_file(
         self,

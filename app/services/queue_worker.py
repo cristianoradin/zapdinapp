@@ -135,6 +135,19 @@ def _cfg_int(cfg: dict, key: str, default: int) -> int:
         return default
 
 
+# ── Simulação de digitação ────────────────────────────────────────────────────
+
+def _composing_delay(text: str) -> float:
+    """
+    Calcula o tempo de 'digitando...' proporcional ao tamanho da mensagem.
+    Simula velocidade humana de ~20 chars/s no celular.
+    Mínimo: 1.0 s  |  Máximo: 8.0 s  |  Variação: ±15%
+    """
+    chars = max(len(text.strip()), 1)
+    base  = min(max(chars / 20.0, 1.0), 8.0)
+    return base * random.uniform(0.85, 1.15)
+
+
 # ── Spintax ───────────────────────────────────────────────────────────────────
 
 def process_spintax(text: str) -> str:
@@ -284,10 +297,11 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
         if not _within_hours(cfg):
             return False
 
-        delay_min = _cfg_float(cfg, "wa_delay_min", settings.dispatch_min_delay)
-        delay_max = _cfg_float(cfg, "wa_delay_max", settings.dispatch_max_delay)
-        daily_limit = _cfg_int(cfg, "wa_daily_limit", 0)
-        spintax_on = cfg.get("wa_spintax", "1") not in ("0", "false", "")
+        delay_min    = _cfg_float(cfg, "wa_delay_min", settings.dispatch_min_delay)
+        delay_max    = _cfg_float(cfg, "wa_delay_max", settings.dispatch_max_delay)
+        daily_limit  = _cfg_int(cfg, "wa_daily_limit", 0)
+        spintax_on   = cfg.get("wa_spintax",    "1") not in ("0", "false", "")
+        composing_on = cfg.get("wa_composing",  "1") not in ("0", "false", "")
 
         delay = random.uniform(delay_min, delay_max)
         logger.info("Queue: mensagem %s (empresa %s) → delay %.1fs", msg["id"], empresa_id, delay)
@@ -320,8 +334,9 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
                 return False
 
         texto = process_spintax(msg["mensagem"]) if spintax_on else msg["mensagem"]
+        c_delay = _composing_delay(texto) if composing_on else 0.0
 
-        ok, err = await wa_manager.send_text(sessao_id, empresa_id, msg["destinatario"], texto)
+        ok, err = await wa_manager.send_text(sessao_id, empresa_id, msg["destinatario"], texto, composing_delay=c_delay)
         st = "sent" if ok else "failed"
         async with get_db_direct() as db:
             await db.execute(
@@ -359,10 +374,11 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
         if not _within_hours(cfg):
             return False
 
-        delay_min = _cfg_float(cfg, "wa_delay_min", settings.dispatch_min_delay)
-        delay_max = _cfg_float(cfg, "wa_delay_max", settings.dispatch_max_delay)
-        daily_limit = _cfg_int(cfg, "wa_daily_limit", 0)
-        spintax_on = cfg.get("wa_spintax", "1") not in ("0", "false", "")
+        delay_min    = _cfg_float(cfg, "wa_delay_min", settings.dispatch_min_delay)
+        delay_max    = _cfg_float(cfg, "wa_delay_max", settings.dispatch_max_delay)
+        daily_limit  = _cfg_int(cfg, "wa_daily_limit", 0)
+        spintax_on   = cfg.get("wa_spintax",   "1") not in ("0", "false", "")
+        composing_on = cfg.get("wa_composing", "1") not in ("0", "false", "")
 
         delay = random.uniform(delay_min, delay_max)
         logger.info("Queue: arquivo %s (empresa %s) → delay %.1fs", arq["id"], empresa_id, delay)
@@ -458,9 +474,10 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
         if not _within_hours(cfg):
             return False
 
-        delay_min = _cfg_float(cfg, "wa_delay_min", settings.dispatch_min_delay)
-        delay_max = _cfg_float(cfg, "wa_delay_max", settings.dispatch_max_delay)
-        spintax_on = cfg.get("wa_spintax", "1") not in ("0", "false", "")
+        delay_min    = _cfg_float(cfg, "wa_delay_min", settings.dispatch_min_delay)
+        delay_max    = _cfg_float(cfg, "wa_delay_max", settings.dispatch_max_delay)
+        spintax_on   = cfg.get("wa_spintax",   "1") not in ("0", "false", "")
+        composing_on = cfg.get("wa_composing", "1") not in ("0", "false", "")
 
         delay = random.uniform(delay_min, delay_max)
         logger.info("Queue: campanha_envio %s campanha %s → delay %.1fs", env["id"], campanha_id, delay)
@@ -483,7 +500,8 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
             mensagem = env["mensagem"] or ""
             if spintax_on:
                 mensagem = process_spintax(mensagem)
-            ok, err = await wa_manager.send_text(sessao_id, empresa_id, env["phone"], mensagem)
+            c_delay = _composing_delay(mensagem) if composing_on else 0.0
+            ok, err = await wa_manager.send_text(sessao_id, empresa_id, env["phone"], mensagem, composing_delay=c_delay)
 
         elif tipo == "file":
             # Busca arquivos da campanha
