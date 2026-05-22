@@ -2062,10 +2062,6 @@
             <span class="sys-menu-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/><circle cx="7.5" cy="14.5" r="1.5"/><circle cx="16.5" cy="14.5" r="1.5"/></svg></span>
             Token IA
           </div>
-          <div class="sys-menu-item" data-panel="usuario" onclick="sysNav(this,'usuario')">
-            <span class="sys-menu-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
-            Usuário
-          </div>
           <div class="sys-menu-item" data-panel="usuarios" onclick="sysNav(this,'usuarios')">
             <span class="sys-menu-icon"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
             Usuários
@@ -2298,66 +2294,6 @@
               </div>
 
             </div><!-- /ai-cards-grid -->
-          </div>
-
-          <!-- Painel: Usuário -->
-          <div class="sys-panel" id="sys-panel-usuario">
-            <div class="sys-panel-header">
-              <div class="sys-panel-title">Usuário</div>
-              <div class="sys-panel-sub">Altere o login e a senha de acesso local. Este usuário é independente do Monitor.</div>
-            </div>
-
-            <div class="sys-row">
-              <div>
-                <div class="sys-row-title">Usuário atual</div>
-                <div class="sys-row-desc">Identificador de login atual.</div>
-              </div>
-              <div class="sys-row-control">
-                <input type="text" id="sysUserAtual" readonly style="background:var(--bg);color:var(--text-mid);font-weight:600" />
-              </div>
-            </div>
-
-            <div class="sys-divider"></div>
-
-            <div class="sys-row">
-              <div>
-                <div class="sys-row-title">Novo usuário</div>
-                <div class="sys-row-desc">Deixe em branco para manter o atual.</div>
-              </div>
-              <div class="sys-row-control">
-                <input type="text" id="sysUserNovo" placeholder="Novo nome de usuário" autocomplete="off" />
-              </div>
-            </div>
-
-            <div class="sys-divider"></div>
-
-            <div class="sys-row">
-              <div>
-                <div class="sys-row-title">Senha atual</div>
-                <div class="sys-row-desc">Obrigatória para confirmar qualquer alteração.</div>
-              </div>
-              <div class="sys-row-control">
-                <input type="password" id="sysUserSenhaAtual" placeholder="••••••••" autocomplete="current-password" />
-              </div>
-            </div>
-
-            <div class="sys-divider"></div>
-
-            <div class="sys-row">
-              <div>
-                <div class="sys-row-title">Nova senha</div>
-                <div class="sys-row-desc">Mínimo 6 caracteres. Deixe em branco para não alterar.</div>
-              </div>
-              <div class="sys-row-control">
-                <input type="password" id="sysUserSenhaNova" placeholder="Nova senha" autocomplete="new-password" />
-                <input type="password" id="sysUserSenhaConf" placeholder="Confirmar nova senha" autocomplete="new-password" />
-              </div>
-            </div>
-
-            <div style="margin-top:1.5rem">
-              <button class="btn btn-primary" onclick="salvarUsuario()">Salvar alterações</button>
-            </div>
-            <div class="alert" id="alertSysUsuario" style="margin-top:.75rem"></div>
           </div>
 
           <!-- Painel: Usuários -->

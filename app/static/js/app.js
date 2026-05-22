@@ -359,7 +359,7 @@
         if (_mainMenuKeys.includes('sistema')) {
           const sysSubs = allowedMenus.filter(k => k.startsWith('sistema:')).map(k => k.split(':')[1]);
           if (sysSubs.length > 0) {
-            ['token-ia','usuario','usuarios','token','dominio','docs','log'].forEach(key => {
+            ['token-ia','usuarios','token','dominio','docs','log'].forEach(key => {
               const el = document.querySelector(`#page-sistema .sys-menu-item[data-panel="${key}"]`);
               if (el) el.style.display = sysSubs.includes(key) ? '' : 'none';
             });
