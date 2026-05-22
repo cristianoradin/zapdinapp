@@ -1435,6 +1435,8 @@
     .var-tag-teal:hover   { background: #99f6e4; }
     .var-tag-red    { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
     .var-tag-red:hover    { background: #fecaca; }
+    .var-tag-yellow { background: #fef9c3; color: #a16207; border-color: #fde047; }
+    .var-tag-yellow:hover { background: #fef08a; }
 
     /* ─── Phone mockup for WA preview ──────────────────────────────────────── */
     .phone-mockup {

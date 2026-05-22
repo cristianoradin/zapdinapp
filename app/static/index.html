@@ -1267,21 +1267,6 @@
               <h2 style="color:#dc2626">Alerta Crítico de Avaliação</h2>
             </div>
 
-            <!-- Toggle ativo -->
-            <div style="display:flex;align-items:center;justify-content:space-between;background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;padding:.6rem .875rem;margin-bottom:1rem">
-              <div>
-                <div style="font-size:.84rem;font-weight:600;color:#991b1b;display:flex;align-items:center;gap:.4rem">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                  Ativar alerta para notas 1, 2 e 3 estrelas
-                </div>
-                <div style="font-size:.72rem;color:#b91c1c;margin-top:.1rem">Envia mensagem WA imediatamente ao receber avaliação negativa</div>
-              </div>
-              <label class="toggle-switch" style="flex-shrink:0">
-                <input type="checkbox" id="alertaCriticoAtivo">
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
-
             <div style="display:flex;flex-direction:column;gap:.85rem">
 
               <!-- Telefone destino -->
@@ -1296,21 +1281,34 @@
                 </div>
               </div>
 
+              <!-- Toggle ativo -->
+              <div style="display:flex;align-items:center;justify-content:space-between;background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;padding:.6rem .875rem">
+                <div>
+                  <div style="font-size:.84rem;font-weight:600;color:#991b1b;display:flex;align-items:center;gap:.4rem">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    Ativar alerta para notas 1, 2 e 3 estrelas
+                  </div>
+                  <div style="font-size:.72rem;color:#b91c1c;margin-top:.1rem">Envia mensagem WA imediatamente ao receber avaliação negativa</div>
+                </div>
+                <label class="toggle-switch" style="flex-shrink:0">
+                  <input type="checkbox" id="alertaCriticoAtivo">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+
               <!-- Template da mensagem -->
               <div class="form-group" style="margin-bottom:0">
                 <label>Mensagem do alerta</label>
                 <textarea id="alertaCriticoMensagem" rows="7" style="font-family:'JetBrains Mono','Fira Code',monospace;font-size:.8rem;resize:vertical"></textarea>
-                <div style="margin-top:.4rem;display:flex;flex-wrap:wrap;gap:.3rem">
-                  <span style="font-size:.68rem;color:var(--text-mid);font-weight:600;margin-right:.2rem">Variáveis:</span>
-                  <template id="alertaVarChips">
-                    <span id="ac-v"></span>
-                  </template>
-                  <span class="var-chip" onclick="insertAlertaVar('{nome}')">{nome}</span>
-                  <span class="var-chip" onclick="insertAlertaVar('{telefone}')">{telefone}</span>
-                  <span class="var-chip" onclick="insertAlertaVar('{nota}')">{nota}</span>
-                  <span class="var-chip" onclick="insertAlertaVar('{vendedor}')">{vendedor}</span>
-                  <span class="var-chip" onclick="insertAlertaVar('{comentario}')">{comentario}</span>
-                  <span class="var-chip" onclick="insertAlertaVar('{data}')">{data}</span>
+                <!-- Variáveis — mesmo padrão visual da mensagem principal -->
+                <div style="margin-top:.5rem;display:flex;flex-wrap:wrap;gap:.3rem;align-items:center">
+                  <span style="font-size:.68rem;color:var(--text-mid);font-weight:600;margin-right:.1rem">Variáveis:</span>
+                  <span class="var-tag var-tag-green"  onclick="insertAlertaVar('{nome}')">{nome}</span>
+                  <span class="var-tag var-tag-blue"   onclick="insertAlertaVar('{telefone}')">{telefone}</span>
+                  <span class="var-tag var-tag-red"    onclick="insertAlertaVar('{nota}')">{nota}</span>
+                  <span class="var-tag var-tag-yellow" onclick="insertAlertaVar('{vendedor}')">{vendedor}</span>
+                  <span class="var-tag var-tag-purple" onclick="insertAlertaVar('{comentario}')">{comentario}</span>
+                  <span class="var-tag var-tag-teal"   onclick="insertAlertaVar('{data}')">{data}</span>
                 </div>
               </div>
 
