@@ -331,6 +331,50 @@
         if (currentPage && !allowedMenus.includes(currentPage) && firstAllowed) {
           navigate(firstAllowed);
         }
+
+        // ── Sub-menus internos (chatbot e sistema) ─────────────────────────────
+        // Chaves compostas: "chatbot:conversas", "sistema:token-ia", etc.
+        // Se não há chaves compostas para o módulo → todos os sub-menus visíveis.
+        const _mainMenuKeys = allowedMenus.filter(k => !k.includes(':'));
+
+        // Chatbot sub-menus
+        if (_mainMenuKeys.includes('chatbot')) {
+          const cbSubs = allowedMenus.filter(k => k.startsWith('chatbot:')).map(k => k.split(':')[1]);
+          if (cbSubs.length > 0) {
+            // Restrição explícita: oculta os não listados
+            ['conversas','personalidade','boasvindas','faq','aprendizado','memoria'].forEach(key => {
+              const el = document.getElementById('cbMenu-' + key);
+              if (el) el.style.display = cbSubs.includes(key) ? '' : 'none';
+            });
+            // Se o painel ativo ficou oculto, ativa o primeiro visível
+            const cbActive = document.querySelector('#page-chatbot .sys-menu-item.active');
+            if (cbActive && cbActive.style.display === 'none') {
+              const firstCb = document.querySelector('#page-chatbot .sys-menu-item:not([style*="none"])');
+              if (firstCb) firstCb.click();
+            }
+          }
+        }
+
+        // Sistema sub-menus
+        if (_mainMenuKeys.includes('sistema')) {
+          const sysSubs = allowedMenus.filter(k => k.startsWith('sistema:')).map(k => k.split(':')[1]);
+          if (sysSubs.length > 0) {
+            ['token-ia','usuario','usuarios','token','dominio','docs','log'].forEach(key => {
+              const el = document.querySelector(`#page-sistema .sys-menu-item[data-panel="${key}"]`);
+              if (el) el.style.display = sysSubs.includes(key) ? '' : 'none';
+            });
+            // Oculta sidebar-section labels que ficaram sem itens
+            document.querySelectorAll('#page-sistema .sys-sidebar-section').forEach(section => {
+              let next = section.nextElementSibling;
+              let hasVisible = false;
+              while (next && !next.classList.contains('sys-sidebar-section')) {
+                if (next.classList.contains('sys-menu-item') && next.style.display !== 'none') hasVisible = true;
+                next = next.nextElementSibling;
+              }
+              section.style.display = hasVisible ? '' : 'none';
+            });
+          }
+        }
       }
     } catch { window.location.href = '/login'; }
   }
