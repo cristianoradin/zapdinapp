@@ -691,7 +691,8 @@ class EvoManager:
     # ─────────────────────────────────────────────────────────────────────────
 
     async def send_text(
-        self, session_id: str, empresa_id: int, phone: str, message: str
+        self, session_id: str, empresa_id: int, phone: str, message: str,
+        composing_delay: float = 0.0,
     ) -> Tuple[bool, Optional[str]]:
         """Envia mensagem de texto para um número."""
         inst   = _instance_name(empresa_id, session_id)
