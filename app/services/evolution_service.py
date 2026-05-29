@@ -469,7 +469,7 @@ class EvoManager:
         if key in self._sessions:
             return
         inst = _instance_name(empresa_id, session_id)
-        await self._ensure_instance(inst)
+        await self._ensure_instance(inst, nome=nome)
         sess = EvoSession(session_id, nome, empresa_id)
         self._sessions[key]     = sess
         self._inst_index[inst]  = sess
@@ -574,7 +574,7 @@ class EvoManager:
     #  Provisiona instância + webhook na Evolution API
     # ─────────────────────────────────────────────────────────────────────────
 
-    async def _ensure_instance(self, inst: str) -> bool:
+    async def _ensure_instance(self, inst: str, nome: str = "ZapDin") -> bool:
         """
         Garante que a instância existe na Evolution API com webhook configurado.
         Se já existir, apenas atualiza a URL do webhook (caso tenha mudado de porta).
@@ -617,10 +617,11 @@ class EvoManager:
                 r2 = await client.post(
                     _url("instance/create"),
                     json={
-                        "instanceName": inst,
-                        "qrcode":       True,
-                        "integration":  "WHATSAPP-BAILEYS",
-                        "webhook":      webhook_cfg,
+                        "instanceName":       inst,
+                        "qrcode":             True,
+                        "integration":        "WHATSAPP-BAILEYS",
+                        "webhook":            webhook_cfg,
+                        "browserDescription": [nome or "ZapDin", "Desktop", "3.0"],
                     },
                     headers=_h(),
                 )
