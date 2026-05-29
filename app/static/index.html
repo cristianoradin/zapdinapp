@@ -1239,27 +1239,6 @@
     </div>
   </div>
 
-  <!-- ── MODAL PROPÓSITO SESSÃO WA ──────────────── -->
-  <div class="home-modal-overlay" id="sessao-usos-overlay" onclick="sessaoFecharUsos(event)" style="z-index:1300">
-    <div class="home-modal" style="max-width:380px">
-      <div class="home-modal-header">
-        <h3>📱 Propósito desta sessão</h3>
-        <button onclick="sessaoFecharUsos(null,true)" class="home-modal-close">✕</button>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:.6rem;padding:.2rem 0">
-        <p style="font-size:.8rem;color:var(--text-muted);margin:0">Selecione para quais funções este número será usado:</p>
-        <label class="agwa-cfg-ant-label"><input type="checkbox" id="sessao-uso-chatbot"> 🤖 Chatbot IA</label>
-        <label class="agwa-cfg-ant-label"><input type="checkbox" id="sessao-uso-campanhas"> 📢 Envio de Campanhas</label>
-        <label class="agwa-cfg-ant-label"><input type="checkbox" id="sessao-uso-arquivos"> 📎 Gestão de Arquivos</label>
-        <label class="agwa-cfg-ant-label"><input type="checkbox" id="sessao-uso-agenda"> 📅 Agenda WA</label>
-        <label class="agwa-cfg-ant-label"><input type="checkbox" id="sessao-uso-pdv"> ⭐ PDV / Avaliação</label>
-        <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.4rem">
-          <button onclick="sessaoFecharUsos(null,true)" style="background:#e5e7eb;color:var(--text);border:none;border-radius:8px;padding:.45rem 1rem;font-size:.82rem;cursor:pointer">Cancelar</button>
-          <button onclick="sessaoSalvarUsos()" class="agwa-btn-add">Salvar</button>
-        </div>
-      </div>
-    </div>
-  </div>
 
   <!-- ── MODAL AGENDA ─────────────────────────── -->
   <div class="home-modal-overlay" id="home-agenda-overlay" onclick="homeFecharAgenda(event)">
@@ -4495,6 +4474,28 @@
 
 
 
+  </div>
+</div>
+
+<!-- ── MODAL PROPÓSITO SESSÃO WA — fora de todas as pages ── -->
+<div class="home-modal-overlay" id="sessao-usos-overlay" onclick="sessaoFecharUsos(event)" style="z-index:1300">
+  <div class="home-modal" style="max-width:380px">
+    <div class="home-modal-header">
+      <h3>📱 Propósito desta sessão</h3>
+      <button onclick="sessaoFecharUsos(null,true)" class="home-modal-close">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.6rem;padding:.2rem 0">
+      <p style="font-size:.8rem;color:var(--text-muted);margin:0">Selecione para quais funções este número será usado:</p>
+      <label class="agwa-cfg-ant-label"><input type="checkbox" id="sessao-uso-chatbot"> 🤖 Chatbot IA</label>
+      <label class="agwa-cfg-ant-label"><input type="checkbox" id="sessao-uso-campanhas"> 📢 Envio de Campanhas</label>
+      <label class="agwa-cfg-ant-label"><input type="checkbox" id="sessao-uso-arquivos"> 📎 Gestão de Arquivos</label>
+      <label class="agwa-cfg-ant-label"><input type="checkbox" id="sessao-uso-agenda"> 📅 Agenda WA</label>
+      <label class="agwa-cfg-ant-label"><input type="checkbox" id="sessao-uso-pdv"> ⭐ PDV / Avaliação</label>
+      <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.4rem">
+        <button onclick="sessaoFecharUsos(null,true)" style="background:#e5e7eb;color:var(--text);border:none;border-radius:8px;padding:.45rem 1rem;font-size:.82rem;cursor:pointer">Cancelar</button>
+        <button onclick="sessaoSalvarUsos()" class="agwa-btn-add">Salvar</button>
+      </div>
+    </div>
   </div>
 </div>
 
