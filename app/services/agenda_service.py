@@ -156,20 +156,20 @@ async def _parse_agendamento_ia(texto: str) -> Optional[dict]:
     hoje_str = date.today().isoformat()
     system = _PARSE_SYSTEM.replace("{hoje}", hoje_str)
 
+    messages = [
+        {"role": "system", "content": system},
+        {"role": "user",   "content": texto},
+    ]
+
     for provider in providers:
         try:
-            resposta = await _call_ia(
-                provider=provider,
-                system=system,
-                historico=[{"role": "user", "content": texto}],
-                max_tokens=300,
-            )
+            resposta = await _call_ia(provider, messages)
             if resposta:
                 match = re.search(r'\{.*\}', resposta, re.DOTALL)
                 if match:
                     return _json.loads(match.group())
         except Exception as exc:
-            logger.debug("[agenda] Falha IA parse %s: %s", provider, exc)
+            logger.warning("[agenda] Falha IA parse %s: %s", provider, exc)
             continue
     return None
 
