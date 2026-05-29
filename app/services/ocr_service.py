@@ -358,9 +358,17 @@ def _ocr_providers_habilitados() -> list[str]:
         "anthropic": settings.anthropic_api_key,
         "groq":      settings.groq_api_key,
     }
+    ativo_map = {
+        "openai":    getattr(settings, "ai_ativo_openai",    True),
+        "gemini":    getattr(settings, "ai_ativo_gemini",    True),
+        "anthropic": getattr(settings, "ai_ativo_anthropic", True),
+        "groq":      getattr(settings, "ai_ativo_groq",      True),
+    }
     return [
         p for p in ["openai", "gemini", "anthropic", "groq"]
-        if "ocr" in (uso_map.get(p) or "").split(",") and (key_map.get(p) or "").strip()
+        if ativo_map.get(p, True)
+        and "ocr" in (uso_map.get(p) or "").split(",")
+        and (key_map.get(p) or "").strip()
     ]
 
 
