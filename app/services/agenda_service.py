@@ -147,7 +147,7 @@ Regras:
 
 
 async def _parse_agendamento_ia(texto: str) -> Optional[dict]:
-    from .chatbot_service import _chat_providers, _call_ia
+    from .chatbot_service import _chat_providers, _chamar_ia as _call_ia
 
     providers = _chat_providers()
     if not providers:
