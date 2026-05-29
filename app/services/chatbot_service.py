@@ -284,10 +284,11 @@ async def responder_mensagem(
         try:
             from .agenda_service import processar_comando_agenda
             _uid = 0  # usuario_id genérico para criação via WA
-            if await processar_comando_agenda(empresa_id, phone_local, texto, instance, _uid):
+            if await processar_comando_agenda(empresa_id, phone_local, texto, instance, _uid,
+                                              phone_wa=phone.split("@")[0]):
                 return
         except Exception as _exc:
-            logger.debug("[chatbot] agenda hook ignorado: %s", _exc)
+            logger.warning("[chatbot] agenda hook ignorado: %s", _exc)
 
         async with get_db_direct() as db:
             # ── Verifica se chatbot está ativo para a empresa ──────────────────

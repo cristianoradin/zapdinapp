@@ -216,9 +216,11 @@ async def processar_comando_agenda(
     texto: str,
     instance: str,
     usuario_id: int,
+    phone_wa: str = "",
 ) -> bool:
     """
     Identifica o sender na tabela agenda_wa_usuarios.
+    phone_wa: número completo com DDI (ex: 554491317080) para envio via Evolution API.
     Retorna True se o comando foi tratado (chatbot NÃO deve processar).
     Retorna False em qualquer outro caso.
     """
@@ -282,7 +284,7 @@ async def processar_comando_agenda(
                 "• *agenda hoje* — compromissos de hoje\n"
                 "• *agenda semana* — próximos 7 dias"
             )
-            await _wa_send(instance, phone_local, resp, empresa_id)
+            await _wa_send(instance, phone_wa or phone_local, resp, empresa_id)
             return True
 
         # Menu / ajuda
@@ -295,7 +297,7 @@ async def processar_comando_agenda(
                 "• *agendar [descrição]* — criar compromisso\n\n"
                 "_Exemplo: agendar reunião com sócios dia 25/05 às 14h_"
             )
-            await _wa_send(instance, phone_local, resp, empresa_id)
+            await _wa_send(instance, phone_wa or phone_local, resp, empresa_id)
             return True
 
         # Consulta hoje
@@ -309,7 +311,7 @@ async def processar_comando_agenda(
                 linhas = [f"📅 *{nome_usuario}, compromissos de hoje ({hoje.strftime('%d/%m/%Y')}):*\n"]
                 linhas += [_fmt_compromisso(c) for c in compromissos]
                 resp = "\n".join(linhas)
-            await _wa_send(instance, phone_local, resp, empresa_id)
+            await _wa_send(instance, phone_wa or phone_local, resp, empresa_id)
             return True
 
         # Consulta semana
@@ -329,7 +331,7 @@ async def processar_comando_agenda(
                     linhas += [_fmt_compromisso(c) for c in lista]
                     linhas.append("")
                 resp = "\n".join(linhas).strip()
-            await _wa_send(instance, phone_local, resp, empresa_id)
+            await _wa_send(instance, phone_wa or phone_local, resp, empresa_id)
             return True
 
         # Criar agendamento
@@ -355,7 +357,7 @@ async def processar_comando_agenda(
                     "❌ Não consegui entender o agendamento. Tente:\n"
                     "_agendar reunião com sócios dia 25/05 às 14h_"
                 )
-            await _wa_send(instance, phone_local, resp, empresa_id)
+            await _wa_send(instance, phone_wa or phone_local, resp, empresa_id)
             return True
 
     except Exception as exc:
