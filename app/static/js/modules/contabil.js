@@ -543,18 +543,18 @@ window.ctbArquivos = (() => {
       const ok    = (e.docs_aprovados || e.aprovados || 0);
       const err   = (e.docs_erro || e.erros || 0);
       return `<div class="ctb-arq-card" onclick="ctbArquivos.abrirEmpresa(${e.id}, '${e.nome.replace(/'/g,"\\'")}')">
-      <div class="ctb-arq-card-header">
-        <div class="ctb-arq-card-avatar">${initials}</div>
-        <div>
+      <div class="ctb-arq-card-avatar">${initials}</div>
+      <div class="ctb-arq-card-body">
+        <div class="ctb-arq-card-line1">
           <div class="ctb-arq-card-name">${e.nome}</div>
           <div class="ctb-arq-card-cnpj">${e.cnpj || e.regime_tributario || ''}</div>
         </div>
-      </div>
-      <div class="ctb-arq-card-stats">
-        <span class="ctb-arq-stat-pill total">${total} doc${total!==1?'s':''}</span>
-        ${pend  ? `<span class="ctb-arq-stat-pill pending">${pend} pendente${pend!==1?'s':''}</span>` : ''}
-        ${ok    ? `<span class="ctb-arq-stat-pill ok">${ok} aprovado${ok!==1?'s':''}</span>` : ''}
-        ${err   ? `<span class="ctb-arq-stat-pill err">${err} erro${err!==1?'s':''}</span>` : ''}
+        <div class="ctb-arq-card-stats">
+          <span class="ctb-arq-stat-pill total">${total} doc${total!==1?'s':''}</span>
+          ${pend  ? `<span class="ctb-arq-stat-pill pending">${pend} pendente${pend!==1?'s':''}</span>` : ''}
+          ${ok    ? `<span class="ctb-arq-stat-pill ok">${ok} aprovado${ok!==1?'s':''}</span>` : ''}
+          ${err   ? `<span class="ctb-arq-stat-pill err">${err} erro${err!==1?'s':''}</span>` : ''}
+        </div>
       </div>
     </div>`;
     }).join('');
