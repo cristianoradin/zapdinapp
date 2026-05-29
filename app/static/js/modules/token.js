@@ -143,11 +143,7 @@ window.tokenModule = (() => {
     document.getElementById('btnCopiarToken').addEventListener('click', () => {
       const val = document.getElementById('inputToken').value;
       if (!val) return;
-      navigator.clipboard.writeText(val).then(() => {
-        const btn = document.getElementById('btnCopiarToken');
-        btn.textContent = '✅ Copiado!';
-        setTimeout(() => { btn.textContent = '📋'; }, 2000);
-      });
+      _copiarTexto(val, document.getElementById('btnCopiarToken'), '📋', '✅ Copiado!');
     });
 
     // Atualizar status ERP
@@ -186,10 +182,34 @@ window.revogarPdvToken = async function(id) {
   if (res.ok) tokenModule.init();
 };
 
+function _copiarTexto(texto, btnEl, labelOriginal, labelOk) {
+  const ok = () => {
+    if (btnEl) {
+      btnEl.textContent = labelOk || '✅ Copiado!';
+      setTimeout(() => { btnEl.textContent = labelOriginal || '📋'; }, 2000);
+    }
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(texto).then(ok).catch(() => _copiarFallback(texto, ok));
+  } else {
+    _copiarFallback(texto, ok);
+  }
+}
+
+function _copiarFallback(texto, cb) {
+  const ta = document.createElement('textarea');
+  ta.value = texto;
+  ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try { document.execCommand('copy'); if (cb) cb(); } catch(e) {}
+  document.body.removeChild(ta);
+}
+
 window.copiarPdvToken = function() {
   const val = document.getElementById('pdvTokenValor').textContent;
   if (!val) return;
-  navigator.clipboard.writeText(val).then(() => {
+  _copiarFallback(val, () => {
     const el = document.getElementById('alertPdvToken');
     if (el) {
       el.textContent = 'Token copiado!';
