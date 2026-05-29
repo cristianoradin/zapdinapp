@@ -699,10 +699,13 @@ class EvoManager:
         inst   = _instance_name(empresa_id, session_id)
         number = phone.strip().lstrip("+").replace(" ", "")
         try:
+            payload: dict = {"number": number, "text": message}
+            if composing_delay > 0:
+                payload["delay"] = int(composing_delay * 1000)  # ms — Evolution API simula "digitando..."
             async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
                 r = await client.post(
                     _url(f"message/sendText/{inst}"),
-                    json={"number": number, "text": message},
+                    json=payload,
                     headers=_h(),
                 )
             if r.status_code in (200, 201):
@@ -739,6 +742,7 @@ class EvoManager:
         file_path: str,
         filename: str,
         caption: Optional[str] = None,
+        composing_delay: float = 0.0,
     ) -> Tuple[bool, Optional[str]]:
         """Envia arquivo (imagem, PDF, áudio, etc.) para um número."""
         inst   = _instance_name(empresa_id, session_id)
@@ -746,10 +750,10 @@ class EvoManager:
         ext    = os.path.splitext(filename)[1].lower()
         mtype  = _media_type(ext)
         mime   = _mimetype(ext)
-        return await self._send_file_b64(inst, number, file_path, filename, mime, mtype, caption)
+        return await self._send_file_b64(inst, number, file_path, filename, mime, mtype, caption, composing_delay)
 
     async def _send_file_b64(
-        self, inst, number, file_path, filename, mime, mtype, caption
+        self, inst, number, file_path, filename, mime, mtype, caption, composing_delay: float = 0.0
     ) -> Tuple[bool, Optional[str]]:
         """Envia arquivo como data URI base64 (mais confiável que URL pública)."""
         try:
@@ -757,17 +761,20 @@ class EvoManager:
                 raw = f.read()
             # Evolution API aceita base64 puro — data URI (data:mime;base64,...) não é suportado
             b64 = base64.b64encode(raw).decode()
+            payload = {
+                "number":    number,
+                "mediatype": mtype,
+                "mimetype":  mime,
+                "caption":   caption or "",
+                "media":     b64,
+                "fileName":  filename,
+            }
+            if composing_delay > 0:
+                payload["delay"] = int(composing_delay * 1000)  # ms — simula "gravando áudio" / "enviando arquivo"
             async with httpx.AsyncClient(timeout=90.0) as client:
                 r = await client.post(
                     _url(f"message/sendMedia/{inst}"),
-                    json={
-                        "number":    number,
-                        "mediatype": mtype,
-                        "mimetype":  mime,
-                        "caption":   caption or "",
-                        "media":     b64,
-                        "fileName":  filename,
-                    },
+                    json=payload,
                     headers=_h(),
                 )
             if r.status_code in (200, 201):

@@ -426,10 +426,12 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
             return True
 
         caption = process_spintax(arq["caption"] or "") if spintax_on else (arq["caption"] or "")
+        c_delay = _composing_delay(caption) if composing_on and caption else (random.uniform(1.5, 3.0) if composing_on else 0.0)
 
         ok, err = await wa_manager.send_file(
             sessao_id, empresa_id, arq["destinatario"], file_path,
             arq["nome_original"], caption or None,
+            composing_delay=c_delay,
         )
         st = "sent" if ok else "failed"
         async with get_db_direct() as db:
