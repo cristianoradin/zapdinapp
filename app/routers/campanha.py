@@ -6,6 +6,7 @@ Nenhuma query SQL direta aqui — toda lógica de dados está nos repositories.
 """
 import asyncio
 import os
+import re
 import uuid
 import logging
 from datetime import datetime
@@ -26,6 +27,14 @@ from ..domain.exceptions import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/campanha", tags=["campanha"])
+
+
+def _normalizar_phone(phone: str) -> str:
+    """Dígitos apenas, sem DDI 55. Ex: '55 11 9999-0000' → '11999990000'."""
+    p = re.sub(r"\D", "", phone)
+    if p.startswith("55") and len(p) >= 12:
+        p = p[2:]
+    return p
 
 UPLOAD_DIR = "data/arquivos"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -77,7 +86,7 @@ async def list_contatos(q: str = "", db=Depends(get_db), user=Depends(get_curren
 
 @router.post("/contatos")
 async def create_contato(body: ContatoIn, db=Depends(get_db), user=Depends(get_current_user)):
-    phone = body.phone.strip()
+    phone = _normalizar_phone(body.phone)
     if not phone:
         raise HTTPException(400, "Telefone obrigatório")
     try:
@@ -105,8 +114,8 @@ async def importar_contatos(
         if not line or line.startswith("#"):
             continue
         parts = [p.strip() for p in line.split(",")]
-        phone = parts[0] if parts else ""
-        nome = parts[1] if len(parts) > 1 else ""
+        phone = _normalizar_phone(parts[0] if parts else "")
+        nome = parts[1].strip() if len(parts) > 1 else ""
         if phone:
             registros.append((empresa_id, phone, nome))
 
