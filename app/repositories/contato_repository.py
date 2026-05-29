@@ -43,10 +43,12 @@ class ContatoRepository(BaseRepository):
         return cur.lastrowid
 
     async def upsert_batch(self, registros: list[tuple]) -> None:
-        """Insere/atualiza múltiplos contatos em batch. Cada tuple: (empresa_id, phone, nome)."""
+        """Insere/atualiza múltiplos contatos em batch. Cada tuple: (empresa_id, phone, nome).
+        Nome existente é preservado se o novo nome vier vazio."""
         await self._db.executemany(
             "INSERT INTO contatos (empresa_id, phone, nome) VALUES (?,?,?) "
-            "ON CONFLICT (empresa_id, phone) DO UPDATE SET nome=EXCLUDED.nome",
+            "ON CONFLICT (empresa_id, phone) DO UPDATE "
+            "SET nome = CASE WHEN EXCLUDED.nome != '' THEN EXCLUDED.nome ELSE contatos.nome END",
             registros,
         )
 
