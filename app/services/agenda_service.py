@@ -116,10 +116,12 @@ async def _consultar_agenda(
 
 # ── Enviar via WA ─────────────────────────────────────────────────────────────
 
-async def _wa_send(instance: str, phone: str, texto: str) -> None:
+async def _wa_send(instance: str, phone: str, texto: str, empresa_id: int = 0) -> None:
     try:
         from .evolution_service import evo_manager
-        await evo_manager.send_text(instance, phone, texto)
+        # instance = "e{empresa_id}_{session_id}" — extrai session_id
+        session_id = instance.split("_", 1)[1] if "_" in instance else instance
+        await evo_manager.send_text(session_id, empresa_id, phone, texto)
     except Exception as exc:
         logger.warning("[agenda] Falha ao enviar WA: %s", exc)
 
@@ -280,7 +282,7 @@ async def processar_comando_agenda(
                 "• *agenda hoje* — compromissos de hoje\n"
                 "• *agenda semana* — próximos 7 dias"
             )
-            await _wa_send(instance, phone_local, resp)
+            await _wa_send(instance, phone_local, resp, empresa_id)
             return True
 
         # Menu / ajuda
@@ -293,7 +295,7 @@ async def processar_comando_agenda(
                 "• *agendar [descrição]* — criar compromisso\n\n"
                 "_Exemplo: agendar reunião com sócios dia 25/05 às 14h_"
             )
-            await _wa_send(instance, phone_local, resp)
+            await _wa_send(instance, phone_local, resp, empresa_id)
             return True
 
         # Consulta hoje
@@ -307,7 +309,7 @@ async def processar_comando_agenda(
                 linhas = [f"📅 *{nome_usuario}, compromissos de hoje ({hoje.strftime('%d/%m/%Y')}):*\n"]
                 linhas += [_fmt_compromisso(c) for c in compromissos]
                 resp = "\n".join(linhas)
-            await _wa_send(instance, phone_local, resp)
+            await _wa_send(instance, phone_local, resp, empresa_id)
             return True
 
         # Consulta semana
@@ -327,7 +329,7 @@ async def processar_comando_agenda(
                     linhas += [_fmt_compromisso(c) for c in lista]
                     linhas.append("")
                 resp = "\n".join(linhas).strip()
-            await _wa_send(instance, phone_local, resp)
+            await _wa_send(instance, phone_local, resp, empresa_id)
             return True
 
         # Criar agendamento
@@ -353,7 +355,7 @@ async def processar_comando_agenda(
                     "❌ Não consegui entender o agendamento. Tente:\n"
                     "_agendar reunião com sócios dia 25/05 às 14h_"
                 )
-            await _wa_send(instance, phone_local, resp)
+            await _wa_send(instance, phone_local, resp, empresa_id)
             return True
 
     except Exception as exc:
@@ -483,7 +485,8 @@ async def enviar_alertas_agenda() -> None:
                 )
 
             try:
-                await evo_manager.send_text(instance, numero_destino, msg)
+                _sid = instance.split("_", 1)[1] if "_" in instance else instance
+                await evo_manager.send_text(_sid, empresa_id, numero_destino, msg)
                 logger.info("[agenda-alerta] Alerta — empresa=%s compromisso=%s → %s",
                             empresa_id, row["id"], numero_destino)
             except Exception as exc:
