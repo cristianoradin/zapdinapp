@@ -1216,9 +1216,12 @@ window.campanhaModule = (() => {
       const lista = await res.json();
       renderCampanhas(lista);
       loadWorkerStatus();
-      // Para o auto-refresh quando não houver mais campanhas em execução
-      const hasRunning = lista.some(c => c.status === 'running');
-      if (!hasRunning) {
+      // Para o auto-refresh quando não houver campanhas em execução ou pausadas com envios pendentes
+      const hasActive = lista.some(c =>
+        c.status === 'running' ||
+        (c.status === 'paused' && c.enviados < c.total)
+      );
+      if (!hasActive) {
         clearInterval(_campRefreshTimer);
         _campRefreshTimer = null;
       }

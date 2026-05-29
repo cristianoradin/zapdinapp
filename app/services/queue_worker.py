@@ -556,7 +556,7 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
                 remaining = await cur3.fetchone()
             if remaining and remaining["cnt"] == 0:
                 await db3.execute(
-                    "UPDATE campanhas SET status='done', done_at=NOW() WHERE id=? AND status='running'",
+                    "UPDATE campanhas SET status='done', done_at=NOW() WHERE id=? AND status IN ('running','paused')",
                     (campanha_id,),
                 )
             await db3.commit()

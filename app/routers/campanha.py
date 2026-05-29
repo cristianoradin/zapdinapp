@@ -363,7 +363,12 @@ async def iniciar_campanha(
 async def pausar_campanha(campanha_id: int, db=Depends(get_db), user=Depends(get_current_user)):
     repo = CampanhaRepository(db)
     await repo.pausar_envios(campanha_id)
-    await repo.update_status(campanha_id, "paused")
+    # Se todos os envios já foram processados, marcar como done em vez de paused
+    camp = await repo.get(_eid(user), campanha_id)
+    if camp and camp["total"] > 0 and camp["enviados"] >= camp["total"]:
+        await repo.update_status(campanha_id, "done")
+    else:
+        await repo.update_status(campanha_id, "paused")
     return {"ok": True}
 
 

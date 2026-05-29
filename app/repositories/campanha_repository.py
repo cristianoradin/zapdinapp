@@ -12,6 +12,14 @@ class CampanhaRepository(BaseRepository):
 
     async def list(self, empresa_id: int, status: Optional[str] = None) -> list:
         if status:
+            # "done" inclui também pausadas que finalizaram (done_at definido)
+            if status == "done":
+                return await self._fetchall(
+                    "SELECT id, nome, tipo, mensagem, status, total, enviados, erros, "
+                    "created_at, started_at, done_at, agendado_em "
+                    "FROM campanhas WHERE empresa_id=? AND (status='done' OR (status='paused' AND done_at IS NOT NULL)) ORDER BY id DESC",
+                    (empresa_id,),
+                )
             return await self._fetchall(
                 "SELECT id, nome, tipo, mensagem, status, total, enviados, erros, "
                 "created_at, started_at, done_at, agendado_em "
