@@ -247,6 +247,7 @@ async function homeSalvarAgenda() {
   const id = document.getElementById('home-agenda-id').value;
   const titulo = document.getElementById('home-agenda-titulo').value.trim();
   if (!titulo) { agwaToast('⚠️ Informe o título do compromisso'); return; }
+  if (!_agendaDataSel) { agwaToast('⚠️ Selecione uma data no calendário'); return; }
   const linkEl = document.getElementById('home-agenda-link');
   const body = {
     data: _agendaDataSel,
@@ -259,8 +260,22 @@ async function homeSalvarAgenda() {
   };
   const url = id ? `/api/home/agenda/${id}` : '/api/home/agenda';
   const method = id ? 'PUT' : 'POST';
-  const r = await fetch(url, {method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
-  if (r.ok) { await homeCarregarAgenda(); homeRenderAgendaLista(); homeLimparAgendaForm(); }
+  try {
+    const r = await fetch(url, {method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+    if (r.ok) {
+      agwaToast('✓ Compromisso salvo');
+      await homeCarregarAgenda();
+      homeRenderAgendaLista();
+      homeLimparAgendaForm();
+    } else {
+      const err = await r.json().catch(() => ({}));
+      agwaToast('❌ Erro ao salvar: ' + (err.detail || r.status));
+      console.error('[agenda] save error', r.status, err);
+    }
+  } catch(e) {
+    agwaToast('❌ Erro de conexão ao salvar');
+    console.error('[agenda] fetch error', e);
+  }
 }
 
 async function homeDeletarAgenda(id) {

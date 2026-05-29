@@ -71,14 +71,26 @@ def _traduz_dia(dia_en: str) -> str:
 # ── Buscar usuário WA ─────────────────────────────────────────────────────────
 
 async def _buscar_wa_usuario(empresa_id: int, phone_norm: str, db) -> Optional[dict]:
-    """Retorna dict {id, nome} do usuário WA ativo, ou None."""
-    async with db.execute(
-        "SELECT id, nome FROM agenda_wa_usuarios "
-        "WHERE empresa_id=$1 AND phone=$2 AND ativo=true",
-        (empresa_id, phone_norm),
-    ) as cur:
-        row = await cur.fetchone()
-    return dict(row) if row else None
+    """Retorna dict {id, nome} do usuário WA ativo, ou None.
+    Tenta com/sem 9 extra (migração Brasil DDD+8 → DDD+9 dígitos)."""
+    variants = [phone_norm]
+    if len(phone_norm) == 10:
+        # 10 dígitos: tenta também inserir 9 após DDD → 11 dígitos
+        variants.append(phone_norm[:2] + '9' + phone_norm[2:])
+    elif len(phone_norm) == 11:
+        # 11 dígitos: tenta também remover o 9 após DDD → 10 dígitos
+        variants.append(phone_norm[:2] + phone_norm[3:])
+
+    for phone_try in variants:
+        async with db.execute(
+            "SELECT id, nome FROM agenda_wa_usuarios "
+            "WHERE empresa_id=$1 AND phone=$2 AND ativo=true",
+            (empresa_id, phone_try),
+        ) as cur:
+            row = await cur.fetchone()
+        if row:
+            return dict(row)
+    return None
 
 
 # ── Consulta de agenda ────────────────────────────────────────────────────────
