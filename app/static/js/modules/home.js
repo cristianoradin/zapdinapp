@@ -628,29 +628,45 @@ const _USOS_LABELS = {
   pdv:       { label: 'PDV / Avaliação',    icon: '⭐' },
 };
 
+const _SESSAO_USOS_KEYS = ['chatbot','campanhas','arquivos','agenda','pdv'];
+
 async function sessaoAbrirUsos(sessaoId) {
   _sessaoUsoId = sessaoId;
+  const overlay = document.getElementById('sessao-usos-overlay');
+  if (!overlay) { console.error('[sessao] overlay não encontrado'); return; }
+
+  // Defaults: tudo marcado
+  _SESSAO_USOS_KEYS.forEach(k => {
+    const chk = document.getElementById('sessao-uso-' + k);
+    if (chk) chk.checked = true;
+  });
+
   try {
     const r = await fetch(`/api/config/sessao-usos/${sessaoId}`);
-    const d = r.ok ? await r.json() : { usos: Object.keys(_USOS_LABELS) };
-    const usos = d.usos || Object.keys(_USOS_LABELS);
-    Object.keys(_USOS_LABELS).forEach(k => {
-      const chk = document.getElementById('sessao-uso-' + k);
-      if (chk) chk.checked = usos.includes(k);
-    });
-  } catch(e) {}
-  document.getElementById('sessao-usos-overlay').classList.add('open');
+    if (r.ok) {
+      const d = await r.json();
+      const usos = d.usos || _SESSAO_USOS_KEYS;
+      _SESSAO_USOS_KEYS.forEach(k => {
+        const chk = document.getElementById('sessao-uso-' + k);
+        if (chk) chk.checked = usos.includes(k);
+      });
+    }
+  } catch(e) { console.warn('[sessao] fetch usos:', e); }
+
+  overlay.classList.add('open');
 }
 
 function sessaoFecharUsos(event, force) {
-  if (!force && event && event.target !== document.getElementById('sessao-usos-overlay')) return;
-  document.getElementById('sessao-usos-overlay').classList.remove('open');
+  const overlay = document.getElementById('sessao-usos-overlay');
+  if (!overlay) return;
+  if (!force && event && event.target !== overlay) return;
+  overlay.classList.remove('open');
   _sessaoUsoId = null;
 }
 
 async function sessaoSalvarUsos() {
   if (!_sessaoUsoId) return;
-  const usos = Object.keys(_USOS_LABELS).filter(k => document.getElementById('sessao-uso-' + k)?.checked);
+  const usos = _SESSAO_USOS_KEYS.filter(k => document.getElementById('sessao-uso-' + k)?.checked);
   try {
     const r = await fetch(`/api/config/sessao-usos/${_sessaoUsoId}`, {
       method: 'PUT',
