@@ -261,6 +261,28 @@ async def processar_comando_agenda(
         # ── Processa o comando ────────────────────────────────────────────────
         t = texto.lower().strip()
 
+        # Saudação — oferece menu da agenda
+        if re.search(
+            r'^(oi|ol[aá]|e a[ií]|bom dia|boa tarde|boa noite|hey|hi|hello|tudo bem|tudo bom|opa|salve)[\s!?.]*$',
+            t
+        ):
+            # Conta compromissos de hoje para personalizar resposta
+            async with get_db_direct() as db:
+                hoje_comp = await _consultar_agenda(empresa_id, "hoje", db, effective_uid)
+            hoje_str = ""
+            if hoje_comp:
+                n = len(hoje_comp)
+                hoje_str = f"\n\n📅 Você tem *{n} compromisso{'s' if n > 1 else ''}* hoje."
+            resp = (
+                f"👋 Olá, *{nome_usuario}*! Como posso ajudar?{hoje_str}\n\n"
+                "Comandos disponíveis:\n"
+                "• *agendar [descrição] dia [data] às [hora]* — criar compromisso\n"
+                "• *agenda hoje* — compromissos de hoje\n"
+                "• *agenda semana* — próximos 7 dias"
+            )
+            await _wa_send(instance, phone_local, resp)
+            return True
+
         # Menu / ajuda
         if re.search(r'\bagenda\b|\bajuda\b|\bhelp\b|\bo que\b|\bmenu\b', t) and len(t) < 30:
             resp = (
