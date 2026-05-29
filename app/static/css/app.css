@@ -1945,38 +1945,56 @@
       display: flex; align-items: center; gap: .35rem;
     }
 
-    /* Grid de empresas em Gestão de Arquivos */
+    /* Grid de empresas em Gestão de Arquivos — horizontal compacto, padrão sistema */
     .ctb-arq-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: .75rem;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: .85rem;
     }
     .ctb-arq-card {
-      border: 1.5px solid var(--border); border-radius: 12px; padding: 1rem;
-      cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .12s;
-      display: flex; flex-direction: column; gap: .5rem;
       background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      padding: .85rem 1rem;
+      cursor: pointer;
+      display: grid;
+      grid-template-columns: 38px 1fr;
+      gap: .7rem;
+      align-items: center;
+      transition: border-color .15s, box-shadow .15s, transform .12s;
     }
     .ctb-arq-card:hover {
-      border-color: var(--accent-mid); box-shadow: 0 4px 16px rgba(61,127,31,.12);
-      transform: translateY(-2px);
+      border-color: var(--accent-mid);
+      box-shadow: 0 4px 14px rgba(61,127,31,.1);
+      transform: translateY(-1px);
     }
     .ctb-arq-card.active {
       border-color: var(--accent); background: var(--accent-soft);
     }
-    .ctb-arq-card-header {
-      display: flex; align-items: center; gap: .65rem;
-    }
     .ctb-arq-card-avatar {
-      width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
+      width: 38px; height: 38px; border-radius: 10px;
       background: var(--accent-soft); border: 1.5px solid var(--accent-mid);
       display: flex; align-items: center; justify-content: center;
-      font-weight: 800; font-size: .8rem; color: var(--accent); letter-spacing: -.02em;
+      font-weight: 800; font-size: .78rem; color: var(--accent); letter-spacing: -.02em;
     }
-    .ctb-arq-card-name { font-weight: 700; font-size: .88rem; color: var(--text); line-height: 1.2; }
-    .ctb-arq-card-cnpj { font-size: .68rem; color: var(--text-mid); margin-top: .1rem; }
+    .ctb-arq-card-body {
+      min-width: 0; display: flex; flex-direction: column; gap: .3rem;
+    }
+    .ctb-arq-card-line1 {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: .5rem; min-width: 0;
+    }
+    .ctb-arq-card-name {
+      font-weight: 700; font-size: .85rem; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+    }
+    .ctb-arq-card-cnpj {
+      font-size: .66rem; color: var(--text-light);
+      white-space: nowrap; flex-shrink: 0;
+    }
     .ctb-arq-card-stats {
-      display: flex; gap: .35rem; flex-wrap: wrap; margin-top: .25rem;
+      display: flex; gap: .3rem; flex-wrap: wrap;
     }
     .ctb-arq-stat-pill {
       font-size: .65rem; font-weight: 700; padding: .18rem .55rem; border-radius: 20px;
@@ -2120,6 +2138,17 @@
       display: flex; align-items: flex-start; gap: .8rem;
       background: linear-gradient(to bottom, #fafbfc, #fff);
     }
+    .ai-power-btn {
+      flex-shrink: 0; width: 30px; height: 30px; border-radius: 8px;
+      border: 1.5px solid var(--border); background: #f0fdf4; color: #3d7f1f;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all .2s; margin-top: .1rem;
+    }
+    .ai-power-btn:hover { background: #dcfce7; border-color: #3d7f1f; }
+    .ai-power-btn.off   { background: #fef2f2; color: #ef4444; border-color: #fecaca; }
+    .ai-power-btn.off:hover { background: #fee2e2; }
+    .ai-card.ai-card-off { opacity: .55; filter: grayscale(.4); }
+    .ai-card.ai-card-off .ai-card-body { pointer-events: none; user-select: none; }
     .ai-card-logo {
       width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;

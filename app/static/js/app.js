@@ -1074,6 +1074,8 @@
         const chatAtivo = uso.chat === true;
         _aiSetUsoPill(p, 'ocr',  ocrAtivo);
         _aiSetUsoPill(p, 'chat', chatAtivo);
+        // Aplica estado ativo/desativado
+        _aiSetAtivo(p, info.ativo !== false);
       }
     } catch {}
   }
@@ -1147,6 +1149,38 @@
     const chat = document.getElementById('aiUso-' + provider + '-chat')?.classList.contains('on') || false;
     await api('POST', '/api/config/ai-uso', { provider, ocr, chat });
     _aiShowAlert(provider, '✓ Preferência salva!', 'ok');
+  }
+
+  function _aiSetAtivo(provider, ativo) {
+    const card = document.getElementById('aiCard-' + provider);
+    const btn  = document.getElementById('aiToggleAtivo-' + provider);
+    if (card) {
+      if (ativo) card.classList.remove('ai-card-off');
+      else       card.classList.add('ai-card-off');
+    }
+    if (btn) {
+      btn.title = ativo ? 'Desativar esta IA' : 'Ativar esta IA';
+      btn.classList.toggle('off', !ativo);
+    }
+  }
+
+  async function aiToggleAtivo(provider) {
+    const card = document.getElementById('aiCard-' + provider);
+    const ativo = card ? !card.classList.contains('ai-card-off') : true;
+    const novoAtivo = !ativo;
+    _aiSetAtivo(provider, novoAtivo);
+    try {
+      const r = await api('POST', '/api/config/ai-ativo', { provider, ativo: novoAtivo });
+      if (!r.ok) {
+        // Reverte em caso de erro
+        _aiSetAtivo(provider, ativo);
+        _aiShowAlert(provider, 'Erro ao salvar.', 'err');
+      } else {
+        _aiShowAlert(provider, novoAtivo ? '✓ IA ativada' : '⏸ IA desativada', novoAtivo ? 'ok' : 'err');
+      }
+    } catch {
+      _aiSetAtivo(provider, ativo);
+    }
   }
 
   async function aiTestar(provider) {

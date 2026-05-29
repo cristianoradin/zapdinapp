@@ -82,6 +82,10 @@ class Settings(BaseSettings):
     ai_uso_gemini:    str = "ocr"
     ai_uso_anthropic: str = "ocr"
     ai_uso_groq:      str = "ocr"
+    ai_ativo_openai:    bool = True     # master on/off por provider (não afeta as chaves)
+    ai_ativo_gemini:    bool = True
+    ai_ativo_anthropic: bool = True
+    ai_ativo_groq:      bool = True
 
     @property
     def is_locked(self) -> bool:

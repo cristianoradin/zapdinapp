@@ -242,7 +242,8 @@ async def list_conversas(
               WHERE ch2.empresa_id = h.empresa_id AND ch2.phone = h.phone
               ORDER BY ch2.created_at DESC LIMIT 1) AS ultima_preview
            FROM chat_historico h
-           LEFT JOIN contatos c ON c.empresa_id = h.empresa_id AND c.phone = REGEXP_REPLACE(h.phone, '^55', '')
+           LEFT JOIN contatos c ON c.empresa_id = h.empresa_id
+             AND (c.phone = h.phone OR c.phone = REGEXP_REPLACE(h.phone, '^55', ''))
            WHERE h.empresa_id = ?
            GROUP BY h.phone, h.empresa_id, c.nome, c.chatbot_ativo
            ORDER BY ultima_msg DESC

@@ -64,6 +64,11 @@ class AIUsoBody(BaseModel):
     chat: bool = False
 
 
+class AIAtivoBody(BaseModel):
+    provider: str
+    ativo: bool
+
+
 @router.get("/ai-keys")
 async def get_ai_keys(user: dict = Depends(get_current_user)):
     """Retorna status de todos os provedores de IA com suas configurações de uso."""
@@ -72,10 +77,10 @@ async def get_ai_keys(user: dict = Depends(get_current_user)):
         return {"ocr": "ocr" in parts, "chat": "chat" in parts}
 
     return {
-        "openai":    {**_key_preview(settings.openai_api_key or ""),    "uso": _uso(settings.ai_uso_openai)},
-        "gemini":    {**_key_preview(settings.gemini_api_key or ""),    "uso": _uso(settings.ai_uso_gemini)},
-        "anthropic": {**_key_preview(settings.anthropic_api_key or ""), "uso": _uso(settings.ai_uso_anthropic)},
-        "groq":      {**_key_preview(settings.groq_api_key or ""),      "uso": _uso(settings.ai_uso_groq)},
+        "openai":    {**_key_preview(settings.openai_api_key or ""),    "uso": _uso(settings.ai_uso_openai),    "ativo": settings.ai_ativo_openai},
+        "gemini":    {**_key_preview(settings.gemini_api_key or ""),    "uso": _uso(settings.ai_uso_gemini),    "ativo": settings.ai_ativo_gemini},
+        "anthropic": {**_key_preview(settings.anthropic_api_key or ""), "uso": _uso(settings.ai_uso_anthropic), "ativo": settings.ai_ativo_anthropic},
+        "groq":      {**_key_preview(settings.groq_api_key or ""),      "uso": _uso(settings.ai_uso_groq),      "ativo": settings.ai_ativo_groq},
     }
 
 
@@ -108,6 +113,18 @@ async def set_ai_uso(body: AIUsoBody, user: dict = Depends(get_current_user)):
     _update_env_key(env_key, uso_str)
     setattr(settings, attr, uso_str)
     return {"ok": True}
+
+
+@router.post("/ai-ativo")
+async def set_ai_ativo(body: AIAtivoBody, user: dict = Depends(get_current_user)):
+    """Ativa ou desativa um provider de IA sem apagar a chave ou a configuração de uso."""
+    provider = body.provider.strip().lower()
+    if provider not in _AI_PROVIDERS:
+        raise HTTPException(400, f"Provedor inválido: {provider}")
+    env_key = f"AI_ATIVO_{provider.upper()}"
+    _update_env_key(env_key, "true" if body.ativo else "false")
+    setattr(settings, f"ai_ativo_{provider}", body.ativo)
+    return {"ok": True, "provider": provider, "ativo": body.ativo}
 
 
 # Mantém compatibilidade com endpoint antigo

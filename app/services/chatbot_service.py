@@ -54,10 +54,18 @@ def _chat_providers() -> list[str]:
         "anthropic": settings.anthropic_api_key,
         "groq":      settings.groq_api_key,
     }
+    ativo_map = {
+        "openai":    getattr(settings, "ai_ativo_openai",    True),
+        "gemini":    getattr(settings, "ai_ativo_gemini",    True),
+        "anthropic": getattr(settings, "ai_ativo_anthropic", True),
+        "groq":      getattr(settings, "ai_ativo_groq",      True),
+    }
 
     return [
         p for p in ordem
-        if "chat" in (uso_map.get(p) or "").split(",") and (key_map.get(p) or "").strip()
+        if ativo_map.get(p, True)
+        and "chat" in (uso_map.get(p) or "").split(",")
+        and (key_map.get(p) or "").strip()
     ]
 
 
