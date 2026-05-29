@@ -287,20 +287,7 @@ async def processar_comando_agenda(
             await _wa_send(instance, phone_wa or phone_local, resp, empresa_id)
             return True
 
-        # Menu / ajuda
-        if re.search(r'\bagenda\b|\bajuda\b|\bhelp\b|\bo que\b|\bmenu\b', t) and len(t) < 30:
-            resp = (
-                f"📅 *Olá, {nome_usuario}! Agenda ZapDin*\n\n"
-                "Comandos disponíveis:\n"
-                "• *agenda hoje* — seus compromissos de hoje\n"
-                "• *agenda semana* — próximos 7 dias\n"
-                "• *agendar [descrição]* — criar compromisso\n\n"
-                "_Exemplo: agendar reunião com sócios dia 25/05 às 14h_"
-            )
-            await _wa_send(instance, phone_wa or phone_local, resp, empresa_id)
-            return True
-
-        # Consulta hoje
+        # Consulta hoje — ANTES do menu (evita "agenda hoje" cair no menu)
         if re.search(r'\bhoje\b|\btoday\b', t):
             async with get_db_direct() as db:
                 compromissos = await _consultar_agenda(empresa_id, "hoje", db, effective_uid)
@@ -314,7 +301,7 @@ async def processar_comando_agenda(
             await _wa_send(instance, phone_wa or phone_local, resp, empresa_id)
             return True
 
-        # Consulta semana
+        # Consulta semana — ANTES do menu (evita "agenda semana" cair no menu)
         if re.search(r'\bsemana\b|\bweek\b|\bpr[oó]ximos\b', t):
             async with get_db_direct() as db:
                 compromissos = await _consultar_agenda(empresa_id, "semana", db, effective_uid)
@@ -357,6 +344,19 @@ async def processar_comando_agenda(
                     "❌ Não consegui entender o agendamento. Tente:\n"
                     "_agendar reunião com sócios dia 25/05 às 14h_"
                 )
+            await _wa_send(instance, phone_wa or phone_local, resp, empresa_id)
+            return True
+
+        # Menu / ajuda — fallback: qualquer msg curta com "agenda", "ajuda", "menu"
+        if re.search(r'\bagenda\b|\bajuda\b|\bhelp\b|\bo que\b|\bmenu\b', t) and len(t) < 30:
+            resp = (
+                f"📅 *Olá, {nome_usuario}! Agenda ZapDin*\n\n"
+                "Comandos disponíveis:\n"
+                "• *agenda hoje* — seus compromissos de hoje\n"
+                "• *agenda semana* — próximos 7 dias\n"
+                "• *agendar [descrição]* — criar compromisso\n\n"
+                "_Exemplo: agendar reunião com sócios dia 25/05 às 14h_"
+            )
             await _wa_send(instance, phone_wa or phone_local, resp, empresa_id)
             return True
 
