@@ -231,6 +231,11 @@ class AgendaWaUsuarioPayload(BaseModel):
     recebe_alertas: bool = True
 
 
+class AgendaWaUsuarioConfigPayload(BaseModel):
+    morning_digest_hora: Optional[str] = None        # "08:00" ou null = desativado
+    alert_antecedencias: Optional[list] = None       # [60, 30, 15]
+
+
 @router.get("/agenda-wa-usuarios")
 async def list_agenda_wa_usuarios(
     db=Depends(get_db),
@@ -238,12 +243,21 @@ async def list_agenda_wa_usuarios(
 ):
     empresa_id = user["empresa_id"]
     async with db.execute(
-        "SELECT id, phone, nome, ativo, recebe_alertas FROM agenda_wa_usuarios "
-        "WHERE empresa_id=? ORDER BY nome",
+        "SELECT id, phone, nome, ativo, recebe_alertas, "
+        "morning_digest_hora, alert_antecedencias "
+        "FROM agenda_wa_usuarios WHERE empresa_id=? ORDER BY nome",
         (empresa_id,),
     ) as cur:
         rows = await cur.fetchall()
-    return [dict(r) for r in rows]
+    result = []
+    for r in rows:
+        d = dict(r)
+        try:
+            d["alert_antecedencias"] = _json.loads(d["alert_antecedencias"] or "[60]")
+        except Exception:
+            d["alert_antecedencias"] = [60]
+        result.append(d)
+    return result
 
 
 @router.post("/agenda-wa-usuarios")
@@ -288,6 +302,29 @@ async def update_agenda_wa_usuario(
     return {"ok": True}
 
 
+@router.put("/agenda-wa-usuarios/{uid}/config")
+async def update_agenda_wa_usuario_config(
+    uid: int,
+    body: AgendaWaUsuarioConfigPayload,
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Salva config avançada: horário do resumo diário e antecedências de alerta."""
+    empresa_id = user["empresa_id"]
+    antecedencias = body.alert_antecedencias or [60]
+    # Validar: lista de inteiros positivos, máximo 10 itens
+    antecedencias = sorted(set(int(x) for x in antecedencias if 1 <= int(x) <= 1440), reverse=True)
+    await db.execute(
+        "UPDATE agenda_wa_usuarios SET morning_digest_hora=?, alert_antecedencias=? "
+        "WHERE id=? AND empresa_id=?",
+        (body.morning_digest_hora or None,
+         _json.dumps(antecedencias),
+         uid, empresa_id),
+    )
+    await db.commit()
+    return {"ok": True}
+
+
 @router.delete("/agenda-wa-usuarios/{uid}")
 async def delete_agenda_wa_usuario(
     uid: int,
@@ -301,3 +338,50 @@ async def delete_agenda_wa_usuario(
     )
     await db.commit()
     return {"ok": True}
+
+
+# ── Sessões WA — configuração de propósito ───────────────────────────────────
+
+_USOS_VALIDOS = {"chatbot", "campanhas", "arquivos", "agenda", "pdv"}
+
+
+class SessaoUsoPayload(BaseModel):
+    usos: list
+
+
+@router.get("/sessao-usos/{sessao_id}")
+async def get_sessao_usos(
+    sessao_id: str,
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    empresa_id = user["empresa_id"]
+    async with db.execute(
+        "SELECT usos FROM sessoes_wa WHERE empresa_id=? AND id=?",
+        (empresa_id, sessao_id),
+    ) as cur:
+        row = await cur.fetchone()
+    if not row:
+        raise HTTPException(404, "Sessão não encontrada")
+    try:
+        usos = _json.loads(row["usos"] or "[]")
+    except Exception:
+        usos = ["chatbot", "campanhas", "arquivos", "agenda"]
+    return {"usos": usos}
+
+
+@router.put("/sessao-usos/{sessao_id}")
+async def set_sessao_usos(
+    sessao_id: str,
+    body: SessaoUsoPayload,
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    empresa_id = user["empresa_id"]
+    usos = [u for u in body.usos if u in _USOS_VALIDOS]
+    await db.execute(
+        "UPDATE sessoes_wa SET usos=? WHERE empresa_id=? AND id=?",
+        (_json.dumps(usos), empresa_id, sessao_id),
+    )
+    await db.commit()
+    return {"ok": True, "usos": usos}

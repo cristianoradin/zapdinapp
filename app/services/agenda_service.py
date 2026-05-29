@@ -368,48 +368,55 @@ async def processar_comando_agenda(
 
 # ── Worker de alertas ─────────────────────────────────────────────────────────
 
+async def _get_sessao_conectada(empresa_id: int):
+    """Retorna (instance, session_id) da primeira sessão conectada, ou (None, None)."""
+    from .evolution_service import evo_manager
+    sessoes = evo_manager.get_status(empresa_id)
+    conectadas = [s for s in sessoes if s["status"] == "connected"]
+    if not conectadas:
+        return None, None
+    instance = conectadas[0]["instance"]
+    sid = instance.split("_", 1)[1] if "_" in instance else instance
+    return instance, sid
+
+
 async def enviar_alertas_agenda() -> None:
     """
-    Envia alertas 1h antes de cada compromisso.
-    • usuario_id < 0  → compromisso criado via WA → busca phone em agenda_wa_usuarios
-    • usuario_id >= 0 → compromisso criado via UI → envia para numero_alerta do config
+    Envia alertas antes de cada compromisso conforme antecedências configuradas por usuário.
+    • usuario_id < 0  → compromisso WA → busca antecedências do agenda_wa_usuarios
+    • usuario_id >= 0 → compromisso UI → antecedência padrão [60] → numero_alerta do config
+    Usa agenda_alertas_enviados para não duplicar alertas.
     """
     try:
         from ..core.database import get_db_direct
-        from .evolution_service import evo_manager
     except ImportError:
         return
 
     try:
         import json as _j
+        now_sp = datetime.now()  # servidor já em horário correto
 
         async with get_db_direct() as db:
             async with db.execute(
                 """
                 SELECT ac.id, ac.empresa_id, ac.titulo, ac.hora_inicio,
                        ac.hora_fim, ac.descricao, ac.link, ac.data,
-                       ac.usuario_id,
-                       c.value AS cfg_json
+                       ac.usuario_id, c.value AS cfg_json
                 FROM agenda_compromissos ac
-                LEFT JOIN config c
-                       ON c.empresa_id = ac.empresa_id
-                      AND c.key = 'agenda_alerta'
-                WHERE ac.alerta_enviado_em IS NULL
-                  AND ac.hora_inicio IS NOT NULL
-                  AND ac.hora_inicio <> ''
-                  AND (ac.data::text || ' ' || ac.hora_inicio)::timestamp - INTERVAL '1 hour'
-                      BETWEEN (NOW() AT TIME ZONE 'America/Sao_Paulo') - INTERVAL '2 minutes'
-                          AND (NOW() AT TIME ZONE 'America/Sao_Paulo')
+                LEFT JOIN config c ON c.empresa_id = ac.empresa_id AND c.key = 'agenda_alerta'
+                WHERE ac.hora_inicio IS NOT NULL AND ac.hora_inicio <> ''
+                  AND ac.data >= CURRENT_DATE
+                  AND (ac.data::text || ' ' || ac.hora_inicio)::timestamp > NOW() AT TIME ZONE 'America/Sao_Paulo'
                 ORDER BY ac.data, ac.hora_inicio
-                LIMIT 20
+                LIMIT 50
                 """
             ) as cur:
-                pendentes = await cur.fetchall()
+                compromissos = await cur.fetchall()
 
-        if not pendentes:
+        if not compromissos:
             return
 
-        for row in pendentes:
+        for row in compromissos:
             empresa_id = row["empresa_id"]
             usuario_id = row["usuario_id"]
 
@@ -419,88 +426,181 @@ async def enviar_alertas_agenda() -> None:
                 cfg = {}
 
             if not cfg.get("ativo"):
-                async with get_db_direct() as db:
-                    await db.execute(
-                        "UPDATE agenda_compromissos SET alerta_enviado_em = NOW() WHERE id = $1",
-                        (row["id"],),
-                    )
-                    await db.commit()
                 continue
 
-            # Determina o número destino
+            # Determina antecedências e número destino
             numero_destino = None
             nome_usuario   = ""
-            template       = cfg.get("mensagem", "")
+            antecedencias  = [60]  # padrão para compromissos da UI
 
             if usuario_id is not None and usuario_id < 0:
-                # Compromisso criado via WA — busca usuário pelo ID negativo
                 wa_user_id = -usuario_id
                 async with get_db_direct() as db:
                     async with db.execute(
-                        "SELECT phone, nome, recebe_alertas "
-                        "FROM agenda_wa_usuarios "
-                        "WHERE id=$1 AND empresa_id=$2",
+                        "SELECT phone, nome, recebe_alertas, alert_antecedencias "
+                        "FROM agenda_wa_usuarios WHERE id=$1 AND empresa_id=$2",
                         (wa_user_id, empresa_id),
                     ) as cur:
                         wa_row = await cur.fetchone()
-                if wa_row and wa_row["recebe_alertas"]:
-                    numero_destino = _normalizar_phone(wa_row["phone"])
-                    nome_usuario   = (wa_row["nome"] or "").split()[0]
+                if not wa_row or not wa_row["recebe_alertas"]:
+                    continue
+                numero_destino = "55" + _normalizar_phone(wa_row["phone"])
+                nome_usuario   = (wa_row["nome"] or "").split()[0]
+                try:
+                    antecedencias = _j.loads(wa_row["alert_antecedencias"] or "[60]")
+                except Exception:
+                    antecedencias = [60]
             else:
-                # Compromisso da UI — envia para numero_alerta do config
-                numero_destino = _normalizar_phone(cfg.get("numero_alerta") or "")
+                num = _normalizar_phone(cfg.get("numero_alerta") or "")
+                if not num:
+                    continue
+                numero_destino = "55" + num
 
-            if not numero_destino:
+            # Para cada antecedência, verifica se deve enviar agora
+            hora_str = row["hora_inicio"]  # "HH:MM"
+            try:
+                comp_dt = datetime.fromisoformat(f"{row['data']}T{hora_str}:00")
+            except Exception:
+                continue
+
+            instance, sid = await _get_sessao_conectada(empresa_id)
+            if not sid:
+                continue
+
+            template = cfg.get("mensagem", "")
+            hora  = hora_str
+            desc  = (row["descricao"] or "").strip() or "—"
+            link  = (row["link"] or "").strip() or "—"
+
+            for ant in antecedencias:
+                # Janela: [comp - ant_min, comp - ant_min + 2min]
+                alerta_em = comp_dt - timedelta(minutes=int(ant))
+                now_local = datetime.now()
+                diff_sec = (now_local - alerta_em).total_seconds()
+                if not (0 <= diff_sec <= 120):  # janela de 2 minutos
+                    continue
+
+                # Verificar se já enviamos este alerta
+                async with get_db_direct() as db:
+                    async with db.execute(
+                        "SELECT 1 FROM agenda_alertas_enviados "
+                        "WHERE compromisso_id=$1 AND antecedencia_min=$2",
+                        (row["id"], int(ant)),
+                    ) as cur:
+                        ja_enviado = await cur.fetchone()
+                if ja_enviado:
+                    continue
+
+                # Montar mensagem
+                if ant >= 60 and ant % 60 == 0:
+                    tempo_txt = f"{ant // 60}h"
+                elif ant >= 60:
+                    tempo_txt = f"{ant // 60}h{ant % 60}min"
+                else:
+                    tempo_txt = f"{ant}min"
+
+                try:
+                    msg = template.format(
+                        titulo=row["titulo"], hora=hora,
+                        descricao=desc, link=link, nome=nome_usuario,
+                    ).replace("1 hora", tempo_txt).replace("1h", tempo_txt)
+                except Exception:
+                    msg = (
+                        f"📅 *Lembrete:* {row['titulo']}\n"
+                        f"🕐 {hora}\n"
+                        f"⏰ Começa em {tempo_txt}!"
+                    )
+
+                try:
+                    from .evolution_service import evo_manager
+                    await evo_manager.send_text(sid, empresa_id, numero_destino, msg)
+                    logger.info("[agenda-alerta] Alerta %smin — empresa=%s comp=%s → %s",
+                                ant, empresa_id, row["id"], numero_destino)
+                except Exception as exc:
+                    logger.warning("[agenda-alerta] Falha envio %s: %s", row["id"], exc)
+                    continue
+
                 async with get_db_direct() as db:
                     await db.execute(
-                        "UPDATE agenda_compromissos SET alerta_enviado_em = NOW() WHERE id = $1",
+                        "INSERT INTO agenda_alertas_enviados(compromisso_id, antecedencia_min) "
+                        "VALUES($1,$2) ON CONFLICT DO NOTHING",
+                        (row["id"], int(ant)),
+                    )
+                    # Marca alerta_enviado_em no compromisso para compatibilidade
+                    await db.execute(
+                        "UPDATE agenda_compromissos SET alerta_enviado_em = NOW() WHERE id=$1",
                         (row["id"],),
                     )
                     await db.commit()
+
+    except Exception as exc:
+        logger.warning("[agenda-alerta] Erro no worker: %s", exc)
+
+
+async def enviar_resumo_diario() -> None:
+    """
+    Envia resumo dos compromissos do dia para cada usuário WA com morning_digest_hora configurado.
+    Roda a cada minuto no reporter; só envia se hora atual = morning_digest_hora e não enviou hoje.
+    """
+    try:
+        from ..core.database import get_db_direct
+    except ImportError:
+        return
+
+    try:
+        import json as _j
+        now = datetime.now()
+        hora_atual = f"{now.hour:02d}:{now.minute:02d}"
+
+        async with get_db_direct() as db:
+            async with db.execute(
+                """SELECT u.id, u.empresa_id, u.phone, u.nome,
+                          u.morning_digest_hora, u.morning_digest_enviado
+                   FROM agenda_wa_usuarios u
+                   WHERE u.ativo = true
+                     AND u.morning_digest_hora IS NOT NULL
+                     AND u.morning_digest_hora = $1
+                     AND (u.morning_digest_enviado IS NULL OR u.morning_digest_enviado < CURRENT_DATE)
+                """,
+                (hora_atual,),
+            ) as cur:
+                usuarios = await cur.fetchall()
+
+        for u in usuarios:
+            empresa_id = u["empresa_id"]
+            wa_id      = u["id"]
+            phone      = "55" + _normalizar_phone(u["phone"])
+            nome       = (u["nome"] or "").split()[0]
+
+            instance, sid = await _get_sessao_conectada(empresa_id)
+            if not sid:
                 continue
 
-            # Verifica sessão WA conectada
-            sessoes    = evo_manager.get_status(empresa_id)
-            conectadas = [s for s in sessoes if s["status"] == "connected"]
-            if not conectadas:
-                logger.debug("[agenda-alerta] empresa %s sem sessão WA — pulando", empresa_id)
-                continue
+            async with get_db_direct() as db:
+                compromissos = await _consultar_agenda(empresa_id, "hoje", db, -wa_id)
 
-            instance = conectadas[0]["instance"]
-            hora     = row["hora_inicio"] or ""
-            desc     = (row["descricao"] or "").strip() or "—"
-            link     = (row["link"] or "").strip() or "—"
-
-            try:
-                msg = template.format(
-                    titulo=row["titulo"],
-                    hora=hora,
-                    descricao=desc,
-                    link=link,
-                    nome=nome_usuario,
-                )
-            except Exception:
-                msg = (
-                    f"📅 *Lembrete:* {row['titulo']}\n"
-                    f"🕐 {hora}\n"
-                    f"⏰ Começa em 1 hora!"
-                )
+            if not compromissos:
+                msg = f"☀️ Bom dia, *{nome}*! Nenhum compromisso agendado para hoje."
+            else:
+                n = len(compromissos)
+                linhas = [f"☀️ *Bom dia, {nome}!* Você tem *{n} compromisso{'s' if n > 1 else ''}* hoje:\n"]
+                linhas += [_fmt_compromisso(c) for c in compromissos]
+                msg = "\n".join(linhas)
 
             try:
-                _sid = instance.split("_", 1)[1] if "_" in instance else instance
-                await evo_manager.send_text(_sid, empresa_id, numero_destino, msg)
-                logger.info("[agenda-alerta] Alerta — empresa=%s compromisso=%s → %s",
-                            empresa_id, row["id"], numero_destino)
+                from .evolution_service import evo_manager
+                await evo_manager.send_text(sid, empresa_id, phone, msg)
+                logger.info("[agenda-resumo] Resumo diário — empresa=%s usuário=%s", empresa_id, wa_id)
             except Exception as exc:
-                logger.warning("[agenda-alerta] Falha %s: %s", row["id"], exc)
+                logger.warning("[agenda-resumo] Falha %s: %s", wa_id, exc)
                 continue
 
             async with get_db_direct() as db:
                 await db.execute(
-                    "UPDATE agenda_compromissos SET alerta_enviado_em = NOW() WHERE id = $1",
-                    (row["id"],),
+                    "UPDATE agenda_wa_usuarios SET morning_digest_enviado = CURRENT_DATE WHERE id=$1",
+                    (wa_id,),
                 )
                 await db.commit()
 
     except Exception as exc:
-        logger.warning("[agenda-alerta] Erro no worker: %s", exc)
+        logger.warning("[agenda-resumo] Erro: %s", exc)

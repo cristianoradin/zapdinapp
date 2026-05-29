@@ -446,15 +446,23 @@ function agwaRenderUsuarios() {
     const nomeEsc = u.nome.replace(/'/g, '&#39;');
     const atv  = u.ativo ? '<span class="agwa-badge agwa-badge-green">Ativo</span>' : '<span class="agwa-badge agwa-badge-gray">Inativo</span>';
     const bell = u.recebe_alertas ? '<span class="agwa-badge agwa-badge-bell">🔔</span>' : '';
+    const digestInfo = u.morning_digest_hora
+      ? `<span class="agwa-badge agwa-badge-digest">☀️ ${u.morning_digest_hora}</span>` : '';
+    const ants = (u.alert_antecedencias || [60]);
+    const antsInfo = ants.length ? `<span class="agwa-badge agwa-badge-ant">⏰ ${ants.join(', ')}min</span>` : '';
     return `
     <div class="agwa-user-card" id="agwa-card-${u.id}">
       <div class="agwa-user-avatar">${ini}</div>
       <div class="agwa-user-info">
         <div class="agwa-user-nome">${u.nome}</div>
         <div class="agwa-user-phone">📱 ${u.phone}</div>
+        <div class="agwa-user-config-badges">${digestInfo}${antsInfo}</div>
       </div>
       <div class="agwa-user-badges">${atv}${bell}</div>
       <div class="agwa-user-actions">
+        <button class="agwa-act-btn cfg" title="Configurar alertas" onclick="agwaAbrirConfig(${u.id})">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
         <button class="agwa-act-btn edit" title="Editar" onclick="agwaEditarUsuario(${u.id})">
           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
@@ -541,6 +549,118 @@ async function agwaDeletarUsuario(id, nome) {
     await agwaCarregarUsuarios();
     agwaToast(nome + ' removido');
   } catch(e) { agwaToast('Erro ao remover'); }
+}
+
+// ── Config avançada por usuário (alertas + resumo diário) ──────────────────
+let _agwaCfgUsuarioId = null;
+
+function agwaAbrirConfig(id) {
+  const u = _agwaUsuarios.find(x => x.id === id);
+  if (!u) return;
+  _agwaCfgUsuarioId = id;
+
+  // Preencher campos
+  const digestEl = document.getElementById('agwa-cfg-digest-hora');
+  if (digestEl) digestEl.value = u.morning_digest_hora || '';
+
+  const ants = u.alert_antecedencias || [60];
+  const antsEl = document.getElementById('agwa-cfg-antecedencias');
+  if (antsEl) {
+    // Checkboxes pré-definidas
+    ['15','30','60','120'].forEach(v => {
+      const chk = document.getElementById('agwa-cfg-ant-' + v);
+      if (chk) chk.checked = ants.includes(parseInt(v));
+    });
+    // Campo custom
+    const custom = ants.filter(x => ![15,30,60,120].includes(x));
+    const customEl = document.getElementById('agwa-cfg-ant-custom');
+    if (customEl) customEl.value = custom.join(', ');
+  }
+
+  document.getElementById('agwa-cfg-nome').textContent = u.nome;
+  document.getElementById('agwa-cfg-overlay').classList.add('open');
+}
+
+function agwaFecharConfig(event, force) {
+  if (!force && event && event.target !== document.getElementById('agwa-cfg-overlay')) return;
+  document.getElementById('agwa-cfg-overlay').classList.remove('open');
+  _agwaCfgUsuarioId = null;
+}
+
+async function agwaSalvarConfig() {
+  if (!_agwaCfgUsuarioId) return;
+  const digestHora = (document.getElementById('agwa-cfg-digest-hora')?.value || '').trim() || null;
+
+  // Coletar antecedências: checkboxes + custom
+  const ants = new Set();
+  ['15','30','60','120'].forEach(v => {
+    if (document.getElementById('agwa-cfg-ant-' + v)?.checked) ants.add(parseInt(v));
+  });
+  const customVal = document.getElementById('agwa-cfg-ant-custom')?.value || '';
+  customVal.split(/[,\s]+/).forEach(v => {
+    const n = parseInt(v);
+    if (n > 0 && n <= 1440) ants.add(n);
+  });
+
+  const antecedencias = [...ants].sort((a, b) => b - a);
+  if (!antecedencias.length) antecedencias.push(60);
+
+  try {
+    const r = await fetch(`/api/config/agenda-wa-usuarios/${_agwaCfgUsuarioId}/config`, {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ morning_digest_hora: digestHora, alert_antecedencias: antecedencias })
+    });
+    if (!r.ok) return agwaToast('Erro ao salvar configuração');
+    await agwaCarregarUsuarios();
+    agwaFecharConfig(null, true);
+    agwaToast('Configuração salva ✓');
+  } catch(e) { agwaToast('Erro de conexão'); }
+}
+
+// ── Config propósito da sessão WA ──────────────────────────────────────────
+let _sessaoUsoId = null;
+const _USOS_LABELS = {
+  chatbot:   { label: 'Chatbot IA',         icon: '🤖' },
+  campanhas: { label: 'Envio de Campanhas', icon: '📢' },
+  arquivos:  { label: 'Gestão de Arquivos', icon: '📎' },
+  agenda:    { label: 'Agenda WA',          icon: '📅' },
+  pdv:       { label: 'PDV / Avaliação',    icon: '⭐' },
+};
+
+async function sessaoAbrirUsos(sessaoId) {
+  _sessaoUsoId = sessaoId;
+  try {
+    const r = await fetch(`/api/config/sessao-usos/${sessaoId}`);
+    const d = r.ok ? await r.json() : { usos: Object.keys(_USOS_LABELS) };
+    const usos = d.usos || Object.keys(_USOS_LABELS);
+    Object.keys(_USOS_LABELS).forEach(k => {
+      const chk = document.getElementById('sessao-uso-' + k);
+      if (chk) chk.checked = usos.includes(k);
+    });
+  } catch(e) {}
+  document.getElementById('sessao-usos-overlay').classList.add('open');
+}
+
+function sessaoFecharUsos(event, force) {
+  if (!force && event && event.target !== document.getElementById('sessao-usos-overlay')) return;
+  document.getElementById('sessao-usos-overlay').classList.remove('open');
+  _sessaoUsoId = null;
+}
+
+async function sessaoSalvarUsos() {
+  if (!_sessaoUsoId) return;
+  const usos = Object.keys(_USOS_LABELS).filter(k => document.getElementById('sessao-uso-' + k)?.checked);
+  try {
+    const r = await fetch(`/api/config/sessao-usos/${_sessaoUsoId}`, {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ usos })
+    });
+    if (!r.ok) return agwaToast('Erro ao salvar');
+    sessaoFecharUsos(null, true);
+    agwaToast('Propósito da sessão salvo ✓');
+  } catch(e) { agwaToast('Erro de conexão'); }
 }
 
 // ── Recados ───────────────────────────────────────────────────

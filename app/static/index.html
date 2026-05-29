@@ -280,6 +280,16 @@
 }
 .agwa-act-btn:hover.edit { border-color: var(--accent); color: var(--accent); }
 .agwa-act-btn:hover.del  { border-color: #ef4444; color: #ef4444; }
+.agwa-act-btn:hover.cfg  { border-color: #6366f1; color: #6366f1; }
+.agwa-badge-digest { background: #fef3c7; color: #d97706; }
+.agwa-badge-ant    { background: #ede9fe; color: #7c3aed; }
+.agwa-user-config-badges { display:flex; gap:.25rem; flex-wrap:wrap; margin-top:.2rem; }
+.agwa-cfg-section { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:.7rem .9rem; }
+.agwa-cfg-section-title { font-size:.82rem; font-weight:700; color:var(--text); margin-bottom:.1rem; }
+.agwa-cfg-section-desc  { font-size:.72rem; color:var(--text-muted); }
+.agwa-cfg-ants { display:flex; flex-direction:column; gap:.35rem; }
+.agwa-cfg-ant-label { display:flex; align-items:center; gap:.4rem; font-size:.8rem; font-weight:500; color:var(--text); cursor:pointer; }
+.agwa-cfg-ant-label input[type=checkbox] { width:15px; height:15px; accent-color:var(--accent); cursor:pointer; }
 /* ── Add form ───────────────────────────── */
 .agwa-add-form {
   background: #f0fdf4; border: 1.5px dashed var(--accent);
@@ -1173,6 +1183,82 @@
 
       </div><!-- /body -->
     </div><!-- /modal -->
+  </div>
+
+  <!-- ── MODAL CONFIG USUÁRIO AGENDA WA ───────── -->
+  <div class="home-modal-overlay" id="agwa-cfg-overlay" onclick="agwaFecharConfig(event)" style="z-index:1100">
+    <div class="home-modal" style="max-width:420px">
+      <div class="home-modal-header">
+        <h3>⚙️ Config — <span id="agwa-cfg-nome"></span></h3>
+        <button onclick="agwaFecharConfig(null,true)" class="home-modal-close">✕</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:1rem;padding:.2rem 0">
+
+        <!-- Resumo diário -->
+        <div class="agwa-cfg-section">
+          <div class="agwa-cfg-section-title">☀️ Resumo Diário</div>
+          <div class="agwa-cfg-section-desc">Enviar lista de compromissos do dia automaticamente</div>
+          <div style="display:flex;align-items:center;gap:.6rem;margin-top:.5rem">
+            <label style="font-size:.8rem;font-weight:600;color:var(--text-muted)">Horário:</label>
+            <input type="time" id="agwa-cfg-digest-hora" class="home-input" style="width:130px;margin:0"
+              placeholder="Desativado">
+            <span style="font-size:.72rem;color:var(--text-muted)">deixe vazio para desativar</span>
+          </div>
+        </div>
+
+        <!-- Antecedências de alerta -->
+        <div class="agwa-cfg-section">
+          <div class="agwa-cfg-section-title">⏰ Alertas antes do compromisso</div>
+          <div class="agwa-cfg-section-desc">Escolha quantos alertas quer receber</div>
+          <div class="agwa-cfg-ants" style="margin-top:.5rem">
+            <label class="agwa-cfg-ant-label">
+              <input type="checkbox" id="agwa-cfg-ant-15"> 15 minutos antes
+            </label>
+            <label class="agwa-cfg-ant-label">
+              <input type="checkbox" id="agwa-cfg-ant-30"> 30 minutos antes
+            </label>
+            <label class="agwa-cfg-ant-label">
+              <input type="checkbox" id="agwa-cfg-ant-60" checked> 1 hora antes
+            </label>
+            <label class="agwa-cfg-ant-label">
+              <input type="checkbox" id="agwa-cfg-ant-120"> 2 horas antes
+            </label>
+            <div style="display:flex;align-items:center;gap:.5rem;margin-top:.3rem">
+              <label style="font-size:.78rem;color:var(--text-muted)">Personalizado (min):</label>
+              <input type="text" id="agwa-cfg-ant-custom" class="home-input"
+                style="width:160px;margin:0" placeholder="ex: 45, 90, 180">
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:.5rem;justify-content:flex-end">
+          <button onclick="agwaFecharConfig(null,true)" style="background:#e5e7eb;color:var(--text);border:none;border-radius:8px;padding:.45rem 1rem;font-size:.82rem;cursor:pointer">Cancelar</button>
+          <button onclick="agwaSalvarConfig()" class="agwa-btn-add">Salvar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL PROPÓSITO SESSÃO WA ──────────────── -->
+  <div class="home-modal-overlay" id="sessao-usos-overlay" onclick="sessaoFecharUsos(event)" style="z-index:1100">
+    <div class="home-modal" style="max-width:380px">
+      <div class="home-modal-header">
+        <h3>📱 Propósito desta sessão</h3>
+        <button onclick="sessaoFecharUsos(null,true)" class="home-modal-close">✕</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.6rem;padding:.2rem 0">
+        <p style="font-size:.8rem;color:var(--text-muted);margin:0">Selecione para quais funções este número será usado:</p>
+        <label class="agwa-cfg-ant-label"><input type="checkbox" id="sessao-uso-chatbot"> 🤖 Chatbot IA</label>
+        <label class="agwa-cfg-ant-label"><input type="checkbox" id="sessao-uso-campanhas"> 📢 Envio de Campanhas</label>
+        <label class="agwa-cfg-ant-label"><input type="checkbox" id="sessao-uso-arquivos"> 📎 Gestão de Arquivos</label>
+        <label class="agwa-cfg-ant-label"><input type="checkbox" id="sessao-uso-agenda"> 📅 Agenda WA</label>
+        <label class="agwa-cfg-ant-label"><input type="checkbox" id="sessao-uso-pdv"> ⭐ PDV / Avaliação</label>
+        <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.4rem">
+          <button onclick="sessaoFecharUsos(null,true)" style="background:#e5e7eb;color:var(--text);border:none;border-radius:8px;padding:.45rem 1rem;font-size:.82rem;cursor:pointer">Cancelar</button>
+          <button onclick="sessaoSalvarUsos()" class="agwa-btn-add">Salvar</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ── MODAL AGENDA ─────────────────────────── -->

@@ -563,10 +563,11 @@ async def _loop() -> None:
             # Reenvio de alertas críticos pendentes a cada ~2 minutos
             asyncio.create_task(_processar_alertas_pendentes())
         if _cleanup_tick % _AGENDA_INTERVAL == 0:
-            # Alertas de agenda (1h antes do compromisso) a cada ~1 minuto
+            # Alertas de agenda (antecedências configuradas) a cada ~1 minuto
             try:
-                from .agenda_service import enviar_alertas_agenda
+                from .agenda_service import enviar_alertas_agenda, enviar_resumo_diario
                 asyncio.create_task(enviar_alertas_agenda())
+                asyncio.create_task(enviar_resumo_diario())
             except Exception:
                 pass
         await asyncio.sleep(30)
