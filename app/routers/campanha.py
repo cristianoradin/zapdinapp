@@ -6,11 +6,12 @@ Nenhuma query SQL direta aqui — toda lógica de dados está nos repositories.
 """
 import asyncio
 import os
-import re
 import uuid
 import logging
 from datetime import datetime
 from typing import List, Optional
+
+from ..core.phone import normalize_phone as _normalizar_phone
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
@@ -28,13 +29,6 @@ from ..domain.exceptions import (
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/campanha", tags=["campanha"])
 
-
-def _normalizar_phone(phone: str) -> str:
-    """Dígitos apenas, sem DDI 55. Ex: '55 11 9999-0000' → '11999990000'."""
-    p = re.sub(r"\D", "", phone)
-    if p.startswith("55") and len(p) >= 12:
-        p = p[2:]
-    return p
 
 UPLOAD_DIR = "data/arquivos"
 os.makedirs(UPLOAD_DIR, exist_ok=True)

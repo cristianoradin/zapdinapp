@@ -274,9 +274,8 @@ async def responder_mensagem(
                 empresa_id, phone, instance, texto[:60])
     try:
         # Normaliza phone para formato local (sem 55)
-        phone_local = phone.split("@")[0]
-        if phone_local.startswith("55") and len(phone_local) >= 12:
-            phone_local = phone_local[2:]
+        from ..core.phone import normalize_phone as _np
+        phone_local = _np(phone)
 
         # ── Agenda: verifica se mensagem é do número-dono ─────────────────────
         # Hook completamente isolado — qualquer falha é ignorada e o chatbot

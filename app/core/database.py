@@ -100,7 +100,9 @@ class AsyncPGAdapter:
                 row = await self._conn.fetchrow(pg_ret, *args)
                 return _Cursor(lastrowid=row['id'] if row else None)
             except (asyncpg.UndefinedColumnError, asyncpg.PostgresSyntaxError,
-                    asyncpg.UndefinedFunctionError):
+                    asyncpg.UndefinedFunctionError) as _e:
+                # Tabela sem coluna 'id' — executa sem RETURNING
+                logger.debug("[db] INSERT sem RETURNING id (%s) — %s", type(_e).__name__, pg[:80])
                 await self._conn.execute(pg, *args)
                 return _Cursor()
 
@@ -1042,6 +1044,33 @@ async def init_db() -> None:
         await conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_agenda_wa_usuarios_emp "
             "ON agenda_wa_usuarios(empresa_id, phone) WHERE ativo = TRUE"
+        )
+        # Colunas adicionadas em 2026-05 (ADD COLUMN IF NOT EXISTS é idempotente)
+        for _col, _def in [
+            ("morning_digest_hora",    "TEXT DEFAULT NULL"),
+            ("morning_digest_enviado", "DATE DEFAULT NULL"),
+            ("alert_antecedencias",    "TEXT DEFAULT '[60]'"),
+        ]:
+            await conn.execute(
+                f"ALTER TABLE agenda_wa_usuarios ADD COLUMN IF NOT EXISTS {_col} {_def}"
+            )
+
+        # Tabela de alertas enviados por antecedência (evita duplicatas)
+        await conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS agenda_alertas_enviados (
+                compromisso_id BIGINT NOT NULL,
+                antecedencia_min INT NOT NULL,
+                enviado_em TIMESTAMPTZ DEFAULT NOW(),
+                PRIMARY KEY (compromisso_id, antecedencia_min)
+            )
+            """
+        )
+
+        # Coluna usos na sessão WA (propósito: chatbot, campanhas, arquivos, agenda, pdv)
+        await conn.execute(
+            "ALTER TABLE sessoes_wa ADD COLUMN IF NOT EXISTS usos "
+            "TEXT DEFAULT '[\"chatbot\",\"campanhas\",\"arquivos\",\"agenda\"]'"
         )
 
         # ── P2: Worker heartbeats ─────────────────────────────────────────────

@@ -216,12 +216,7 @@ async def set_agenda_alerta(
 
 # ── Agenda — Usuários WA (multi-usuário) ─────────────────────────────────────
 
-def _norm_wa_phone(phone: str) -> str:
-    """Remove DDI 55 e caracteres não-numéricos."""
-    p = phone.strip().replace(" ", "").replace("-", "").replace("+", "").replace("(", "").replace(")", "")
-    if p.startswith("55") and len(p) >= 12:
-        p = p[2:]
-    return p
+from ..core.phone import normalize_phone as _norm_wa_phone
 
 
 class AgendaWaUsuarioPayload(BaseModel):

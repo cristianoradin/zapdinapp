@@ -85,7 +85,7 @@
       max-width: 100%;
       height: auto;
       object-fit: contain;
-      filter: none;
+      filter: invert(33%) sepia(98%) saturate(600%) hue-rotate(110deg) brightness(90%) contrast(110%);
     }
     /* Nome removido — apenas logo */
     .sidebar-logo span { display: none; }

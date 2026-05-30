@@ -24,14 +24,7 @@ logger = logging.getLogger(__name__)
 
 # ── Normalização de número ────────────────────────────────────────────────────
 
-def _normalizar_phone(phone: str) -> str:
-    """Remove prefixos internacionais e espaços. Retorna só dígitos locais."""
-    p = phone.split("@")[0].strip().replace(" ", "").replace("-", "")
-    if p.startswith("+"):
-        p = p[1:]
-    if p.startswith("55") and len(p) >= 12:
-        p = p[2:]
-    return p
+from ..core.phone import normalize_phone as _normalizar_phone, phones_match as _phones_match  # noqa
 
 
 # ── Helpers de formatação ─────────────────────────────────────────────────────
