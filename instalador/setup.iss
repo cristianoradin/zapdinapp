@@ -772,10 +772,14 @@ begin
     '}' + #13#10 +
     '' + #13#10 +
     '# Resume erros do log de instalacao' + #13#10 +
-    '$erros = Select-String -Path $logFile -Pattern "^.*\[.*\] ERRO" -SimpleMatch 2>$null' + #13#10 +
-    'if ($erros) {' + #13#10 +
-    '  $msg = "Instalacao concluida com avisos:`n`n"' + #13#10 +
-    '  $erros | Select-Object -First 5 | ForEach-Object { $msg += "• " + $_.Line + "`n" }' + #13#10 +
+    '$erros = @()' + #13#10 +
+    'if (Test-Path $logFile) {' + #13#10 +
+    '  $erros = Get-Content $logFile | Where-Object { $_ -match " ERRO " }' + #13#10 +
+    '}' + #13#10 +
+    'if ($erros.Count -gt 0) {' + #13#10 +
+    '  Add-Type -AssemblyName System.Windows.Forms' + #13#10 +
+    '  $msg = "Instalacao concluida com erros:`n`n"' + #13#10 +
+    '  $erros | Select-Object -First 5 | ForEach-Object { $msg += "• $_`n" }' + #13#10 +
     '  $msg += "`nLog completo: {#InstallDir}\logs\install.log"' + #13#10 +
     '  [System.Windows.Forms.MessageBox]::Show($msg, "ZapDin — Aviso", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)' + #13#10 +
     '} else {' + #13#10 +
