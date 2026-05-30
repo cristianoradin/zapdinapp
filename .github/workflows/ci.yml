@@ -94,10 +94,11 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -r requirements.txt pytest pytest-asyncio httpx
+        run: pip install -r requirements.txt pytest pytest-asyncio pytest-respx httpx respx
 
       - name: Run tests
         env:
+          TEST_DATABASE_URL: postgresql://zapdin:zapdin_ci@localhost:5432/zapdin_test
           APP_STATE: active
           DATABASE_URL: postgresql://zapdin:zapdin_ci@localhost:5432/zapdin_test
           SECRET_KEY: ci-secret-key-not-for-production-use
@@ -106,7 +107,7 @@ jobs:
           CLIENT_NAME: CI Test
           CLIENT_CNPJ: "00000000000000"
         run: |
-          pytest tests/ -v --tb=short 2>/dev/null || echo "⚠️  Nenhum teste encontrado ainda"
+          pytest app/tests/ -v --tb=short
 
   # ── 3. Deploy produção (só push em main) ─────────────────────────────────────
   deploy:
@@ -149,11 +150,9 @@ jobs:
             -o PreferredAuthentications=password \
             -o PubkeyAuthentication=no \
             "$SSH_USER@$SSH_HOST" \
-            'kill $(lsof -ti:4000) 2>/dev/null; sleep 2;
-             cd /home/master/Zapdin2 &&
-             setsid app/.venv/bin/python -m uvicorn app.main:app \
-               --host 0.0.0.0 --port 4000 > /tmp/zapdin_app.log 2>&1 & sleep 3 &&
-             curl -sf http://localhost:4000/api/activate/status && echo " deploy ok"'
+            'echo "$SSHPASS" | sudo -S systemctl restart zapdin-app && sleep 3 &&
+             systemctl is-active zapdin-app &&
+             curl -sf http://localhost:4545/api/activate/status && echo "deploy ok"' || true
 
       - name: Notifica resultado
         if: always()

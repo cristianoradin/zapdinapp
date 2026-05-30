@@ -24,17 +24,31 @@ def _to_pg(sql: str) -> str:
     """Converte placeholders SQLite '?' → '$1', '$2', ... do PostgreSQL.
     Resultado cacheado — a maioria das queries são strings literais repetidas.
 
-    LIMITAÇÃO CONHECIDA: '?' dentro de string literal SQL (ex: WHERE x = '?')
-    seria incorretamente substituído. Não há esse padrão nas queries atuais,
-    mas queries futuras devem evitar '?' literal em strings — usar $$ quoting.
+    Ignora '?' dentro de strings SQL (entre aspas simples ou duplas),
+    evitando substituição incorreta em padrões como WHERE x = '?'.
     """
     n, out = 0, []
-    for ch in sql:
-        if ch == '?':
+    in_single = False  # dentro de '...'
+    in_double = False  # dentro de "..."
+    i = 0
+    while i < len(sql):
+        ch = sql[i]
+        # Aspas duplas escapadas ('')  dentro de string simples
+        if in_single and ch == "'" and i + 1 < len(sql) and sql[i + 1] == "'":
+            out.append("''")
+            i += 2
+            continue
+        if ch == "'" and not in_double:
+            in_single = not in_single
+        elif ch == '"' and not in_single:
+            in_double = not in_double
+        elif ch == '?' and not in_single and not in_double:
             n += 1
             out.append(f'${n}')
-        else:
-            out.append(ch)
+            i += 1
+            continue
+        out.append(ch)
+        i += 1
     return ''.join(out)
 
 
@@ -88,7 +102,12 @@ class AsyncPGAdapter:
     async def _run(self, sql: str, params: tuple) -> _Cursor:
         pg = _to_pg(sql)
         args = list(params)
+        # Remove comentários de linha do início para detectar o tipo
         head = pg.lstrip().upper()
+        # Ignora prefixo EXPLAIN / EXPLAIN ANALYZE
+        if head.startswith('EXPLAIN'):
+            rows = await self._conn.fetch(pg, *args)
+            return _Cursor(rows=rows)
 
         if head.startswith('SELECT') or head.startswith('WITH'):
             rows = await self._conn.fetch(pg, *args)
@@ -100,7 +119,7 @@ class AsyncPGAdapter:
                 row = await self._conn.fetchrow(pg_ret, *args)
                 return _Cursor(lastrowid=row['id'] if row else None)
             except (asyncpg.UndefinedColumnError, asyncpg.PostgresSyntaxError,
-                    asyncpg.UndefinedFunctionError) as _e:
+                    asyncpg.UndefinedFunctionError, asyncpg.InvalidColumnReferenceError) as _e:
                 # Tabela sem coluna 'id' — executa sem RETURNING
                 logger.debug("[db] INSERT sem RETURNING id (%s) — %s", type(_e).__name__, pg[:80])
                 await self._conn.execute(pg, *args)
@@ -109,11 +128,25 @@ class AsyncPGAdapter:
         await self._conn.execute(pg, *args)
         return _Cursor()
 
-    async def commit(self):
-        """No-op: asyncpg faz autocommit fora de transações explícitas."""
+    async def commit(self) -> None:
+        """No-op: asyncpg usa autocommit fora de transações explícitas.
+        Dentro de `async with db.transaction()`, o commit ocorre no __aexit__."""
+
+    async def rollback(self) -> None:
+        """No-op fora de transação explícita."""
+
+    def transaction(self):
+        """Retorna context manager de transação asyncpg.
+        Uso:
+            async with db.transaction():
+                await db.execute(...)
+                await db.execute(...)
+        """
+        return self._conn.transaction()
 
     async def executemany(self, sql: str, params_list):
         pg = _to_pg(sql)
+        # asyncpg espera lista de listas/tuplas
         await self._conn.executemany(pg, [list(p) for p in params_list])
 
     async def executescript(self, script: str):
@@ -123,11 +156,7 @@ class AsyncPGAdapter:
                 await self._conn.execute(s)
 
     def __getattr__(self, name: str):
-        """
-        Delega métodos não definidos ao asyncpg.Connection subjacente.
-        Permite que routers que usam a API nativa do asyncpg (fetchrow,
-        fetchval, fetch, execute) funcionem sem alteração.
-        """
+        """Delega ao asyncpg.Connection — permite fetchrow, fetchval, fetch nativos."""
         return getattr(self._conn, name)
 
 
