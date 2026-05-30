@@ -26,7 +26,7 @@ class AvaliacaoRepository(BaseRepository):
 
     async def get_by_token(self, token: str):
         return await self._fetchone(
-            "SELECT id, empresa_id, nome_cliente, vendedor, nota FROM avaliacoes WHERE token=?",
+            "SELECT id, empresa_id, nome_cliente, vendedor, nota, phone FROM avaliacoes WHERE token=?",
             (token,),
         )
 
