@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <link rel="stylesheet" href="/static/css/app.css?v=20260526a">
+  <link rel="stylesheet" href="/static/css/chat.css?v=__BUILD__">
 </head>
 <body>
 
@@ -3969,74 +3970,77 @@
         <div class="sys-content">
 
           <!-- ── Painel: Conversas ── -->
-          <div class="sys-panel active" id="cb-panel-conversas" style="padding:0;overflow:hidden;border-radius:12px">
+          <div class="sys-panel active" id="cb-panel-conversas" style="padding:0;overflow:hidden;border-radius:16px">
 
-            <div class="cb-wa-layout">
+            <div class="cbx">
 
-              <!-- ── Coluna esquerda: lista de contatos ── -->
-              <div class="cb-wa-sidebar">
-
-                <div class="cb-wa-sidebar-header">
-                  <span style="font-size:.82rem;font-weight:700;color:var(--text)">Conversas</span>
-                  <button class="btn btn-ghost btn-sm" onclick="chatbot.carregarConversas()" title="Atualizar" style="padding:.25rem .45rem">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              <!-- ── Sidebar: lista de conversas ── -->
+              <aside class="cbx-sidebar">
+                <header class="cbx-side-head">
+                  <h1>Conversas</h1>
+                  <button class="cbx-icon-btn" onclick="chatbot.carregarConversas()" title="Atualizar">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                   </button>
-                </div>
-
-                <div class="cb-wa-search">
-                  <input type="text" id="cbSearch" placeholder="🔍  Buscar contato…" oninput="chatbot.filtrarContatos(this.value)">
-                </div>
-
-                <div class="cb-wa-contacts" id="chatbotConversasList">
-                  <div style="text-align:center;padding:3rem 1rem;color:var(--text-mid);font-size:.8rem">Nenhuma conversa ainda</div>
-                </div>
-
-              </div>
-
-              <!-- ── Coluna direita: área de chat ── -->
-              <div class="cb-wa-chat">
-
-                <!-- Header (aparece ao selecionar contato) -->
-                <div class="cb-wa-chat-header" id="cbChatHeader" style="display:none">
-                  <div class="cb-wa-avatar" id="cbChatAvatar">?</div>
-                  <div class="cb-wa-chat-info">
-                    <div class="cb-wa-chat-name" id="cbChatNome">—</div>
-                    <div class="cb-wa-chat-phone" id="cbChatPhone"></div>
+                </header>
+                <div class="cbx-search-wrap">
+                  <div class="cbx-search">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" id="cbSearch" placeholder="Buscar contato…" oninput="chatbot.filtrarContatos(this.value)">
                   </div>
-                  <div class="cb-wa-chat-actions">
-                    <!-- Toggle Pausar Bot -->
-                    <div class="cb-pausar-wrap">
-                      <span class="cb-pausar-label" id="cbPausarLabel">Bot ativo</span>
-                      <button class="cb-pausar-toggle" id="cbPausarToggle" onclick="chatbot.toggleChatbotAtivo()" title="Pausar/Ativar bot para este contato"></button>
+                </div>
+                <div class="cbx-conv-list" id="chatbotConversasList">
+                  <div class="cbx-empty-hint">Nenhuma conversa ainda</div>
+                </div>
+              </aside>
+
+              <!-- ── Coluna de conversa ── -->
+              <div class="cbx-conv-col">
+
+                <!-- Header (aparece ao selecionar) -->
+                <header class="cbx-conv-head" id="cbChatHeader" style="display:none">
+                  <div class="cbx-conv-head-id">
+                    <div class="cbx-avatar" id="cbChatAvatar" style="width:44px;height:44px;font-size:15px">?</div>
+                    <div style="min-width:0">
+                      <div style="display:flex;align-items:center;gap:8px">
+                        <span class="cbx-conv-head-name" id="cbChatNome">—</span>
+                        <span class="cbx-pill ativo" id="cbChatStatusPill">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.5 5L19 8l-4 3.5L16 17l-4-2.5L8 17l1-5.5L5 8l5.5-1z"/></svg>
+                          <span id="cbChatStatusTxt">IA ativa</span>
+                        </span>
+                      </div>
+                      <span class="cbx-conv-head-sub" id="cbChatPhone"></span>
                     </div>
-                    <!-- Limpar -->
-                    <button class="btn btn-ghost btn-sm" onclick="chatbot.limparHistorico()" title="Limpar histórico" style="color:#ef4444;padding:.3rem .5rem">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                  </div>
+                  <div class="cbx-conv-head-actions">
+                    <!-- Botão Assumir/Retomar (liga em toggleChatbotAtivo) -->
+                    <button class="cbx-btn warn" id="cbPausarToggle" onclick="chatbot.toggleChatbotAtivo()">
+                      <span id="cbPausarLabel">Assumir conversa</span>
+                    </button>
+                    <button class="cbx-icon-btn" onclick="chatbot.limparHistorico()" title="Limpar histórico" style="color:#ef4444">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
                     </button>
                   </div>
-                </div>
+                </header>
 
                 <!-- Estado vazio -->
-                <div class="cb-wa-empty" id="cbChatVazio">
-                  <div style="width:80px;height:80px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm)">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.25"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <div class="cbx-empty" id="cbChatVazio">
+                  <div class="cbx-empty-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                   </div>
-                  <div style="text-align:center">
-                    <div style="font-size:.92rem;font-weight:600;color:var(--text-mid);margin-bottom:.3rem">Nenhuma conversa aberta</div>
-                    <div style="font-size:.78rem;color:var(--text-light)">Selecione um contato ao lado<br>para ver o histórico</div>
-                  </div>
+                  <h2>Nenhuma conversa aberta</h2>
+                  <p>Selecione um contato ao lado<br>para ver o histórico</p>
                 </div>
 
                 <!-- Mensagens -->
-                <div class="cb-wa-messages" id="cbChatMsgs" style="display:none"></div>
+                <div class="cbx-messages" id="cbChatMsgs" style="display:none"></div>
 
-                <!-- Input de intervenção manual -->
-                <div class="cb-wa-input" id="cbChatInput" style="display:none">
-                  <textarea id="cbMsgTexto" rows="1" placeholder="Intervir manualmente…"
+                <!-- Composer -->
+                <div class="cbx-composer" id="cbChatInput" style="display:none">
+                  <textarea id="cbMsgTexto" rows="1" placeholder="Escreva uma mensagem…"
                     onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();chatbot.enviarMensagem()}"
-                    oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
-                  <button class="cb-wa-send" onclick="chatbot.enviarMensagem()" title="Enviar">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,132)+'px'"></textarea>
+                  <button class="cbx-send" onclick="chatbot.enviarMensagem()" title="Enviar">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                   </button>
                 </div>
 

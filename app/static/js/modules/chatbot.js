@@ -206,6 +206,12 @@ const chatbot = (() => {
     return parts[0].slice(0, 2).toUpperCase();
   }
 
+  // 2 primeiros dígitos do número (DDD) — avatar estilo WhatsApp do protótipo
+  function _digits2(s) {
+    const d = String(s || '').replace(/\D/g, '');
+    return d.slice(0, 2) || '?';
+  }
+
   // ── Conversas — lista ─────────────────────────────────────────────────────
   async function carregarConversas() {
     const el = document.getElementById('chatbotConversasList');
@@ -256,19 +262,25 @@ const chatbot = (() => {
     el.innerHTML = lista.map(c => {
       const dt  = c.ultima_msg ? new Date(c.ultima_msg).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
       const nm  = c.nome || c.phone || '';
-      const ini = _initials(nm);
+      const ini = _digits2(nm || c.phone);
       const pausado = c.chatbot_ativo === false;
       const isAtivo = c.phone === _phoneAtual;
-      return `<div class="cb-wa-contact${isAtivo ? ' active' : ''}" id="cbContact-${CSS.escape(c.phone)}"
+      const preview = _escHtml(c.ultima_preview || '...');
+      const meta = pausado
+        ? '<span class="cbx-pill pausado">Pausado</span>'
+        : (c.nao_lidas > 0 ? `<span class="cbx-unread">${c.nao_lidas}</span>` : '');
+      return `<div class="cb-wa-contact cbx-conv-row${isAtivo ? ' active' : ''}" id="cbContact-${CSS.escape(c.phone)}"
           data-phone="${c.phone.replace(/"/g,'&quot;')}" data-nome="${nm.replace(/"/g,'&quot;')}" data-ativo="${c.chatbot_ativo ? '1' : '0'}">
-        <div class="cb-wa-avatar" style="${pausado ? 'background:linear-gradient(135deg,#9ca3af,#6b7280)' : ''}">${ini}</div>
-        <div class="cb-wa-contact-info">
-          <div class="cb-wa-contact-name">${nm}</div>
-          <div class="cb-wa-contact-preview">${c.ultima_preview || '...'}</div>
-        </div>
-        <div class="cb-wa-contact-meta">
-          <div class="cb-wa-contact-time">${dt}</div>
-          ${pausado ? '<div class="cb-wa-paused-badge">⏸ Pausado</div>' : ''}
+        <div class="cbx-avatar${pausado ? ' gray' : ''}">${ini}</div>
+        <div class="cbx-row-body">
+          <div class="cbx-row-line1">
+            <span class="cbx-row-name">${_escHtml(nm)}</span>
+            <span class="cbx-row-time">${dt}</span>
+          </div>
+          <div class="cbx-row-line2">
+            <span class="cbx-row-preview">${preview}</span>
+            ${meta}
+          </div>
         </div>
       </div>`;
     }).join('');
@@ -302,8 +314,8 @@ const chatbot = (() => {
     if (!header) return;
 
     document.getElementById('cbChatNome').textContent  = nome || phone;
-    document.getElementById('cbChatPhone').textContent = phone;
-    document.getElementById('cbChatAvatar').textContent = _initials(nome || phone);
+    document.getElementById('cbChatPhone').textContent = 'online agora';
+    document.getElementById('cbChatAvatar').textContent = _digits2(phone || nome);
 
     _updatePausarToggle();
 
@@ -323,14 +335,23 @@ const chatbot = (() => {
       }
       msgsEl.innerHTML = msgs.map(m => {
         const isBot = m.role === 'assistant';
-        const dt = m.created_at ? new Date(m.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
-        return `<div class="cb-bubble-wrap-${isBot ? 'bot' : 'user'}">
-          <div class="cb-bubble cb-bubble-${isBot ? 'bot' : 'user'}">
-            <span class="cb-bubble-label ${isBot ? 'bot' : 'user'}">${isBot ? '🤖 Bot' : '👤 Cliente'}</span>
-            ${_escHtml(m.conteudo)}
-            <span class="cb-bubble-time">${dt}</span>
-          </div>
-        </div>`;
+        const hora = m.created_at ? new Date(m.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
+        if (isBot) {
+          // Resposta da IA — bolha verde clara, à direita, com selo "IA · Zapdin"
+          return `<div class="cbx-brow out"><div class="cbx-bubble ia">
+            <span class="cbx-sender">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.5 5L19 8l-4 3.5L16 17l-4-2.5L8 17l1-5.5L5 8l5.5-1z"/></svg>
+              IA · Zapdin
+            </span>
+            <span class="cbx-btext">${_escHtml(m.conteudo)}</span>
+            <span class="cbx-meta">${hora}</span>
+          </div></div>`;
+        }
+        // Cliente — bolha branca, à esquerda
+        return `<div class="cbx-brow in"><div class="cbx-bubble cliente">
+          <span class="cbx-btext">${_escHtml(m.conteudo)}</span>
+          <span class="cbx-meta">${hora}</span>
+        </div></div>`;
       }).join('');
       msgsEl.scrollTop = msgsEl.scrollHeight;
     } catch(e) {
@@ -346,13 +367,21 @@ const chatbot = (() => {
   function _updatePausarToggle() {
     const btn   = document.getElementById('cbPausarToggle');
     const label = document.getElementById('cbPausarLabel');
+    const pill  = document.getElementById('cbChatStatusPill');
+    const ptxt  = document.getElementById('cbChatStatusTxt');
     if (!btn) return;
     if (_chatbotAtivoAtual) {
-      btn.classList.remove('pausado');
-      if (label) label.textContent = 'Bot ativo';
+      // IA ativa → botão "Assumir conversa" (warn/amarelo)
+      btn.className = 'cbx-btn warn';
+      if (label) label.textContent = 'Assumir conversa';
+      if (pill)  pill.className = 'cbx-pill ativo';
+      if (ptxt)  ptxt.textContent = 'IA ativa';
     } else {
-      btn.classList.add('pausado');
-      if (label) label.textContent = 'Bot pausado';
+      // IA pausada (humano assumiu) → botão "Retomar IA" (primary/verde)
+      btn.className = 'cbx-btn primary';
+      if (label) label.textContent = 'Retomar IA';
+      if (pill)  pill.className = 'cbx-pill pausado';
+      if (ptxt)  ptxt.textContent = 'Pausado';
     }
   }
 
