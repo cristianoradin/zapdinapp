@@ -37,6 +37,44 @@ class EnviarMsgBody(BaseModel):
     phone: str
     mensagem: str
 
+class TagBody(BaseModel):
+    label: str
+    cor: str = "#16A34A"
+
+class AtribuirTagBody(BaseModel):
+    tag_id: int
+
+
+# ── Helper: normaliza phone e resolve contato_id (cria se não existir) ────────
+def _phone_local(phone: str) -> str:
+    p = phone.replace("@s.whatsapp.net", "").replace("@lid", "")
+    p = "".join(ch for ch in p if ch.isdigit())
+    if p.startswith("55") and len(p) >= 12:
+        p = p[2:]
+    return p
+
+async def _resolver_contato_id(db, empresa_id: int, phone: str) -> int:
+    pl = _phone_local(phone)
+    # tenta variante com/sem 9 (Brasil)
+    variantes = [pl]
+    if len(pl) == 10:   variantes.append(pl[:2] + "9" + pl[2:])
+    elif len(pl) == 11: variantes.append(pl[:2] + pl[3:])
+    for v in variantes:
+        async with db.execute(
+            "SELECT id FROM contatos WHERE empresa_id=? AND phone=?", (empresa_id, v)
+        ) as cur:
+            row = await cur.fetchone()
+        if row:
+            return row["id"]
+    # cria se não existir
+    cur = await db.execute(
+        "INSERT INTO contatos(empresa_id, phone, nome, ativo, chatbot_ativo, origem) "
+        "VALUES(?,?,?,TRUE,TRUE,'chatbot') ON CONFLICT(empresa_id, phone) DO UPDATE SET phone=EXCLUDED.phone "
+        "RETURNING id",
+        (empresa_id, pl, pl),
+    )
+    return cur.lastrowid
+
 
 # ── Config / Personalidade ────────────────────────────────────────────────────
 
@@ -359,6 +397,85 @@ async def delete_historico(
         "DELETE FROM chat_historico WHERE empresa_id=? AND phone=?",
         (empresa_id, phone)
     )
+    await db.commit()
+    return {"ok": True}
+
+
+# ── Etiquetas (tags) — Fase 4 ─────────────────────────────────────────────────
+
+@router.get("/tags")
+async def list_tags(db=Depends(get_db), user: dict = Depends(get_current_user)):
+    """Lista todas as etiquetas da empresa."""
+    async with db.execute(
+        "SELECT id, label, cor FROM tags WHERE empresa_id=? ORDER BY label",
+        (user["empresa_id"],),
+    ) as cur:
+        return [dict(r) for r in await cur.fetchall()]
+
+
+@router.post("/tags")
+async def create_tag(body: TagBody, db=Depends(get_db), user: dict = Depends(get_current_user)):
+    """Cria uma etiqueta. Se já existe (label), retorna a existente."""
+    empresa_id = user["empresa_id"]
+    label = body.label.strip()
+    if not label:
+        from fastapi import HTTPException
+        raise HTTPException(422, "Label obrigatório")
+    cur = await db.execute(
+        "INSERT INTO tags(empresa_id, label, cor) VALUES(?,?,?) "
+        "ON CONFLICT(empresa_id, label) DO UPDATE SET cor=EXCLUDED.cor RETURNING id",
+        (empresa_id, label, body.cor),
+    )
+    await db.commit()
+    return {"ok": True, "id": cur.lastrowid, "label": label, "cor": body.cor}
+
+
+@router.delete("/tags/{tag_id}")
+async def delete_tag(tag_id: int, db=Depends(get_db), user: dict = Depends(get_current_user)):
+    """Remove etiqueta (cascade tira de todos os contatos)."""
+    await db.execute("DELETE FROM tags WHERE id=? AND empresa_id=?", (tag_id, user["empresa_id"]))
+    await db.commit()
+    return {"ok": True}
+
+
+@router.get("/contato/{phone}/tags")
+async def get_contato_tags(phone: str, db=Depends(get_db), user: dict = Depends(get_current_user)):
+    """Etiquetas atribuídas a um contato."""
+    empresa_id = user["empresa_id"]
+    cid = await _resolver_contato_id(db, empresa_id, phone)
+    async with db.execute(
+        "SELECT t.id, t.label, t.cor FROM contato_tags ct "
+        "JOIN tags t ON t.id = ct.tag_id "
+        "WHERE ct.contato_id=? AND t.empresa_id=? ORDER BY t.label",
+        (cid, empresa_id),
+    ) as cur:
+        return [dict(r) for r in await cur.fetchall()]
+
+
+@router.post("/contato/{phone}/tags")
+async def add_contato_tag(phone: str, body: AtribuirTagBody, db=Depends(get_db), user: dict = Depends(get_current_user)):
+    """Atribui uma etiqueta a um contato."""
+    empresa_id = user["empresa_id"]
+    cid = await _resolver_contato_id(db, empresa_id, phone)
+    # valida que a tag pertence à empresa
+    async with db.execute("SELECT id FROM tags WHERE id=? AND empresa_id=?", (body.tag_id, empresa_id)) as cur:
+        if not await cur.fetchone():
+            from fastapi import HTTPException
+            raise HTTPException(404, "Etiqueta não encontrada")
+    await db.execute(
+        "INSERT INTO contato_tags(contato_id, tag_id) VALUES(?,?) ON CONFLICT DO NOTHING",
+        (cid, body.tag_id),
+    )
+    await db.commit()
+    return {"ok": True}
+
+
+@router.delete("/contato/{phone}/tags/{tag_id}")
+async def remove_contato_tag(phone: str, tag_id: int, db=Depends(get_db), user: dict = Depends(get_current_user)):
+    """Remove uma etiqueta de um contato."""
+    empresa_id = user["empresa_id"]
+    cid = await _resolver_contato_id(db, empresa_id, phone)
+    await db.execute("DELETE FROM contato_tags WHERE contato_id=? AND tag_id=?", (cid, tag_id))
     await db.commit()
     return {"ok": True}
 

@@ -113,6 +113,14 @@ class AsyncPGAdapter:
             rows = await self._conn.fetch(pg, *args)
             return _Cursor(rows=rows)
 
+        if head.startswith('INSERT') and 'RETURNING' in head:
+            # INSERT com RETURNING explícito — captura o valor retornado (1ª coluna)
+            row = await self._conn.fetchrow(pg, *args)
+            lr = None
+            if row is not None:
+                lr = row['id'] if 'id' in row.keys() else row[0]
+            return _Cursor(lastrowid=lr)
+
         if head.startswith('INSERT') and 'RETURNING' not in head:
             pg_ret = pg.rstrip().rstrip(';') + ' RETURNING id'
             try:
@@ -1112,6 +1120,32 @@ async def init_db() -> None:
                 detail      TEXT
             )
             """
+        )
+
+        # ── Etiquetas (tags) por contato — Fase 4 chatbot ────────────────────
+        await conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS tags (
+                id         SERIAL PRIMARY KEY,
+                empresa_id BIGINT NOT NULL,
+                label      TEXT NOT NULL,
+                cor        TEXT NOT NULL DEFAULT '#16A34A',
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE(empresa_id, label)
+            )
+            """
+        )
+        await conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS contato_tags (
+                contato_id BIGINT NOT NULL REFERENCES contatos(id) ON DELETE CASCADE,
+                tag_id     BIGINT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+                PRIMARY KEY (contato_id, tag_id)
+            )
+            """
+        )
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_contato_tags_contato ON contato_tags(contato_id)"
         )
 
         logger.info("[db] Schema DBA inicializado — índices, constraints e migrations ok")

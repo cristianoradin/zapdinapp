@@ -407,6 +407,51 @@ const chatbot = (() => {
     const pc = cached && cached.primeiro_contato ? cached.primeiro_contato
              : (cached && cached.ultima_msg ? cached.ultima_msg : null);
     set('cbDetPrimeiro', pc ? new Date(pc).toLocaleDateString('pt-BR') : '—');
+    _renderTags();
+  }
+
+  async function _renderTags() {
+    const box = document.getElementById('cbDetTags');
+    if (!box || !_phoneAtual) return;
+    let tags = [];
+    try {
+      const r = await fetch('/api/chatbot/contato/' + encodeURIComponent(_phoneAtual) + '/tags');
+      if (r.ok) tags = await r.json();
+    } catch {}
+    const chips = tags.map(t => {
+      const c = t.cor || '#16A34A';
+      return `<span class="cbx-tag" style="color:${c};background:${c}1A">
+        ${_escHtml(t.label)}
+        <span style="cursor:pointer;font-weight:900;opacity:.6" onclick="chatbot.removerTag(${t.id})" title="Remover">×</span>
+      </span>`;
+    }).join('');
+    box.innerHTML = chips + '<button class="cbx-tag add" onclick="chatbot.abrirAdicionarTag()">+ Adicionar</button>';
+  }
+
+  async function abrirAdicionarTag() {
+    if (!_phoneAtual) return;
+    // Lista tags existentes para sugerir
+    let existentes = [];
+    try { const r = await fetch('/api/chatbot/tags'); if (r.ok) existentes = await r.json(); } catch {}
+    const hint = existentes.length ? '\nExistentes: ' + existentes.map(t => t.label).join(', ') : '';
+    const label = prompt('Nome da etiqueta:' + hint);
+    if (!label || !label.trim()) return;
+    try {
+      // cria (ou reusa) a tag
+      const tr = await api('POST', '/api/chatbot/tags', { label: label.trim() });
+      if (!tr.ok) return agwaToast ? agwaToast('Erro ao criar etiqueta') : null;
+      // atribui ao contato
+      await api('POST', '/api/chatbot/contato/' + encodeURIComponent(_phoneAtual) + '/tags', { tag_id: tr.id });
+      _renderTags();
+    } catch(e) { console.error('[chatbot] addTag:', e); }
+  }
+
+  async function removerTag(tagId) {
+    if (!_phoneAtual) return;
+    try {
+      await api('DELETE', '/api/chatbot/contato/' + encodeURIComponent(_phoneAtual) + '/tags/' + tagId);
+      _renderTags();
+    } catch(e) { console.error('[chatbot] removerTag:', e); }
   }
 
   function toggleDetalhes(force) {
@@ -671,6 +716,7 @@ const chatbot = (() => {
     carregarAprendizado, filtrarAprendizado, avaliarAprendizado, removerAprendizado,
     carregarConversas, filtrarContatos, abrirConversa,
     toggleChatbotAtivo, enviarMensagem, limparHistorico, toggleDetalhes,
+    abrirAdicionarTag, removerTag,
     carregarMemoria, filtrarMemoria, aprovarMemoria, deletarMemoria,
     editarMemoria, _salvarEdicaoMemoria, abrirNovaMemoria, _salvarNovaMemoria,
     toggleMemoriaIaAtiva,
