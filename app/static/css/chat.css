@@ -28,9 +28,13 @@
 /* Modo tela cheia — ocupa toda a área da página, sem borda/cantos.
    Altura travada ao viewport: só lista e mensagens rolam; composer fixo. */
 .main:has(#page-chatbot.active) { height: 100vh; }
-/* padding-top reserva a faixa da topbar flutuante (fixed top:1rem); composer e lista não ficam atrás dela */
-.content:has(#page-chatbot.active) { padding: 60px 0 0; display: flex; flex-direction: column; overflow: hidden; flex: 1; min-height: 0; }
-.content:has(#page-chatbot.active) .page-title-bar { display: none; }
+.content:has(#page-chatbot.active) { padding: 0; display: flex; flex-direction: column; overflow: hidden; flex: 1; min-height: 0; }
+/* Título da página "Chatbot" visível no topo; chatbot começa abaixo dele.
+   padding-top extra reserva a faixa da topbar flutuante (fixed top:1rem). */
+.content:has(#page-chatbot.active) .page-title-bar {
+  display: flex; flex: none; margin: 0;
+  padding: 1.1rem 1.5rem .7rem; border-bottom: 1px solid var(--cbx-line);
+}
 #page-chatbot.page.active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .cbx-full { border: none; border-radius: 0; height: 100%; flex: 1; min-height: 0; }
 /* min-height:0 em toda a cadeia flex — habilita overflow interno dos filhos */

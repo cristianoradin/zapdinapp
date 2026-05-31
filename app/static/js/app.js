@@ -70,6 +70,7 @@
     'ctb-empresas':   'Cadastro de Empresas',
     'ctb-arquivos':   'Gestão de Arquivos',
     'sistema':        'Sistema',
+    'chatbot':        'Chatbot',
     'ia-central':     'IA Central',
   };
   function _setTopbarPage(p) {
