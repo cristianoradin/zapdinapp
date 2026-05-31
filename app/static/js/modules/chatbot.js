@@ -322,7 +322,8 @@ const chatbot = (() => {
     header.style.display  = 'flex';
     vazio.style.display   = 'none';
     msgsEl.style.display  = 'flex';
-    inputEl.style.display = 'flex';
+    // composer (locked vs aberto) decidido por _updatePausarToggle acima
+    void inputEl;
     msgsEl.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text-mid);font-size:.8rem">Carregando…</div>';
 
     try {
@@ -370,38 +371,59 @@ const chatbot = (() => {
     const pill  = document.getElementById('cbChatStatusPill');
     const ptxt  = document.getElementById('cbChatStatusTxt');
     if (!btn) return;
+    const locked = document.getElementById('cbComposerLocked');
+    const open   = document.getElementById('cbChatInput');
     if (_chatbotAtivoAtual) {
-      // IA ativa → botão "Assumir conversa" (warn/amarelo)
+      // IA ativa → botão "Assumir conversa" (warn) + composer travado
       btn.className = 'cbx-btn warn';
       if (label) label.textContent = 'Assumir conversa';
       if (pill)  pill.className = 'cbx-pill ativo';
       if (ptxt)  ptxt.textContent = 'IA ativa';
+      if (locked) locked.style.display = 'flex';
+      if (open)   open.style.display = 'none';
     } else {
-      // IA pausada (humano assumiu) → botão "Retomar IA" (primary/verde)
+      // Humano assumiu → botão "Retomar IA" (primary) + composer aberto
       btn.className = 'cbx-btn primary';
       if (label) label.textContent = 'Retomar IA';
       if (pill)  pill.className = 'cbx-pill pausado';
       if (ptxt)  ptxt.textContent = 'Pausado';
+      if (locked) locked.style.display = 'none';
+      if (open)   open.style.display = 'flex';
     }
+  }
+
+  function _addSysMsg(texto) {
+    const msgsEl = document.getElementById('cbChatMsgs');
+    if (!msgsEl) return;
+    msgsEl.insertAdjacentHTML('beforeend',
+      `<div class="cbx-sys-row"><span class="cbx-sys-pill">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.5 5L19 8l-4 3.5L16 17l-4-2.5L8 17l1-5.5L5 8l5.5-1z"/></svg>
+        ${_escHtml(texto)}</span></div>`);
+    msgsEl.scrollTop = msgsEl.scrollHeight;
   }
 
   async function toggleChatbotAtivo() {
     if (!_phoneAtual) return;
     _chatbotAtivoAtual = !_chatbotAtivoAtual;
     _updatePausarToggle();
-    // Atualiza badge na lista
+
+    // Badge de sistema inline (feedback igual ao WhatsApp)
+    _addSysMsg(_chatbotAtivoAtual
+      ? 'IA retomada · respostas automáticas ativas'
+      : 'Atendimento assumido por Você · IA pausada');
+
+    // Atualiza o card na lista (classes .cbx)
     const item = document.getElementById('cbContact-' + CSS.escape(_phoneAtual));
     if (item) {
-      const badge = item.querySelector('.cb-wa-paused-badge');
-      if (_chatbotAtivoAtual && badge) badge.remove();
-      else if (!_chatbotAtivoAtual && !badge) {
-        const meta = item.querySelector('.cb-wa-contact-meta');
-        if (meta) meta.insertAdjacentHTML('beforeend','<div class="cb-wa-paused-badge">⏸ Pausado</div>');
+      const av = item.querySelector('.cbx-avatar');
+      if (av) av.classList.toggle('gray', !_chatbotAtivoAtual);
+      const meta = item.querySelector('.cbx-row-line2');
+      if (meta) {
+        const old = meta.querySelector('.cbx-pill, .cbx-unread');
+        if (old) old.remove();
+        if (!_chatbotAtivoAtual) meta.insertAdjacentHTML('beforeend','<span class="cbx-pill pausado">Pausado</span>');
       }
-      const av = item.querySelector('.cb-wa-avatar');
-      if (av) av.style.background = _chatbotAtivoAtual ? '' : 'linear-gradient(135deg,#9ca3af,#6b7280)';
     }
-    // Também atualiza cache
     const cached = _conversasCache.find(c => c.phone === _phoneAtual);
     if (cached) cached.chatbot_ativo = _chatbotAtivoAtual;
     try {
@@ -419,7 +441,7 @@ const chatbot = (() => {
     if (!texto) return;
 
     const msgsEl = document.getElementById('cbChatMsgs');
-    const agora  = new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    const hora   = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 
     // Limpa campo antes de aguardar resposta
     ta.value = '';
@@ -428,27 +450,19 @@ const chatbot = (() => {
     try {
       const res = await api('POST', '/api/chatbot/enviar', { phone: _phoneAtual, mensagem: texto });
       if (!res.ok || res._status >= 400) {
-        // Mostra erro sem adicionar bolha fantasma
-        msgsEl.insertAdjacentHTML('beforeend', `
-          <div style="text-align:center;padding:.5rem 1rem">
-            <span style="font-size:.75rem;color:#ef4444;background:#fef2f2;padding:.25rem .7rem;border-radius:20px">
-              ⚠️ Falha ao enviar: ${res.detail || 'erro desconhecido'}
-            </span>
-          </div>`);
+        msgsEl.insertAdjacentHTML('beforeend',
+          `<div class="cbx-sys-row"><span class="cbx-sys-pill">⚠️ Falha ao enviar: ${_escHtml(res.detail || 'erro')}</span></div>`);
         msgsEl.scrollTop = msgsEl.scrollHeight;
-        // Restaura o texto no campo para o usuário tentar novamente
-        ta.value = texto;
+        ta.value = texto; // restaura para retentar
         return;
       }
-      // Adiciona bolha apenas se o envio foi confirmado
-      msgsEl.insertAdjacentHTML('beforeend', `
-        <div class="cb-bubble-wrap-bot">
-          <div class="cb-bubble cb-bubble-bot">
-            <span class="cb-bubble-label bot">🖊 Manual</span>
-            ${_escHtml(texto)}
-            <span class="cb-bubble-time">${agora}</span>
-          </div>
-        </div>`);
+      // Bolha do atendente (verde escuro, selo "Você")
+      msgsEl.insertAdjacentHTML('beforeend',
+        `<div class="cbx-brow out"><div class="cbx-bubble agente">
+          <span class="cbx-sender"><span style="width:6px;height:6px;border-radius:50%;background:#BFF3CE;display:inline-block"></span> Você</span>
+          <span class="cbx-btext">${_escHtml(texto)}</span>
+          <span class="cbx-meta">${hora}</span>
+        </div></div>`);
       msgsEl.scrollTop = msgsEl.scrollHeight;
     } catch(e) {
       console.error('[chatbot] enviarMensagem:', e);
@@ -464,6 +478,7 @@ const chatbot = (() => {
     document.getElementById('cbChatHeader').style.display  = 'none';
     document.getElementById('cbChatMsgs').style.display    = 'none';
     document.getElementById('cbChatInput').style.display   = 'none';
+    const _lk = document.getElementById('cbComposerLocked'); if (_lk) _lk.style.display = 'none';
     document.getElementById('cbChatVazio').style.display   = 'flex';
     _phoneAtual = null;
     await carregarConversas();
