@@ -9,18 +9,29 @@
   // ── Sistema — navegação interna ─────────────────────────────────────────────
 
   window.sysNav = function sysNav(el, panel) {
-    const sysContent = document.querySelector('#page-sistema .sys-content');
+    const page = document.getElementById('page-sistema');
+    const sysContent = page ? page.querySelector('.sys-content') : null;
     const target = document.getElementById('sys-panel-' + panel);
     if (target && sysContent && !sysContent.contains(target)) {
       sysContent.appendChild(target);
     }
-    document.querySelectorAll('.sys-menu-item').forEach(i => i.classList.remove('active'));
-    document.querySelectorAll('.sys-panel').forEach(p => p.classList.remove('active'));
+    // Escopa ao #page-sistema — não interfere nos menus/painéis do Chatbot
+    const scope = page || document;
+    scope.querySelectorAll('.sys-menu-item').forEach(i => i.classList.remove('active'));
+    scope.querySelectorAll('.sys-panel').forEach(p => p.classList.remove('active'));
     el.classList.add('active');
     if (target) target.classList.add('active');
     if (panel === 'dominio' && window.dominio) dominio.carregar();
     if (panel === 'log' && window.syslog)    syslog.carregar(true);
     if (panel === 'token' && window.tokenModule) tokenModule.init();
+    // ── Configurações do Chatbot (movidas pra cá) — dispara loaders ──
+    if (window.chatbot) {
+      if (panel === 'cb-personalidade') chatbot.carregarConfig();
+      if (panel === 'cb-boasvindas')    chatbot.carregarBoasVindas();
+      if (panel === 'cb-faq')           chatbot.carregarFaq();
+      if (panel === 'cb-aprendizado')   chatbot.carregarAprendizado();
+      if (panel === 'cb-memoria')       chatbot.carregarMemoria();
+    }
     document.dispatchEvent(new CustomEvent('sys-panel-activated', { detail: panel }));
   };
 
