@@ -25,12 +25,16 @@
 .cbx * { box-sizing: border-box; }
 .cbx button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
 
-/* Modo tela cheia — ocupa toda a área da página, sem borda/cantos */
-.cbx-full { border: none; border-radius: 0; height: 100%; min-height: 0; flex: 1; }
-/* Quando o chatbot está ativo, o .content vira flex e perde o padding */
-.content:has(#page-chatbot.active) { padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+/* Modo tela cheia — ocupa toda a área da página, sem borda/cantos.
+   Altura travada ao viewport: só lista e mensagens rolam; composer fixo. */
+.main:has(#page-chatbot.active) { height: 100vh; }
+/* padding-top reserva a faixa da topbar flutuante (fixed top:1rem); composer e lista não ficam atrás dela */
+.content:has(#page-chatbot.active) { padding: 60px 0 0; display: flex; flex-direction: column; overflow: hidden; flex: 1; min-height: 0; }
 .content:has(#page-chatbot.active) .page-title-bar { display: none; }
 #page-chatbot.page.active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.cbx-full { border: none; border-radius: 0; height: 100%; flex: 1; min-height: 0; }
+/* min-height:0 em toda a cadeia flex — habilita overflow interno dos filhos */
+.cbx-full .cbx-sidebar, .cbx-full .cbx-conv-col { min-height: 0; }
 
 /* ── Sidebar (lista de conversas) ── */
 .cbx-sidebar {
