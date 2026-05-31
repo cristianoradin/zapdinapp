@@ -2,6 +2,9 @@ fastapi>=0.115.0
 uvicorn[standard]>=0.32.0
 python-socketio>=5.11.0
 asyncpg>=0.29.0
+# ── Migrations de schema (Alembic + SQLAlchemy Core) ─────────────────────────
+sqlalchemy[asyncio]>=2.0.0
+alembic>=1.13.0
 pydantic-settings>=2.6.0
 python-multipart>=0.0.12
 playwright>=1.49.0
