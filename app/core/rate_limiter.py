@@ -37,3 +37,8 @@ class RateLimiter:
 login_limiter      = RateLimiter(max_calls=10, period_seconds=60)
 activation_limiter = RateLimiter(max_calls=5,  period_seconds=3600)
 erp_limiter        = RateLimiter(max_calls=60, period_seconds=60)
+
+# Limite global por IP — generoso pois multi-terminal no posto compartilha IP (NAT).
+# Protege contra abuso/scan/DDoS leve sem atrapalhar uso legítimo.
+# 600 req/min ≈ 10 req/s por IP — folgado para vários terminais simultâneos.
+global_limiter     = RateLimiter(max_calls=600, period_seconds=60)

@@ -133,6 +133,37 @@ class LockMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+#  Rate limit global por IP
+#  Protege contra abuso/scan/DDoS leve. Generoso (multi-terminal compartilha IP).
+#  Isenta: localhost (webhook Evolution, worker interno) e arquivos estáticos.
+# ─────────────────────────────────────────────────────────────────────────────
+
+from .core.rate_limiter import global_limiter as _global_limiter
+from .core.dependencies import client_ip as _client_ip
+
+_RATE_EXEMPT_PREFIXES = (
+    "/static/", "/logo/", "/favicon", "/internal/",
+    "/api/evo-webhook", "/api/evo-file/",
+)
+
+
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+        if not any(path.startswith(p) for p in _RATE_EXEMPT_PREFIXES):
+            ip = _client_ip(request)
+            # localhost isento (worker, webhook, healthcheck local)
+            if ip not in ("127.0.0.1", "::1", "unknown"):
+                if not _global_limiter.is_allowed(ip):
+                    return JSONResponse(
+                        {"error": "Muitas requisições. Aguarde alguns segundos e tente novamente."},
+                        status_code=429,
+                        headers={"Retry-After": "10"},
+                    )
+        return await call_next(request)
+
+
 # ── Lifespan ───────────────────────────────────────────────────────────────────
 _startup_logger = logging.getLogger(__name__)
 
@@ -246,8 +277,10 @@ async def lifespan(app: FastAPI):
 fastapi_app = FastAPI(title="ZapDin App", version="2.0.0", lifespan=lifespan)
 
 # Middlewares (ordem: o último add_middleware é o primeiro a executar)
-# SecurityHeaders executa primeiro (envolve tudo), LockMiddleware segundo.
+# Ordem de execução: SecurityHeaders → RateLimit → Lock → rotas.
+# RateLimit antes do Lock: barra abuso mesmo no estado bloqueado.
 fastapi_app.add_middleware(LockMiddleware)
+fastapi_app.add_middleware(RateLimitMiddleware)
 fastapi_app.add_middleware(SecurityHeadersMiddleware)
 
 # Routers
