@@ -1,0 +1,98 @@
+# docker-compose.yml — ZapDin Dev Stack
+#
+# Sobe PostgreSQL + App + Monitor em containers locais.
+# NÃO usar em produção — produção usa NSSM/systemd direto no host.
+#
+# Uso rápido:
+#   docker compose up -d
+#   docker compose logs -f app
+#   docker compose down -v   (remove volumes = apaga DB local)
+
+services:
+
+  # ── PostgreSQL ────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: zapdin
+      POSTGRES_PASSWORD: zapdin_dev
+      POSTGRES_DB: zapdin_app
+    ports:
+      - "5433:5432"        # 5433 no host para não conflitar com Postgres local
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./db/migrations/001_initial.sql:/docker-entrypoint-initdb.d/001_initial.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zapdin -d zapdin_app"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ── App (porta 4000) ──────────────────────────────────────────────────────────
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "4000:4000"
+    environment:
+      APP_STATE: active
+      PORT: "4000"
+      DATABASE_URL: postgresql://zapdin:zapdin_dev@postgres:5432/zapdin_app
+      MONITOR_URL: http://monitor:5000
+      MONITOR_CLIENT_TOKEN: dev-token
+      CLIENT_NAME: Dev Local
+      CLIENT_CNPJ: "00000000000000"
+      SECRET_KEY: dev-secret-key-docker-only-not-for-production
+      USE_EVOLUTION: "false"
+    volumes:
+      - ./app:/app                   # hot-reload: muda código, uvicorn recarrega
+      - app_data:/app/data           # persistência das sessões WA
+      - app_uploads:/app/uploads
+    command: >
+      uvicorn app.main:app
+        --host 0.0.0.0
+        --port 4000
+        --reload
+        --reload-dir /app/app
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:4000/api/activate/status || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Monitor (porta 5000) ──────────────────────────────────────────────────────
+  monitor:
+    build:
+      context: ./monitor
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "5000:5000"
+    environment:
+      PORT: "5000"
+      DATABASE_URL: postgresql://zapdin:zapdin_dev@postgres:5432/zapdin_monitor
+      SECRET_KEY: monitor-secret-key-docker-only
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: admin123
+    volumes:
+      - ./monitor:/monitor
+    command: >
+      uvicorn monitor.main:app
+        --host 0.0.0.0
+        --port 5000
+        --reload
+        --reload-dir /monitor/monitor
+
+volumes:
+  pg_data:
+  app_data:
+  app_uploads:
