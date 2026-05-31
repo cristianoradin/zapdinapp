@@ -392,6 +392,33 @@ const chatbot = (() => {
     }
   }
 
+  function _preencherDetalhes() {
+    if (!_phoneAtual) return;
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    set('cbDetAvatar', _digits2(_phoneAtual || _nomeAtual));
+    set('cbDetNome', _nomeAtual || _phoneAtual);
+    set('cbDetPhone', '+55 ' + (_phoneAtual || '').replace(/\D/g,''));
+    const pill = document.getElementById('cbDetPill');
+    set('cbDetPillTxt', _chatbotAtivoAtual ? 'IA ativa' : 'Pausado');
+    if (pill) pill.className = 'cbx-pill ' + (_chatbotAtivoAtual ? 'ativo' : 'pausado');
+    set('cbDetStatus', _chatbotAtivoAtual ? 'IA ativa' : 'Pausado (humano)');
+    set('cbDetResp', _chatbotAtivoAtual ? '— (IA)' : 'Você');
+    const cached = _conversasCache.find(c => c.phone === _phoneAtual);
+    const pc = cached && cached.primeiro_contato ? cached.primeiro_contato
+             : (cached && cached.ultima_msg ? cached.ultima_msg : null);
+    set('cbDetPrimeiro', pc ? new Date(pc).toLocaleDateString('pt-BR') : '—');
+  }
+
+  function toggleDetalhes(force) {
+    const el = document.getElementById('cbDetalhes');
+    const btn = document.getElementById('cbDetalhesBtn');
+    if (!el) return;
+    const show = (force === undefined) ? el.style.display === 'none' : !!force;
+    el.style.display = show ? 'flex' : 'none';
+    if (btn) btn.classList.toggle('on', show);
+    if (show) _preencherDetalhes();
+  }
+
   function _addSysMsg(texto) {
     const msgsEl = document.getElementById('cbChatMsgs');
     if (!msgsEl) return;
@@ -426,6 +453,9 @@ const chatbot = (() => {
     }
     const cached = _conversasCache.find(c => c.phone === _phoneAtual);
     if (cached) cached.chatbot_ativo = _chatbotAtivoAtual;
+    // Sincroniza painel de detalhes se aberto
+    const det = document.getElementById('cbDetalhes');
+    if (det && det.style.display !== 'none') _preencherDetalhes();
     try {
       const phoneLocal = _phoneAtual.replace('@s.whatsapp.net','').replace('@lid','').replace(/^55/,'');
       await api('PATCH', '/api/chatbot/contato/' + encodeURIComponent(phoneLocal) + '/chatbot-ativo',
@@ -640,7 +670,7 @@ const chatbot = (() => {
     carregarFaq, adicionarFaq, removerFaq,
     carregarAprendizado, filtrarAprendizado, avaliarAprendizado, removerAprendizado,
     carregarConversas, filtrarContatos, abrirConversa,
-    toggleChatbotAtivo, enviarMensagem, limparHistorico,
+    toggleChatbotAtivo, enviarMensagem, limparHistorico, toggleDetalhes,
     carregarMemoria, filtrarMemoria, aprovarMemoria, deletarMemoria,
     editarMemoria, _salvarEdicaoMemoria, abrirNovaMemoria, _salvarNovaMemoria,
     toggleMemoriaIaAtiva,

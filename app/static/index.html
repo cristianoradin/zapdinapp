@@ -4016,6 +4016,9 @@
                     <button class="cbx-btn warn" id="cbPausarToggle" onclick="chatbot.toggleChatbotAtivo()">
                       <span id="cbPausarLabel">Assumir conversa</span>
                     </button>
+                    <button class="cbx-icon-btn" id="cbDetalhesBtn" onclick="chatbot.toggleDetalhes()" title="Detalhes do contato">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                    </button>
                     <button class="cbx-icon-btn" onclick="chatbot.limparHistorico()" title="Limpar histórico" style="color:#ef4444">
                       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
                     </button>
@@ -4055,6 +4058,34 @@
                 </div>
 
               </div>
+
+              <!-- ── Painel de detalhes do contato (Fase 3) ── -->
+              <aside class="cbx-cpanel" id="cbDetalhes" style="display:none">
+                <div class="cbx-cpanel-head">
+                  <span>Detalhes do contato</span>
+                  <button class="cbx-icon-btn" onclick="chatbot.toggleDetalhes(false)" title="Fechar">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+                <div class="cbx-cpanel-body">
+                  <div class="cbx-cp-id">
+                    <div class="cbx-avatar" id="cbDetAvatar">?</div>
+                    <h3 id="cbDetNome">—</h3>
+                    <p id="cbDetPhone"></p>
+                    <span class="cbx-pill ativo" id="cbDetPill"><span id="cbDetPillTxt">IA ativa</span></span>
+                  </div>
+                  <section>
+                    <h4>Atendimento</h4>
+                    <dl class="cbx-kv">
+                      <div><dt>Status do bot</dt><dd id="cbDetStatus">IA ativa</dd></div>
+                      <div><dt>Responsável</dt><dd id="cbDetResp">— (IA)</dd></div>
+                      <div><dt>Canal</dt><dd>WhatsApp</dd></div>
+                      <div><dt>Primeiro contato</dt><dd id="cbDetPrimeiro">—</dd></div>
+                    </dl>
+                  </section>
+                </div>
+              </aside>
+
             </div>
           </div>
 

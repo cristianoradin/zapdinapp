@@ -142,3 +142,30 @@
 @media (max-width: 1080px) {
   .cbx-sidebar { width: 300px; }
 }
+
+/* ── Painel de detalhes do contato (Fase 3) ── */
+.cbx-cpanel {
+  width: 320px; flex: none; border-left: 1px solid var(--cbx-line); background: #fff;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.cbx-cpanel-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 13px; font-weight: 700; font-size: 15px; border-bottom: 1px solid var(--cbx-line-soft); color: var(--cbx-ink); }
+.cbx-cpanel-body { flex: 1; overflow-y: auto; padding: 20px 18px 28px; }
+.cbx-cp-id { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; padding-bottom: 6px; }
+.cbx-cp-id .cbx-avatar { width: 76px; height: 76px; font-size: 26px; }
+.cbx-cp-id h3 { margin: 6px 0 0; font-size: 18px; font-weight: 700; color: var(--cbx-ink); }
+.cbx-cp-id p { margin: 0; color: var(--cbx-ink-3); font-size: 13.5px; }
+.cbx-cpanel-body section { margin-top: 24px; }
+.cbx-cpanel-body h4 { margin: 0 0 11px; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--cbx-ink-4); }
+.cbx-kv { margin: 0; display: flex; flex-direction: column; gap: 11px; }
+.cbx-kv > div { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.cbx-kv dt { color: var(--cbx-ink-3); font-size: 13.5px; margin: 0; }
+.cbx-kv dd { margin: 0; font-weight: 700; font-size: 13.5px; color: var(--cbx-ink); text-align: right; }
+.cbx-tag-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.cbx-tag { font-size: 12.5px; font-weight: 700; padding: 4px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 5px; }
+.cbx-tag.add { background: #fff; color: var(--cbx-ink-3); border: 1px dashed #D0D5DD; cursor: pointer; }
+.cbx-tag.add:hover { border-color: var(--cbx-green); color: var(--cbx-green-d); }
+.cbx-cp-actions { display: flex; flex-direction: column; gap: 8px; }
+.cbx-cp-actions button { display: flex; align-items: center; gap: 10px; padding: 11px 13px; border-radius: 11px; background: #F6F8FA; color: var(--cbx-ink-2); font-weight: 600; font-size: 14px; transition: .14s; text-align: left; }
+.cbx-cp-actions button:hover { background: #EEF1F5; color: var(--cbx-ink); }
+.cbx-cp-actions button.danger { color: #B42318; }
+.cbx-cp-actions button.danger:hover { background: #FEF2F0; }
