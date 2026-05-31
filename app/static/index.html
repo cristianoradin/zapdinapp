@@ -4049,6 +4049,9 @@
                 </div>
                 <!-- Composer: aberto (humano assumiu) -->
                 <div class="cbx-composer" id="cbChatInput" style="display:none">
+                  <button class="cbx-icon-btn" onclick="chatbot.abrirRespostasRapidas()" title="Respostas rápidas" style="flex:none;width:42px;height:42px">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+                  </button>
                   <textarea id="cbMsgTexto" rows="1" placeholder="Escreva uma mensagem…"
                     onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();chatbot.enviarMensagem()}"
                     oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,132)+'px'"></textarea>
@@ -4088,6 +4091,23 @@
                       <div><dt>Canal</dt><dd>WhatsApp</dd></div>
                       <div><dt>Primeiro contato</dt><dd id="cbDetPrimeiro">—</dd></div>
                     </dl>
+                  </section>
+                  <section>
+                    <h4>Ações rápidas</h4>
+                    <div class="cbx-cp-actions">
+                      <button onclick="chatbot.transferirHumano()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                        Transferir para humano
+                      </button>
+                      <button onclick="chatbot.abrirRespostasRapidas()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
+                        Respostas rápidas
+                      </button>
+                      <button class="danger" onclick="chatbot.encerrarAtendimento()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+                        Encerrar atendimento
+                      </button>
+                    </div>
                   </section>
                 </div>
               </aside>

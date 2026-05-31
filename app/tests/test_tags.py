@@ -36,3 +36,26 @@ class TestTags:
     async def test_tags_sem_auth_401(self, client):
         r = await client.get("/api/chatbot/tags")
         assert r.status_code == 401
+
+
+class TestRespostasRapidas:
+    async def test_cria_lista_remove(self, auth_client, empresa_usuario):
+        r = await auth_client.post("/api/chatbot/respostas-rapidas", json={"atalho": "oi", "texto": "Olá!"})
+        assert r.status_code == 200 and r.json()["id"] is not None
+        rid = r.json()["id"]
+        lst = (await auth_client.get("/api/chatbot/respostas-rapidas")).json()
+        assert any(x["atalho"] == "oi" for x in lst)
+        d = await auth_client.delete(f"/api/chatbot/respostas-rapidas/{rid}")
+        assert d.status_code == 200
+
+    async def test_campos_obrigatorios_422(self, auth_client, empresa_usuario):
+        r = await auth_client.post("/api/chatbot/respostas-rapidas", json={"atalho": " ", "texto": " "})
+        assert r.status_code == 422
+
+    async def test_encerrar_atendimento(self, auth_client, empresa_usuario):
+        r = await auth_client.patch("/api/chatbot/contato/11999990000/encerrar")
+        assert r.status_code == 200
+
+    async def test_respostas_sem_auth_401(self, client):
+        r = await client.get("/api/chatbot/respostas-rapidas")
+        assert r.status_code == 401

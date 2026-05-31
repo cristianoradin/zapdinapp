@@ -44,6 +44,10 @@ class TagBody(BaseModel):
 class AtribuirTagBody(BaseModel):
     tag_id: int
 
+class RespostaRapidaBody(BaseModel):
+    atalho: str
+    texto: str
+
 
 # ── Helper: normaliza phone e resolve contato_id (cria se não existir) ────────
 def _phone_local(phone: str) -> str:
@@ -476,6 +480,55 @@ async def remove_contato_tag(phone: str, tag_id: int, db=Depends(get_db), user: 
     empresa_id = user["empresa_id"]
     cid = await _resolver_contato_id(db, empresa_id, phone)
     await db.execute("DELETE FROM contato_tags WHERE contato_id=? AND tag_id=?", (cid, tag_id))
+    await db.commit()
+    return {"ok": True}
+
+
+# ── Respostas rápidas — Fase 5 ────────────────────────────────────────────────
+
+@router.get("/respostas-rapidas")
+async def list_respostas(db=Depends(get_db), user: dict = Depends(get_current_user)):
+    async with db.execute(
+        "SELECT id, atalho, texto FROM respostas_rapidas WHERE empresa_id=? ORDER BY atalho",
+        (user["empresa_id"],),
+    ) as cur:
+        return [dict(r) for r in await cur.fetchall()]
+
+
+@router.post("/respostas-rapidas")
+async def create_resposta(body: RespostaRapidaBody, db=Depends(get_db), user: dict = Depends(get_current_user)):
+    atalho = body.atalho.strip()
+    texto  = body.texto.strip()
+    if not atalho or not texto:
+        from fastapi import HTTPException
+        raise HTTPException(422, "Atalho e texto obrigatórios")
+    cur = await db.execute(
+        "INSERT INTO respostas_rapidas(empresa_id, atalho, texto) VALUES(?,?,?) "
+        "ON CONFLICT(empresa_id, atalho) DO UPDATE SET texto=EXCLUDED.texto RETURNING id",
+        (user["empresa_id"], atalho, texto),
+    )
+    await db.commit()
+    return {"ok": True, "id": cur.lastrowid}
+
+
+@router.delete("/respostas-rapidas/{rid}")
+async def delete_resposta(rid: int, db=Depends(get_db), user: dict = Depends(get_current_user)):
+    await db.execute("DELETE FROM respostas_rapidas WHERE id=? AND empresa_id=?", (rid, user["empresa_id"]))
+    await db.commit()
+    return {"ok": True}
+
+
+# ── Encerrar atendimento — Fase 5 ─────────────────────────────────────────────
+
+@router.patch("/contato/{phone}/encerrar")
+async def encerrar_atendimento(phone: str, db=Depends(get_db), user: dict = Depends(get_current_user)):
+    """Encerra o atendimento: IA não responde mais + status 'encerrado'."""
+    empresa_id = user["empresa_id"]
+    cid = await _resolver_contato_id(db, empresa_id, phone)
+    await db.execute(
+        "UPDATE contatos SET chatbot_ativo=FALSE, atendimento_status='encerrado' WHERE id=? AND empresa_id=?",
+        (cid, empresa_id),
+    )
     await db.commit()
     return {"ok": True}
 

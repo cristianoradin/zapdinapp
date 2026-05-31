@@ -1148,4 +1148,22 @@ async def init_db() -> None:
             "CREATE INDEX IF NOT EXISTS idx_contato_tags_contato ON contato_tags(contato_id)"
         )
 
+        # ── Respostas rápidas — Fase 5 chatbot ────────────────────────────────
+        await conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS respostas_rapidas (
+                id         SERIAL PRIMARY KEY,
+                empresa_id BIGINT NOT NULL,
+                atalho     TEXT NOT NULL,
+                texto      TEXT NOT NULL,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE(empresa_id, atalho)
+            )
+            """
+        )
+        # Estado de atendimento do contato: ativo | pausado | encerrado
+        await conn.execute(
+            "ALTER TABLE contatos ADD COLUMN IF NOT EXISTS atendimento_status TEXT DEFAULT 'ativo'"
+        )
+
         logger.info("[db] Schema DBA inicializado — índices, constraints e migrations ok")

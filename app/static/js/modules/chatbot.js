@@ -454,6 +454,66 @@ const chatbot = (() => {
     } catch(e) { console.error('[chatbot] removerTag:', e); }
   }
 
+  // ── Ações rápidas (Fase 5) ────────────────────────────────────────────────
+  function transferirHumano() {
+    if (!_phoneAtual) return;
+    if (_chatbotAtivoAtual) toggleChatbotAtivo();  // assume (pausa IA)
+    else _addSysMsg('Conversa já está sob atendimento humano');
+  }
+
+  async function encerrarAtendimento() {
+    if (!_phoneAtual) return;
+    const ok = await (window.showConfirm
+      ? showConfirm({ title: 'Encerrar atendimento?', body: 'A IA para de responder este contato. Pode reabrir depois retomando a IA.', okLabel: 'Encerrar', type: 'danger', icon: '📁' })
+      : Promise.resolve(confirm('Encerrar atendimento deste contato?')));
+    if (!ok) return;
+    try {
+      await api('PATCH', '/api/chatbot/contato/' + encodeURIComponent(_phoneAtual) + '/encerrar');
+      _chatbotAtivoAtual = false;
+      _updatePausarToggle();
+      _addSysMsg('Atendimento encerrado');
+      const pill = document.getElementById('cbChatStatusPill');
+      const ptxt = document.getElementById('cbChatStatusTxt');
+      if (pill) pill.className = 'cbx-pill encerrado';
+      if (ptxt) ptxt.textContent = 'Encerrado';
+      const det = document.getElementById('cbDetalhes');
+      if (det && det.style.display !== 'none') _preencherDetalhes();
+    } catch(e) { console.error('[chatbot] encerrar:', e); }
+  }
+
+  async function abrirRespostasRapidas() {
+    let lista = [];
+    try { const r = await fetch('/api/chatbot/respostas-rapidas'); if (r.ok) lista = await r.json(); } catch {}
+    if (!lista.length) {
+      // Nenhuma cadastrada — oferece criar
+      const atalho = prompt('Nenhuma resposta rápida. Crie uma — atalho (ex: saudacao):');
+      if (!atalho || !atalho.trim()) return;
+      const texto = prompt('Texto da resposta:');
+      if (!texto || !texto.trim()) return;
+      await api('POST', '/api/chatbot/respostas-rapidas', { atalho: atalho.trim(), texto: texto.trim() });
+      return abrirRespostasRapidas();
+    }
+    const menu = lista.map((r, i) => `${i + 1}) ${r.atalho}`).join('\n');
+    const esc = prompt('Escolha a resposta rápida (número):\n' + menu + '\n\n(ou digite "nova" para criar)');
+    if (!esc) return;
+    if (esc.trim().toLowerCase() === 'nova') {
+      const atalho = prompt('Atalho:'); const texto = prompt('Texto:');
+      if (atalho && texto) { await api('POST', '/api/chatbot/respostas-rapidas', { atalho: atalho.trim(), texto: texto.trim() }); }
+      return;
+    }
+    const idx = parseInt(esc) - 1;
+    if (idx >= 0 && idx < lista.length) {
+      const ta = document.getElementById('cbMsgTexto');
+      if (ta) {
+        // garante composer aberto (assume se preciso)
+        if (_chatbotAtivoAtual) { toggleChatbotAtivo(); }
+        ta.value = (ta.value ? ta.value + ' ' : '') + lista[idx].texto;
+        ta.focus();
+        ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 132) + 'px';
+      }
+    }
+  }
+
   function toggleDetalhes(force) {
     const el = document.getElementById('cbDetalhes');
     const btn = document.getElementById('cbDetalhesBtn');
@@ -717,6 +777,7 @@ const chatbot = (() => {
     carregarConversas, filtrarContatos, abrirConversa,
     toggleChatbotAtivo, enviarMensagem, limparHistorico, toggleDetalhes,
     abrirAdicionarTag, removerTag,
+    transferirHumano, encerrarAtendimento, abrirRespostasRapidas,
     carregarMemoria, filtrarMemoria, aprovarMemoria, deletarMemoria,
     editarMemoria, _salvarEdicaoMemoria, abrirNovaMemoria, _salvarNovaMemoria,
     toggleMemoriaIaAtiva,
