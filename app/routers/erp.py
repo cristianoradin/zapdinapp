@@ -122,14 +122,14 @@ class VendaPayload(BaseModel):
 
 class ArquivoPayload(BaseModel):
     telefone: str
-    nome_arquivo: str
-    conteudo_base64: str
+    nome_arquivo: Optional[str] = None     # opcional: permite envio só-texto
+    conteudo_base64: Optional[str] = None  # opcional: idem
     mensagem: Optional[str] = None
 
     @field_validator("conteudo_base64")
     @classmethod
-    def check_tamanho(cls, v: str) -> str:
-        if len(v) > _MAX_B64_LEN:
+    def check_tamanho(cls, v: Optional[str]) -> Optional[str]:
+        if v and len(v) > _MAX_B64_LEN:
             raise ValueError("Arquivo muito grande. Limite: 50 MB.")
         return v
 
@@ -298,36 +298,46 @@ async def receber_arquivo(
     empresa_id = await _verify_token(x_token, db, request)
     telefone = _normalizar_telefone(body.telefone)
 
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
-    ext = os.path.splitext(body.nome_arquivo)[1] or ".pdf"
-    nome_salvo = f"{uuid.uuid4().hex}{ext}"
-    caminho = os.path.join(UPLOAD_DIR, nome_salvo)
+    # Modo só-texto: sem arquivo, apenas mensagem
+    tem_arquivo = bool(body.nome_arquivo and body.conteudo_base64)
+    if not tem_arquivo and not (body.mensagem and body.mensagem.strip()):
+        raise HTTPException(status_code=400, detail="Envie arquivo ou mensagem (ambos vazios).")
 
-    try:
-        conteudo = base64.b64decode(body.conteudo_base64)
-    except Exception as exc:
-        logger.error(
-            "[erp] Erro ao decodificar base64: empresa=%s arquivo=%s erro=%s",
-            empresa_id, body.nome_arquivo, exc,
-        )
-        raise HTTPException(status_code=400, detail="Conteúdo base64 inválido.")
+    nome_salvo = ""
+    tamanho = 0
+    nome_original = ""
 
-    try:
-        with open(caminho, "wb") as f:
-            f.write(conteudo)
-    except Exception as exc:
-        logger.error(
-            "[erp] Erro ao gravar arquivo em disco: empresa=%s caminho=%s erro=%s",
-            empresa_id, caminho, exc,
-        )
-        raise HTTPException(status_code=500, detail="Erro ao salvar arquivo no servidor.")
+    if tem_arquivo:
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
+        ext = os.path.splitext(body.nome_arquivo)[1] or ".pdf"
+        nome_salvo = f"{uuid.uuid4().hex}{ext}"
+        caminho = os.path.join(UPLOAD_DIR, nome_salvo)
+        try:
+            conteudo = base64.b64decode(body.conteudo_base64)
+        except Exception as exc:
+            logger.error(
+                "[erp] Erro ao decodificar base64: empresa=%s arquivo=%s erro=%s",
+                empresa_id, body.nome_arquivo, exc,
+            )
+            raise HTTPException(status_code=400, detail="Conteúdo base64 inválido.")
+        try:
+            with open(caminho, "wb") as f:
+                f.write(conteudo)
+        except Exception as exc:
+            logger.error(
+                "[erp] Erro ao gravar arquivo em disco: empresa=%s caminho=%s erro=%s",
+                empresa_id, caminho, exc,
+            )
+            raise HTTPException(status_code=500, detail="Erro ao salvar arquivo no servidor.")
+        tamanho = len(conteudo)
+        nome_original = body.nome_arquivo
 
     # Enfileira para disparo assíncrono — API retorna imediatamente
     await db.execute(
         """INSERT INTO arquivos
                (empresa_id, nome_original, nome_arquivo, tamanho, destinatario, nome_destinatario, status, caption)
            VALUES (?, ?, ?, ?, ?, ?, 'queued', ?)""",
-        (empresa_id, body.nome_arquivo, nome_salvo, len(conteudo), telefone, "", body.mensagem),
+        (empresa_id, nome_original, nome_salvo, tamanho, telefone, "", body.mensagem),
     )
     try:
         await _upsert_contato(db, empresa_id, telefone, "")
@@ -335,9 +345,14 @@ async def receber_arquivo(
         logger.debug("[erp] Upsert contato (arquivo) falhou (ignorado): %s", exc)
     await db.commit()
     _record_call(empresa_id, request, "/api/erp/arquivo", True)
-    logger.info("[erp] arquivo enfileirado → empresa=%s fone=%s arquivo=%s tamanho=%dKB ip=%s",
-                empresa_id, telefone, body.nome_arquivo, len(conteudo) // 1024,
-                request.client.host if request.client else "?")
+    if tem_arquivo:
+        logger.info("[erp] arquivo enfileirado → empresa=%s fone=%s arquivo=%s tamanho=%dKB ip=%s",
+                    empresa_id, telefone, nome_original, tamanho // 1024,
+                    request.client.host if request.client else "?")
+    else:
+        logger.info("[erp] mensagem (sem arquivo) enfileirada → empresa=%s fone=%s len=%d ip=%s",
+                    empresa_id, telefone, len(body.mensagem or ""),
+                    request.client.host if request.client else "?")
     return {"ok": True, "queued": True}
 
 

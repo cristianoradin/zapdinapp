@@ -324,3 +324,39 @@ class TestMemoriaIA:
         )
         r = await auth_client.delete(f"/api/chatbot/memoria-ia/{mid}")
         assert r.status_code == 200
+
+
+class TestChatbotFailSafe:
+    """Fail-safe: chatbot só responde se cfg.ativo=true. Sem config (cfg=None) NÃO responde."""
+
+    async def test_chatbot_sem_config_nao_responde(self, db_conn, empresa_usuario):
+        """Regressão: se chatbot_config nem foi cadastrado, NÃO deve responder.
+        Antes do fix: cfg=None apenas logava warning e prosseguia."""
+        from app.services.chatbot_service import responder_mensagem
+        # Garante que NÃO há config (apaga se existir)
+        await db_conn.execute("DELETE FROM chatbot_config WHERE empresa_id=$1", empresa_usuario["empresa_id"])
+        # Chama responder_mensagem — deve retornar sem efeito colateral
+        result = await responder_mensagem(
+            empresa_id=empresa_usuario["empresa_id"],
+            phone="5511999990000@s.whatsapp.net",
+            texto="oi",
+            instance="test-instance",
+            empresa_nome="Teste",
+        )
+        # Não levanta exceção e retorna None (early return)
+        assert result is None
+
+    async def test_chatbot_ativo_false_nao_responde(self, db_conn, empresa_usuario):
+        """ativo=false → não responde (já testado, garantia explícita)."""
+        from app.services.chatbot_service import responder_mensagem
+        await db_conn.execute(
+            "INSERT INTO chatbot_config(empresa_id, ativo) VALUES($1, FALSE) "
+            "ON CONFLICT(empresa_id) DO UPDATE SET ativo=FALSE",
+            empresa_usuario["empresa_id"],
+        )
+        result = await responder_mensagem(
+            empresa_id=empresa_usuario["empresa_id"],
+            phone="5511999990000@s.whatsapp.net",
+            texto="oi", instance="test-instance", empresa_nome="Teste",
+        )
+        assert result is None

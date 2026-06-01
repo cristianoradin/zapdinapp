@@ -93,3 +93,46 @@ class TestErpTokenValidation:
             empresa_usuario["empresa_id"],
         )
         assert row["value"] == hash2, "Banco deve ter o hash do token mais recente"
+
+
+class TestErpArquivoSoTexto:
+    """Endpoint /api/erp/arquivo aceita envio só-texto (sem arquivo)."""
+
+    async def test_so_mensagem_sem_arquivo_201(self, auth_client, empresa_usuario, db_conn):
+        # Pega o token ERP da empresa via /gerar-token
+        gtok = await auth_client.post("/api/erp/gerar-token")
+        token = gtok.json()["token"]
+        # Envia só mensagem (sem nome_arquivo nem conteudo_base64)
+        r = await auth_client.post(
+            "/api/erp/arquivo",
+            headers={"x-token": token},
+            json={"telefone": "11999990000", "mensagem": "Olá só texto!"},
+        )
+        assert r.status_code == 200, r.text
+        assert r.json().get("queued") is True
+
+    async def test_ambos_vazios_400(self, auth_client, empresa_usuario):
+        gtok = await auth_client.post("/api/erp/gerar-token")
+        token = gtok.json()["token"]
+        r = await auth_client.post(
+            "/api/erp/arquivo",
+            headers={"x-token": token},
+            json={"telefone": "11999990000"},
+        )
+        assert r.status_code == 400
+
+    async def test_arquivo_com_mensagem_continua_funcionando(self, auth_client, empresa_usuario):
+        import base64
+        gtok = await auth_client.post("/api/erp/gerar-token")
+        token = gtok.json()["token"]
+        r = await auth_client.post(
+            "/api/erp/arquivo",
+            headers={"x-token": token},
+            json={
+                "telefone": "11999990000",
+                "nome_arquivo": "teste.pdf",
+                "conteudo_base64": base64.b64encode(b"PDF data here").decode(),
+                "mensagem": "olha o pdf",
+            },
+        )
+        assert r.status_code == 200

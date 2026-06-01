@@ -410,29 +410,46 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
                 )
                 return False
 
-        file_path = os.path.join(UPLOAD_DIR, arq["nome_arquivo"])
-        if not os.path.exists(file_path):
-            logger.error(
-                "Queue: arquivo %s NÃO ENCONTRADO em disco: %s — marcado como failed. "
-                "O arquivo pode ter sido excluído manualmente.",
-                arq["id"], file_path,
-            )
-            async with get_db_direct() as db:
-                await db.execute(
-                    "UPDATE arquivos SET status='failed', erro='Arquivo não encontrado no disco' WHERE id=? AND empresa_id=?",
-                    (arq["id"], empresa_id),
-                )
-                await db.commit()
-            return True
-
+        # Modo só-texto: arquivo vazio = enviar apenas a caption como mensagem
+        nome_file_db = arq["nome_arquivo"] or ""
         caption = process_spintax(arq["caption"] or "") if spintax_on else (arq["caption"] or "")
         c_delay = _composing_delay(caption) if composing_on and caption else (random.uniform(1.5, 3.0) if composing_on else 0.0)
 
-        ok, err = await wa_manager.send_file(
-            sessao_id, empresa_id, arq["destinatario"], file_path,
-            arq["nome_original"], caption or None,
-            composing_delay=c_delay,
-        )
+        if not nome_file_db:
+            # Sem arquivo — envio como texto puro
+            if not (caption and caption.strip()):
+                async with get_db_direct() as db:
+                    await db.execute(
+                        "UPDATE arquivos SET status='failed', erro='Sem arquivo e sem mensagem' WHERE id=? AND empresa_id=?",
+                        (arq["id"], empresa_id),
+                    )
+                    await db.commit()
+                return True
+            ok, err = await wa_manager.send_text(
+                sessao_id, empresa_id, arq["destinatario"], caption,
+                composing_delay=c_delay,
+            )
+        else:
+            file_path = os.path.join(UPLOAD_DIR, nome_file_db)
+            if not os.path.exists(file_path):
+                logger.error(
+                    "Queue: arquivo %s NÃO ENCONTRADO em disco: %s — marcado como failed. "
+                    "O arquivo pode ter sido excluído manualmente.",
+                    arq["id"], file_path,
+                )
+                async with get_db_direct() as db:
+                    await db.execute(
+                        "UPDATE arquivos SET status='failed', erro='Arquivo não encontrado no disco' WHERE id=? AND empresa_id=?",
+                        (arq["id"], empresa_id),
+                    )
+                    await db.commit()
+                return True
+
+            ok, err = await wa_manager.send_file(
+                sessao_id, empresa_id, arq["destinatario"], file_path,
+                arq["nome_original"], caption or None,
+                composing_delay=c_delay,
+            )
         st = "sent" if ok else "failed"
         async with get_db_direct() as db:
             await db.execute(

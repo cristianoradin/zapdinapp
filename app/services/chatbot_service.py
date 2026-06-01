@@ -298,10 +298,11 @@ async def responder_mensagem(
             ) as cur:
                 cfg = await cur.fetchone()
 
-            if not cfg:
-                logger.warning("[chatbot] Sem config de chatbot para empresa %s — prosseguindo com defaults", empresa_id)
-            elif not cfg["ativo"]:
-                logger.info("[chatbot] Chatbot desativado para empresa %s", empresa_id)
+            # Fail-safe: sem config OU ativo=false → não responde.
+            # Antes prosseguia com defaults quando cfg=None — bug que fazia
+            # responder mesmo após desabilitar (registro nunca era criado).
+            if not cfg or not cfg["ativo"]:
+                logger.info("[chatbot] Chatbot desativado/sem config para empresa %s — não responde", empresa_id)
                 return
 
             system_prompt = (cfg["system_prompt"] if cfg and cfg["system_prompt"]
