@@ -1,15 +1,49 @@
 <div class="page" id="page-dm-enviadas">
-      <div class="alert" id="alertEnviadas"></div>
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
-          <h2 style="font-size:.9rem;font-weight:700">Campanhas Concluídas</h2>
-          <button class="btn btn-ghost btn-sm" onclick="loadCampanhasEnviadas()" style="display:inline-flex;align-items:center;gap:.35rem">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            Atualizar
-          </button>
-        </div>
-        <div id="listaCampanhasEnviadas">
-          <div style="text-align:center;padding:3rem;color:var(--text-mid)">Carregando…</div>
-        </div>
-      </div>
+
+  <!-- Group tabs -->
+  <div class="wa-tabs cols-5">
+    <button class="wa-tab" onclick="navigate('dm-dashboard')">
+      <span class="wa-tab-ic"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
+      <span class="wa-tab-label">Campanhas</span>
+      <span class="wa-tab-go"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+    </button>
+    <button class="wa-tab" onclick="navigate('dm-contatos')">
+      <span class="wa-tab-ic"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></span>
+      <span class="wa-tab-label">Contatos</span>
+      <span class="wa-tab-go"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+    </button>
+    <button class="wa-tab" onclick="navigate('dm-campanha')">
+      <span class="wa-tab-ic"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></span>
+      <span class="wa-tab-label">Criar Campanhas</span>
+      <span class="wa-tab-go"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+    </button>
+    <button class="wa-tab" onclick="navigate('dm-historico')">
+      <span class="wa-tab-ic"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+      <span class="wa-tab-label">Gerenciar</span>
+      <span class="wa-tab-go"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+    </button>
+    <button class="wa-tab on" onclick="navigate('dm-enviadas')">
+      <span class="wa-tab-ic"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+      <span class="wa-tab-label">Enviadas</span>
+      <span class="wa-tab-go"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span>
+    </button>
+  </div>
+
+  <div class="alert" id="alertEnviadas"></div>
+  <div class="card pad">
+    <div class="card-head">
+      <span class="ci t-green">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      </span>
+      <h2>Campanhas Concluídas</h2>
+      <span class="grow"></span>
+      <button class="btn ghost sm" onclick="loadCampanhasEnviadas()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        Atualizar
+      </button>
     </div>
+    <div id="listaCampanhasEnviadas">
+      <div style="text-align:center;padding:3rem;color:var(--text-3)">Carregando…</div>
+    </div>
+  </div>
+</div>

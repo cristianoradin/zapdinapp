@@ -256,7 +256,7 @@ async def wa_restart_session(
     try:
         # Busca dados da sessão no banco para recriar depois
         async with db.execute(
-            "SELECT id, nome, empresa_id FROM sessoes WHERE id = $1",
+            "SELECT id, nome, empresa_id FROM sessoes_wa WHERE id = ?",
             (sessao_id,),
         ) as cur:
             row = await cur.fetchone()

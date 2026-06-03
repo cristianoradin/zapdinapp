@@ -16,7 +16,7 @@
     const el = document.getElementById(id);
     if (!el) return;
     el.textContent = txt;
-    el.style.color = ok ? 'var(--accent)' : '#ef4444';
+    el.style.color = ok ? 'var(--primary-deep)' : 'var(--red)';
   }
 
   function _fmtData(iso) {
@@ -66,11 +66,11 @@
               ${_esc(u.username)}
             </span>
           </td>
-          <td style="padding:.6rem .75rem;font-size:.82rem;color:var(--text-muted)">${_fmtData(u.created_at)}</td>
+          <td style="padding:.6rem .75rem;font-size:.82rem;color:var(--text-3)">${_fmtData(u.created_at)}</td>
           <td style="padding:.6rem .75rem;text-align:right">
             <div style="display:flex;gap:.5rem;justify-content:flex-end">
               <button class="btn btn-sm btn-ghost" onclick="usrAbrirSenha(${u.id}, '${_esc(u.username)}')">Alterar senha</button>
-              <button class="btn btn-sm" style="background:#fee2e2;color:#b91c1c;border:none"
+              <button class="btn btn-sm" style="background:var(--red-bg);color:var(--red);border:none"
                 onclick="usrAbrirDel(${u.id}, '${_esc(u.username)}')">Remover</button>
             </div>
           </td>
@@ -79,7 +79,7 @@
 
       if (table) table.style.display = 'table';
     } catch (e) {
-      if (loading) { loading.textContent = 'Erro ao carregar usuários.'; loading.style.color = '#ef4444'; }
+      if (loading) { loading.textContent = 'Erro ao carregar usuários.'; loading.style.color = 'var(--red)'; }
     }
   }
 

@@ -19,14 +19,15 @@
   let _filtroNota  = 'todas';
   let _data        = { dash: null, lista: [] };
 
-  const _corNota = { 1: '#dc2626', 2: '#f97316', 3: '#eab308', 4: '#84cc16', 5: '#22c55e' };
-  const _bgNota  = { 1: '#fff5f5', 2: '#fff7ed', 3: '#fefce8', 4: '#f7fee7', 5: '#f0fdf4' };
+  const _corNota = { 1: 'var(--red)', 2: '#f97316', 3: '#eab308', 4: '#84cc16', 5: '#22c55e' };
+  const _bgNota  = { 1: '#fff5f5', 2: '#fff7ed', 3: '#fefce8', 4: '#f7fee7', 5: 'var(--primary-soft)' };
 
   // ── Helpers privados ────────────────────────────────────────────────────────
   function _starHtml(nota) {
-    let s = '';
+    let s = '<span style="display:inline-flex;gap:1px;align-items:center">';
     for (let i = 1; i <= 5; i++)
-      s += `<span style="color:${i <= nota ? _corNota[nota] : '#d1d5db'};font-size:.95rem">★</span>`;
+      s += `<svg width="14" height="14" viewBox="0 0 24 24" fill="${i <= nota ? 'var(--star)' : 'var(--surface-3)'}"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
+    s += '</span>';
     return s;
   }
 
@@ -36,9 +37,9 @@
       if (el) el.textContent = '—';
     });
     const dist = document.getElementById('avalDistribuicao');
-    if (dist) dist.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-mid)">Sem dados para o período</div>';
+    if (dist) dist.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-2)">Sem dados para o período</div>';
     const rank = document.getElementById('avalRanking');
-    if (rank) rank.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-mid)">Sem dados</div>';
+    if (rank) rank.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-2)">Sem dados</div>';
   }
 
   async function _loadDash() {
@@ -63,14 +64,14 @@
           document.getElementById('avalAlertaTexto').textContent =
             `⚠️ ${ruins.length} avaliação${ruins.length > 1 ? 'ões' : ''} com nota baixa nos últimos ${_dias} dias`;
           document.getElementById('avalAlertaLista').innerHTML = ruins.map(a => `
-            <div style="display:flex;align-items:center;gap:.75rem;background:#fff;border:1px solid #fecaca;border-radius:8px;padding:.5rem .875rem;border-left:3px solid #dc2626">
-              <div style="width:32px;height:32px;border-radius:50%;background:#fee2e2;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;color:#b91c1c;flex-shrink:0">${(a.nome||'?').charAt(0).toUpperCase()}</div>
+            <div style="display:flex;align-items:center;gap:.75rem;background:#fff;border:1px solid color-mix(in srgb,var(--red) 30%,transparent);border-radius:8px;padding:.5rem .875rem;border-left:3px solid var(--red)">
+              <div style="width:32px;height:32px;border-radius:50%;background:var(--red-bg);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;color:var(--red);flex-shrink:0">${(a.nome||'?').charAt(0).toUpperCase()}</div>
               <div style="flex:1;min-width:0">
                 <div style="font-weight:600;font-size:.84rem">${escHtml(a.nome||'—')}</div>
-                <div style="font-size:.75rem;color:var(--text-mid)">${a.telefone||''}</div>
+                <div style="font-size:.75rem;color:var(--text-2)">${a.telefone||''}</div>
               </div>
               <div>${_starHtml(a.nota)}</div>
-              <div style="font-size:.75rem;color:var(--text-mid);white-space:nowrap">${a.data||''}</div>
+              <div style="font-size:.75rem;color:var(--text-2);white-space:nowrap">${a.data||''}</div>
             </div>`).join('');
           alertaDiv.style.display = '';
         } else {
@@ -78,48 +79,46 @@
         }
       }
 
-      // Distribuição por nota
+      // Distribuição por nota — .dist-row pattern (prototype)
       const dist      = d.distribuicao || {};
       const totalResp = d.total_respondidas || 1;
-      const notaLabels = { 5: '⭐⭐⭐⭐⭐ Excelente', 4: '⭐⭐⭐⭐ Bom', 3: '⭐⭐⭐ Regular', 2: '⭐⭐ Ruim', 1: '⭐ Péssimo' };
-      const notaCores  = { 5: '#22c55e', 4: '#84cc16', 3: '#eab308', 2: '#f97316', 1: '#ef4444' };
+      const notaLabels = { 5: 'Excelente', 4: 'Bom', 3: 'Regular', 2: 'Ruim', 1: 'Péssimo' };
+      function _starsRow(n) {
+        let h = '';
+        for (let i = 1; i <= 5; i++) {
+          h += `<svg width="13" height="13" viewBox="0 0 24 24" fill="${i<=n?'var(--star)':'var(--surface-3)'}" style="flex:none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
+        }
+        return `<span style="display:inline-flex;gap:1px">${h}</span>`;
+      }
       document.getElementById('avalDistribuicao').innerHTML = [5, 4, 3, 2, 1].map(n => {
         const qtd = dist[n] || 0;
         const pct = totalResp > 0 ? Math.round((qtd / totalResp) * 100) : 0;
         return `
-          <div style="display:flex;align-items:center;gap:.625rem">
-            <div style="white-space:nowrap;font-size:.78rem;font-weight:600;color:var(--text-mid);min-width:140px">${notaLabels[n]}</div>
-            <div style="flex:1;height:10px;background:var(--border);border-radius:5px;overflow:hidden">
-              <div style="height:100%;width:${pct}%;background:${notaCores[n]};border-radius:5px;transition:width .7s ease"></div>
-            </div>
-            <div style="font-size:.75rem;font-weight:700;color:var(--text-mid);white-space:nowrap;min-width:55px;text-align:right">${qtd} (${pct}%)</div>
+          <div class="dist-row">
+            <div class="lab">${_starsRow(n)} ${notaLabels[n]}</div>
+            <div class="bar"><i style="width:${pct}%"></i></div>
+            <div class="val">${pct}%</div>
           </div>`;
       }).join('');
 
-      // Ranking vendedores
+      // Ranking vendedores — .rank-row pattern (prototype)
       const ranking = Array.isArray(d.ranking_vendedores) ? d.ranking_vendedores : [];
       const rankEl  = document.getElementById('avalRanking');
       if (!ranking.length) {
-        rankEl.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-mid)">Sem dados</div>';
+        rankEl.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-3)">Sem dados</div>';
       } else {
-        const melhorMedia = ranking[0].media || 5;
         rankEl.innerHTML = ranking.map((v, i) => {
-          const pct      = melhorMedia > 0 ? Math.round((v.media / melhorMedia) * 100) : 0;
-          const barColor = i === 0 ? '#22c55e' : i === ranking.length - 1 && ranking.length > 1 ? '#ef4444' : 'var(--accent)';
-          const numClass = i === 0 ? 'rank-num gold' : i === 1 ? 'rank-num silver' : i === 2 ? 'rank-num bronze' : 'rank-num';
+          const rnClass = i === 0 ? 'g1' : i === 1 ? 'g2' : i === 2 ? 'g3' : 'gx';
+          const media   = typeof v.media === 'number' ? v.media.toFixed(1) : '—';
           return `
             <div class="rank-row">
-              <div class="${numClass}">${i + 1}</div>
-              <div class="rank-bar-wrap">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.2rem">
-                  <span class="rank-name" style="max-width:140px">${escHtml(v.vendedor || '—')}</span>
-                  <span style="font-size:.7rem;color:var(--text-mid)">${v.total} aval.</span>
-                </div>
-                <div class="rank-bar-bg">
-                  <div class="rank-bar-fill" style="width:${pct}%;background:${barColor}"></div>
-                </div>
-              </div>
-              <div class="rank-stat">${typeof v.media === 'number' ? v.media.toFixed(1) : '—'} ★</div>
+              <span class="rn ${rnClass}">${i + 1}</span>
+              <span style="font-weight:650;flex:1">${escHtml(v.vendedor || '—')}</span>
+              <span style="color:var(--text-3);font-size:12.5px;margin-right:12px">${v.total} aval.</span>
+              <span style="display:flex;align-items:center;gap:5px;font-weight:800">
+                ${media}
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="var(--star)"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              </span>
             </div>`;
         }).join('');
       }
@@ -139,31 +138,29 @@
     _renderTabela();
   }
 
-  function _renderRow(aval) {
+  function _renderRow(aval, idx) {
     const nota          = aval.nota || 0;
-    const borderColor   = _corNota[nota] || '#e4e6ea';
-    const bgColor       = _bgNota[nota]  || '#fff';
     const inicial       = (aval.nome || '?').charAt(0).toUpperCase();
+    const avBg          = ['#1fa855', '#2f80ed', '#7b61ff'][idx % 3];
     const temComentario = aval.comentario && aval.comentario.trim().length > 0;
     const comentarioHtml = temComentario
-      ? `<div style="font-size:.78rem;color:var(--text-mid);font-style:italic;margin-top:.2rem">"${escHtml(aval.comentario)}"</div>` : '';
+      ? `<div style="font-size:12.5px;color:var(--text-3);font-style:italic;margin-top:2px">"${escHtml(aval.comentario)}"</div>` : '';
     return `
-      <tr style="border-left:3px solid ${borderColor};background:${bgColor}">
+      <tr>
         <td>
-          <div style="display:flex;align-items:center;gap:.625rem">
-            <div style="width:32px;height:32px;border-radius:50%;background:${borderColor}22;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;color:${borderColor};flex-shrink:0">${inicial}</div>
-            <div>
-              <div style="font-weight:600;font-size:.875rem;display:flex;align-items:center;gap:.35rem">
-                ${escHtml(aval.nome||'—')} ${temComentario ? '<span title="Tem comentário" style="font-size:.75rem">💬</span>' : ''}
-              </div>
+          <span style="display:inline-flex;align-items:center;gap:11px">
+            <span class="avatar-sm" style="background:${avBg}">${inicial}</span>
+            <span>
+              <b>${escHtml(aval.nome||'—')}</b>
+              ${temComentario ? '<span title="Tem comentário" style="margin-left:6px">💬</span>' : ''}
               ${comentarioHtml}
-            </div>
-          </div>
+            </span>
+          </span>
         </td>
-        <td style="font-family:monospace;font-size:.84rem;color:var(--text-mid)">${_fmtPhone(aval.telefone||'')}</td>
-        <td style="font-size:.84rem">${escHtml(aval.vendedor||'—')}</td>
+        <td class="mono">${_fmtPhone(aval.telefone||'')}</td>
+        <td>${escHtml(aval.vendedor||'—')}</td>
         <td style="text-align:center">${_starHtml(nota)}</td>
-        <td style="font-size:.8rem;color:var(--text-mid);white-space:nowrap">${aval.data||'—'}</td>
+        <td class="mono" style="text-align:right">${aval.data||'—'}</td>
       </tr>`;
   }
 
@@ -182,7 +179,7 @@
     const tbody = document.getElementById('avalTbody');
     tbody.innerHTML = slice.length
       ? slice.map(_renderRow).join('')
-      : `<tr><td colspan="5" style="text-align:center;padding:2.5rem;color:var(--text-mid)">Nenhuma avaliação encontrada.</td></tr>`;
+      : `<tr><td colspan="5" style="text-align:center;padding:2.5rem;color:var(--text-2)">Nenhuma avaliação encontrada.</td></tr>`;
 
     const infoEl = document.getElementById('avalPageInfo');
     if (infoEl) infoEl.textContent = total > 0
@@ -203,8 +200,7 @@
     [7, 30, 90].forEach(d => {
       const btn = document.getElementById('avalBtn' + d);
       if (!btn) return;
-      btn.style.background = d === dias ? 'var(--accent)' : 'transparent';
-      btn.style.color      = d === dias ? '#fff'          : 'var(--text-mid)';
+      btn.classList.toggle('on', d === dias);
     });
     loadAvaliacoes();
   };
@@ -215,8 +211,7 @@
     ['todas','otimas','regulares','ruins'].forEach(f => {
       const btn = document.getElementById('avalFiltro' + f.charAt(0).toUpperCase() + f.slice(1));
       if (!btn) return;
-      btn.className = f === filtro ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-ghost';
-      btn.style.cssText = 'border-radius:16px;font-size:.78rem;padding:.3rem .85rem';
+      btn.classList.toggle('on', f === filtro);
     });
     _renderTabela();
   };

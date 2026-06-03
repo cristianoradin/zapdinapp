@@ -33,22 +33,52 @@ def _survey_template_path() -> _Path:
     return base / "static" / "survey.html"
 
 
-def _render_survey(body_html: str, nome_empresa: str, token: str) -> str:
+_DEFAULT_PRIMARY = "#25d366"
+_HEX_RE = __import__("re").compile(r"^#[0-9a-fA-F]{6}$")
+
+
+async def _empresa_review_color(empresa_id: int | None) -> str:
+    """Lê review_color da tabela config (por empresa). Default verde WhatsApp."""
+    if not empresa_id:
+        return _DEFAULT_PRIMARY
+    try:
+        async with get_db_direct() as db:
+            async with db.execute(
+                "SELECT value FROM config WHERE empresa_id=? AND key=?",
+                (empresa_id, "review_color"),
+            ) as cur:
+                row = await cur.fetchone()
+    except Exception:
+        return _DEFAULT_PRIMARY
+    if row and row["value"] and _HEX_RE.match(row["value"]):
+        return row["value"]
+    return _DEFAULT_PRIMARY
+
+
+def _render_survey(body_html: str, nome_empresa: str, token: str, primary_color: str = _DEFAULT_PRIMARY) -> str:
     """Renderiza survey.html substituindo os placeholders com valores escapados."""
     try:
         tmpl = _survey_template_path().read_text(encoding="utf-8")
     except Exception:
         # Fallback mínimo se o arquivo não existir (improvável em produção)
         return f"<html><body>{body_html}</body></html>"
+    if not _HEX_RE.match(primary_color or ""):
+        primary_color = _DEFAULT_PRIMARY
     return (
         tmpl
         .replace("{{EMPRESA}}", _html.escape(nome_empresa))
         .replace("{{TOKEN_JS}}", _json.dumps(token))   # JSON-encoded — seguro em contexto JS
+        .replace("{{PRIMARY_COLOR}}", primary_color)
         .replace("{{BODY_HTML}}", body_html)
     )
 
 
-def _survey_page(nome_empresa: str, token: str, vendedor: str = "", already_answered: bool = False, invalid: bool = False) -> str:
+_STAR_SVG = (
+    '<svg viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>'
+)
+
+
+def _survey_page(nome_empresa: str, token: str, vendedor: str = "", already_answered: bool = False, invalid: bool = False, primary_color: str = _DEFAULT_PRIMARY) -> str:
     """Monta o HTML da página de avaliação usando o template externo."""
     if invalid:
         body_html = """
@@ -69,25 +99,23 @@ def _survey_page(nome_empresa: str, token: str, vendedor: str = "", already_answ
             f'<div class="vendedor">Vendedor: <strong>{_html.escape(vendedor)}</strong></div>'
             if vendedor else ''
         )
+        stars_html = "".join(
+            f'<button class="star" data-v="{i}" onclick="setStar({i})" title="{lbl}" type="button">{_STAR_SVG}</button>'
+            for i, lbl in enumerate(["Péssimo", "Ruim", "Regular", "Bom", "Excelente"], start=1)
+        )
         body_html = f"""
         <div class="card" id="formCard">
           <div class="empresa-name">{_html.escape(nome_empresa)}</div>
           <h1>Como foi seu atendimento?</h1>
           {vendedor_html}
           <p class="sub">Sua avaliação nos ajuda a melhorar cada dia mais.</p>
-          <div class="stars" id="starsRow">
-            <button class="star" data-v="1" onclick="setStar(1)" title="Péssimo">⭐</button>
-            <button class="star" data-v="2" onclick="setStar(2)" title="Ruim">⭐</button>
-            <button class="star" data-v="3" onclick="setStar(3)" title="Regular">⭐</button>
-            <button class="star" data-v="4" onclick="setStar(4)" title="Bom">⭐</button>
-            <button class="star" data-v="5" onclick="setStar(5)" title="Excelente">⭐</button>
-          </div>
+          <div class="stars" id="starsRow">{stars_html}</div>
           <div class="star-labels">
-            <span>Péssimo</span><span></span><span>Regular</span><span></span><span>Excelente</span>
+            <span>Péssimo</span><span>Regular</span><span>Excelente</span>
           </div>
           <div id="nota-val" class="nota-label" style="display:none"></div>
           <textarea id="comentario" placeholder="Deixe um comentário (opcional)…" rows="3"></textarea>
-          <button class="btn-send" id="btnEnviar" onclick="enviarAvaliacao()" disabled>Enviar Avaliação</button>
+          <button class="btn-send" id="btnEnviar" onclick="enviarAvaliacao()" disabled type="button">Enviar Avaliação</button>
           <div id="msgErro" class="msg-erro" style="display:none"></div>
         </div>
         <div class="card" id="thanksCard" style="display:none">
@@ -96,7 +124,7 @@ def _survey_page(nome_empresa: str, token: str, vendedor: str = "", already_answ
           <p class="sub">Sua avaliação foi registrada com sucesso.<br>Agradecemos seu feedback!</p>
         </div>"""
 
-    return _render_survey(body_html, nome_empresa, token)
+    return _render_survey(body_html, nome_empresa, token, primary_color)
 
 
 # ── Rotas públicas ─────────────────────────────────────────────────────────────
@@ -108,12 +136,15 @@ async def survey_page(t: str = ""):
     # Token DEMO → página de demonstração com dados de exemplo
     if t.upper() == "DEMO":
         nome_emp = "Sua Empresa"
+        empresa_id_demo = None
         async with get_db_direct() as db:
-            async with db.execute("SELECT nome FROM empresas LIMIT 1") as cur:
+            async with db.execute("SELECT id, nome FROM empresas LIMIT 1") as cur:
                 row_emp = await cur.fetchone()
             if row_emp:
                 nome_emp = row_emp["nome"]
-        return HTMLResponse(_survey_page(nome_emp, "DEMO", vendedor="João Silva"))
+                empresa_id_demo = row_emp["id"]
+        color = await _empresa_review_color(empresa_id_demo)
+        return HTMLResponse(_survey_page(nome_emp, "DEMO", vendedor="João Silva", primary_color=color))
     async with get_db_direct() as db:
         async with db.execute(
             "SELECT empresa_id, nome_cliente, vendedor, nota FROM avaliacoes WHERE token = ?",
@@ -122,6 +153,7 @@ async def survey_page(t: str = ""):
             row = await cur.fetchone()
         if not row:
             return HTMLResponse(_survey_page("", t, invalid=True))
+        color = await _empresa_review_color(row["empresa_id"])
         if row["nota"] is not None:
             # Busca nome da empresa
             async with db.execute(
@@ -129,14 +161,14 @@ async def survey_page(t: str = ""):
             ) as cur2:
                 emp = await cur2.fetchone()
             nome_emp = emp["nome"] if emp else ""
-            return HTMLResponse(_survey_page(nome_emp, t, already_answered=True))
+            return HTMLResponse(_survey_page(nome_emp, t, already_answered=True, primary_color=color))
         # Busca nome da empresa
         async with db.execute(
             "SELECT nome FROM empresas WHERE id = ?", (row["empresa_id"],)
         ) as cur3:
             emp = await cur3.fetchone()
         nome_emp = emp["nome"] if emp else ""
-        return HTMLResponse(_survey_page(nome_emp, t, vendedor=row["vendedor"] or ""))
+        return HTMLResponse(_survey_page(nome_emp, t, vendedor=row["vendedor"] or "", primary_color=color))
 
 
 _cached_demo_link: str = ""
@@ -164,7 +196,8 @@ async def survey_preview(empresa_id: Optional[int] = None):
                 row = await cur.fetchone()
             if row:
                 nome_emp = row["nome"]
-    return HTMLResponse(_survey_page(nome_emp, "DEMO", vendedor="João Silva"))
+    color = await _empresa_review_color(empresa_id)
+    return HTMLResponse(_survey_page(nome_emp, "DEMO", vendedor="João Silva", primary_color=color))
 
 
 class AvaliacaoResposta(BaseModel):

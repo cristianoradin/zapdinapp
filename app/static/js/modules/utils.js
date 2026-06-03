@@ -80,8 +80,8 @@
     }
 
     const colors = {
-      success: { bg: '#f0fdf4', border: '#22c55e', text: '#15803d', icon: '✅' },
-      error:   { bg: '#fef2f2', border: '#ef4444', text: '#b91c1c', icon: '❌' },
+      success: { bg: 'var(--primary-soft)', border: '#22c55e', text: '#15803d', icon: '✅' },
+      error:   { bg: 'var(--red-bg)', border: 'var(--red)', text: 'var(--red)', icon: '❌' },
       warning: { bg: '#fffbeb', border: '#f59e0b', text: '#92400e', icon: '⚠️' },
       info:    { bg: '#eff6ff', border: '#3b82f6', text: '#1d4ed8', icon: 'ℹ️' },
     };

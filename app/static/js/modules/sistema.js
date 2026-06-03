@@ -8,6 +8,18 @@
 
   // ── Sistema — navegação interna ─────────────────────────────────────────────
 
+  // Navega pra page-sistema e ativa um painel específico (usado pelo topnav fora do sistema)
+  window.sysGoTo = async function sysGoTo(panel) {
+    if (panel === 'token') {
+      window.navigate('token');
+      return;
+    }
+    await window.navigate('sistema');
+    // espera DOM carregar e tab existir
+    const el = document.querySelector(`#page-sistema .sys-tab[data-panel="${panel}"]`);
+    if (el && typeof window.sysNav === 'function') window.sysNav(el, panel);
+  };
+
   window.sysNav = function sysNav(el, panel) {
     const page = document.getElementById('page-sistema');
     const sysContent = page ? page.querySelector('.sys-content') : null;
@@ -17,9 +29,10 @@
     }
     // Escopa ao #page-sistema — não interfere nos menus/painéis do Chatbot
     const scope = page || document;
-    scope.querySelectorAll('.sys-menu-item').forEach(i => i.classList.remove('active'));
+    scope.querySelectorAll('.sys-menu-item').forEach(i => { i.classList.remove('active'); i.classList.remove('on'); });
     scope.querySelectorAll('.sys-panel').forEach(p => p.classList.remove('active'));
     el.classList.add('active');
+    el.classList.add('on');
     if (target) target.classList.add('active');
     if (panel === 'dominio' && window.dominio) dominio.carregar();
     if (panel === 'log' && window.syslog)    syslog.carregar(true);
@@ -162,11 +175,22 @@
     const btn  = document.getElementById('aiToggleAtivo-' + provider);
     if (card) {
       if (ativo) card.classList.remove('ai-card-off'); else card.classList.add('ai-card-off');
+      const enableWrap = card.querySelector('.ai-card-enable');
+      if (enableWrap) enableWrap.classList.toggle('on', ativo);
+      const cb = card.querySelector('.ai-enable-cb');
+      if (cb) cb.checked = ativo;
     }
     if (btn) {
       btn.title = ativo ? 'Desativar esta IA' : 'Ativar esta IA';
       btn.classList.toggle('off', !ativo);
     }
+  };
+
+  window.aiToggleEnable = function aiToggleEnable(cb) {
+    const card = cb.closest('.ai-card');
+    if (!card) return;
+    const provider = card.id.replace('aiCard-', '');
+    window.aiToggleAtivo(provider);
   };
 
   window.aiToggleAtivo = async function aiToggleAtivo(provider) {
@@ -205,7 +229,176 @@
       }
     } catch {}
     await _aiCarregarTodos();
+    await _iacRefresh();
   }
+
+  // ── Central de IA — master switches + stats ─────────────────────────────
+
+  async function _iacRefresh() {
+    try {
+      const [cfg, conversas, stats] = await Promise.all([
+        fetch('/api/chatbot/config').then(r => r.ok ? r.json() : {}),
+        fetch('/api/chatbot/conversas').then(r => r.ok ? r.json() : []),
+        fetch('/api/contabil/dashboard').then(r => r.ok ? r.json() : {}),
+      ]);
+
+      // Master chatbot toggle
+      const cbMaster = document.getElementById('iacChatbotMaster');
+      const cbCard   = document.getElementById('iacChatbotCard');
+      const cbSub    = document.getElementById('iacChatbotSub');
+      const cbActive = !!cfg.ativo;
+      if (cbMaster) cbMaster.checked = cbActive;
+      if (cbCard) { cbCard.classList.toggle('on', cbActive); cbCard.classList.toggle('off', !cbActive); }
+      if (cbSub)  cbSub.textContent = cbActive ? 'Ativo · respondendo automaticamente' : 'Desligado · não responde nenhum contato';
+
+      // Stats chatbot
+      const ativos   = (conversas || []).filter(c => c.chatbot_ativo !== false).length;
+      const pausados = (conversas || []).filter(c => c.chatbot_ativo === false).length;
+      const elA = document.getElementById('iacContatosAtivos');   if (elA) elA.textContent = ativos;
+      const elP = document.getElementById('iacContatosPausados'); if (elP) elP.textContent = pausados;
+
+      // Msgs últimas 24h (soma total_msgs)
+      const totalMsgs = (conversas || []).reduce((s, c) => s + (c.total_msgs || 0), 0);
+      const elM = document.getElementById('iacMsgs24h'); if (elM) elM.textContent = totalMsgs;
+
+      // FAQ count
+      try {
+        const faq = await fetch('/api/chatbot/faq').then(r => r.ok ? r.json() : []);
+        const elF = document.getElementById('iacFaqCount'); if (elF) elF.textContent = (faq || []).length;
+      } catch {}
+
+      // Master OCR (config key 'ocr_ativo' — default ON)
+      try {
+        const gcfg = await fetch('/api/config').then(r => r.ok ? r.json() : {});
+        const ocrAtivo = gcfg.ocr_ativo === undefined ? true
+                        : (gcfg.ocr_ativo === '1' || gcfg.ocr_ativo === true || gcfg.ocr_ativo === 'true');
+        const om = document.getElementById('iacOcrMaster');
+        const oc = document.getElementById('iacOcrCard');
+        if (om) om.checked = ocrAtivo;
+        if (oc) { oc.classList.toggle('on', ocrAtivo); oc.classList.toggle('off', !ocrAtivo); }
+      } catch {}
+
+      // OCR stats (dashboard contábil)
+      const elD = document.getElementById('iacDocsHoje'); if (elD) elD.textContent = stats.docs_hoje ?? '0';
+      const elT = document.getElementById('iacTaxaOcr');  if (elT) elT.textContent = (stats.taxa_ocr ?? 0) + '%';
+    } catch (e) {
+      console.error('[iac] refresh erro:', e);
+    }
+  }
+
+  window.iacToggleChatbot = async function iacToggleChatbot(cb) {
+    const ativo = !!cb.checked;
+    const card = document.getElementById('iacChatbotCard');
+    if (card) { card.classList.toggle('on', ativo); card.classList.toggle('off', !ativo); }
+    const sub = document.getElementById('iacChatbotSub');
+    if (sub) sub.textContent = ativo ? 'Ativo · respondendo automaticamente' : 'Desligado · não responde nenhum contato';
+    try {
+      // Lê system_prompt atual pra não sobrescrever
+      const cur = await fetch('/api/chatbot/config').then(r => r.ok ? r.json() : {});
+      await api('POST', '/api/chatbot/config', { ativo, system_prompt: cur.system_prompt || '' });
+    } catch {
+      cb.checked = !ativo; // rollback
+    }
+  };
+
+  window.iacToggleOcr = async function iacToggleOcr(cb) {
+    const ativo = !!cb.checked;
+    const card = document.getElementById('iacOcrCard');
+    if (card) { card.classList.toggle('on', ativo); card.classList.toggle('off', !ativo); }
+    try {
+      await api('POST', '/api/config', { ocr_ativo: ativo ? '1' : '0' });
+    } catch {
+      cb.checked = !ativo;
+    }
+  };
+
+  // Refresh ao abrir painel
+  document.addEventListener('sys-panel-activated', (e) => {
+    if (e.detail === 'token-ia') _iacRefresh();
+  });
+
+  // ── Configuração inline: abre painel Chatbot dentro da Central de IA ────
+  const _iacTitles = {
+    personalidade: 'Personalidade do Bot',
+    boasvindas:    'Mensagem de Boas-vindas',
+    faq:           'Perguntas & Respostas',
+    memoria:       'Memória IA',
+    aprendizado:   'Aprendizado',
+  };
+
+  window.iacOpenConfig = async function iacOpenConfig(panel) {
+    // Garante que chatbot.html foi carregada (cb-panel-X existe no DOM)
+    if (typeof window._loadPage === 'function') {
+      try { await window._loadPage('chatbot'); } catch {}
+    } else if (!document.getElementById('cb-panel-' + panel)) {
+      // fallback: força carga via navigate
+      const cur = location.pathname;
+      await window.navigate('chatbot');
+      await new Promise(r => setTimeout(r, 200));
+      // não exibe — só carrega no DOM
+    }
+
+    const target = document.getElementById('cb-panel-' + panel);
+    if (!target) {
+      console.warn('[iac] painel não encontrado:', panel);
+      return;
+    }
+
+    const overview = document.getElementById('iacOverview');
+    const slot     = document.getElementById('iacConfigSlot');
+    if (!overview || !slot) return;
+
+    // Esconde overview, prepara slot
+    overview.style.display = 'none';
+    slot.style.display = 'block';
+    slot.innerHTML = '';
+
+    // Header: voltar + título
+    const head = document.createElement('div');
+    head.style.cssText = 'display:flex;align-items:center;gap:.75rem;margin-bottom:14px';
+    head.innerHTML = `
+      <button class="btn btn-ghost btn-sm" onclick="iacCloseConfig()" style="padding:.4rem .7rem">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        Voltar
+      </button>
+      <h2 style="margin:0;font-size:18px;font-weight:800">${_iacTitles[panel] || panel}</h2>`;
+    slot.appendChild(head);
+
+    // Move painel pra slot
+    target._iacOrigParent = target.parentElement;
+    target._iacOrigNext   = target.nextSibling;
+    target.classList.add('active');
+    target.style.marginTop = '0';
+    slot.appendChild(target);
+
+    // Carrega dados
+    if (window.chatbot) {
+      if (panel === 'personalidade') chatbot.carregarConfig();
+      else if (panel === 'boasvindas') chatbot.carregarBoasVindas();
+      else if (panel === 'faq')         chatbot.carregarFaq();
+      else if (panel === 'aprendizado') chatbot.carregarAprendizado();
+      else if (panel === 'memoria')     chatbot.carregarMemoria();
+    }
+  };
+
+  window.iacCloseConfig = function iacCloseConfig() {
+    const slot     = document.getElementById('iacConfigSlot');
+    const overview = document.getElementById('iacOverview');
+    if (!slot || !overview) return;
+
+    // Restaura painel pro DOM original
+    const panel = slot.querySelector('[id^="cb-panel-"]');
+    if (panel && panel._iacOrigParent) {
+      panel.classList.remove('active');
+      panel.style.marginTop = '';
+      panel._iacOrigParent.insertBefore(panel, panel._iacOrigNext || null);
+    }
+
+    slot.innerHTML = '';
+    slot.style.display = 'none';
+    overview.style.display = '';
+    _iacRefresh(); // re-puxa stats
+  };
 
   // Registra no ZD.registry
   window.addEventListener('load', () => {

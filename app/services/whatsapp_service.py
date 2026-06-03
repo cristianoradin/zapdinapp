@@ -207,31 +207,14 @@ class WhatsAppSession:
                                 self.status = "connected"
                                 self.qr_data = None
                                 self._crash_count = 0  # P3: reset ao conectar
-                                # Extrai número do WhatsApp conectado via window.Store
-                                try:
-                                    raw = await self._page.evaluate(
-                                        "() => { try { return window.Store && window.Store.Me ? window.Store.Me.wid._serialized || window.Store.Me.wid.user : null } catch(e) { return null } }"
-                                    )
-                                    if raw:
-                                        # serialized vem como "5511999999999@c.us" → fica só números
-                                        self.phone = raw.split("@")[0]
-                                    else:
-                                        self.phone = None
-                                except Exception:
-                                    self.phone = None
+                                self.phone = await self._extract_phone()
                                 asyncio.create_task(self._sync_db_status("connected"))
                             # Retry: se já conectado mas phone ainda não extraído, tenta de novo
                             elif self.status == "connected" and not self.phone:
-                                try:
-                                    raw = await self._page.evaluate(
-                                        "() => { try { return window.Store && window.Store.Me ? window.Store.Me.wid._serialized || window.Store.Me.wid.user : null } catch(e) { return null } }"
-                                    )
-                                    if raw:
-                                        self.phone = raw.split("@")[0]
-                                        logger.info("Sessão %s — número extraído: %s", self.session_id, self.phone)
-                                        asyncio.create_task(self._sync_db_status("connected"))
-                                except Exception:
-                                    pass
+                                self.phone = await self._extract_phone()
+                                if self.phone:
+                                    logger.info("Sessão %s — número extraído: %s", self.session_id, self.phone)
+                                    asyncio.create_task(self._sync_db_status("connected"))
                             await asyncio.sleep(15)
                             continue
 
@@ -968,6 +951,30 @@ class WhatsAppSession:
                 logger.debug("check_file_status error [%s]: %s", self.session_id, exc)
                 return None
 
+    async def _extract_phone(self) -> str | None:
+        """Tenta múltiplas estratégias para extrair o telefone do WA conectado."""
+        scripts = [
+            # 1) Store.Me clássico
+            "() => { try { var m = window.Store && window.Store.Me; return m ? (m.wid && (m.wid._serialized || m.wid.user)) : null } catch(e) { return null } }",
+            # 2) WPP (WPPConnect / fork)
+            "() => { try { return window.WPP && WPP.conn && WPP.conn.me ? WPP.conn.me._serialized : null } catch(e) { return null } }",
+            # 3) localStorage WAToken / WANumber
+            "() => { try { for (var i=0;i<localStorage.length;i++){var k=localStorage.key(i); if(/last-wid|wid|UserAgent/.test(k)){var v=localStorage.getItem(k); var m=v && v.match(/\\b(55\\d{10,11})\\b/); if(m) return m[1]}} return null } catch(e) { return null } }",
+            # 4) IndexedDB Cookies cookies (best-effort skip)
+            # 5) DOM: header de perfil — span com aria-label contendo número
+            "() => { try { var els = document.querySelectorAll('[aria-label]'); for(var i=0;i<els.length;i++){var s=els[i].getAttribute('aria-label'); var m=s && s.match(/\\+?(\\d{2}\\s*\\d{2}\\s*\\d{4,5}\\-?\\d{4})/); if(m) return m[1].replace(/\\D/g,'')}} return null } catch(e) { return null } }",
+        ]
+        for js in scripts:
+            try:
+                raw = await self._page.evaluate(js)
+            except Exception:
+                continue
+            if raw:
+                digits = "".join(ch for ch in str(raw) if ch.isdigit())
+                if len(digits) >= 10:
+                    return digits
+        return None
+
     async def _sync_db_status(self, new_status: str) -> None:
         try:
             from ..core.database import get_db_direct
@@ -1020,7 +1027,10 @@ class WhatsAppManager:
             self._checker_started = True
             asyncio.create_task(self._status_checker_loop())
 
-    async def add_session(self, session_id: str, nome: str, empresa_id: int) -> None:
+    async def add_session(self, session_id: str, nome: str, empresa_id: int,
+                          evolution_url: Optional[str] = None) -> None:
+        # evolution_url ignorado neste backend (Playwright não usa Evolution).
+        # Param existe só pra compatibilidade com EvoManager (modo híbrido).
         key = self._key(empresa_id, session_id)
         if key in self._sessions:
             return

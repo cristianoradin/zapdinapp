@@ -1,103 +1,178 @@
 <div class="page" id="page-config-envio">
 
+  <!-- Group tabs -->
+  <div class="wa-tabs cols-4">
+    <button class="wa-tab" onclick="navigate('whatsapp')">
+      <span class="wa-tab-ic"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></span>
+      <span class="wa-tab-label">Conectar WhatsApp</span>
+      <span class="wa-tab-go"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+    </button>
+    <button class="wa-tab" onclick="navigate('mensagem')">
+      <span class="wa-tab-ic"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
+      <span class="wa-tab-label">Configurar Mensagem</span>
+      <span class="wa-tab-go"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+    </button>
+    <button class="wa-tab on" onclick="navigate('config-envio')">
+      <span class="wa-tab-ic"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></span>
+      <span class="wa-tab-label">Configurações de Envio</span>
+      <span class="wa-tab-go"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span>
+    </button>
+    <button class="wa-tab" onclick="navigate('telegram')">
+      <span class="wa-tab-ic"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></span>
+      <span class="wa-tab-label">Telegram</span>
+      <span class="wa-tab-go"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+    </button>
+  </div>
 
-      <div class="card">
-
-        <div class="wa-cfg-grid">
-
-          <!-- Delay Randômico -->
-          <div class="wa-cfg-section">
-            <div class="wa-cfg-title">
-              <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:5px;background:#dbeafe;color:#2563eb;flex-shrink:0">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
-              </span>
-              Delay Randômico
-            </div>
-            <div class="wa-cfg-desc">Intervalo de espera aleatório entre cada mensagem para evitar detecção.</div>
-            <div class="wa-cfg-row">
-              <label>Mínimo</label>
-              <input type="number" class="wa-cfg-input" id="waCfgDelayMin" min="1" max="300" step="1" value="5" />
-              <span style="font-size:.78rem;color:var(--text-mid)">s</span>
-            </div>
-            <div class="wa-cfg-row">
-              <label>Máximo</label>
-              <input type="number" class="wa-cfg-input" id="waCfgDelayMax" min="1" max="600" step="1" value="15" />
-              <span style="font-size:.78rem;color:var(--text-mid)">s</span>
-            </div>
-          </div>
-
-          <!-- Limite Diário -->
-          <div class="wa-cfg-section">
-            <div class="wa-cfg-title">
-              <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:5px;background:#ede9fe;color:#7c3aed;flex-shrink:0">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-              </span>
-              Limite Diário
-            </div>
-            <div class="wa-cfg-desc">Teto de mensagens enviadas por dia por número conectado. Use 0 para sem limite.</div>
-            <div class="wa-cfg-row">
-              <label>Máx/dia</label>
-              <input type="number" class="wa-cfg-input" id="waCfgDailyLimit" min="0" max="9999" step="1" value="0" style="width:90px" />
-              <span style="font-size:.72rem;color:var(--text-mid)">(0 = ilimitado)</span>
-            </div>
-          </div>
-
-          <!-- Horário de Funcionamento -->
-          <div class="wa-cfg-section">
-            <div class="wa-cfg-title">
-              <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:5px;background:#ccfbf1;color:#0d9488;flex-shrink:0">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              </span>
-              Horário de Funcionamento
-            </div>
-            <div class="wa-cfg-desc">Disparos só dentro desta janela. Mensagens na fila aguardam automaticamente.</div>
-            <div class="wa-cfg-row">
-              <label>Início</label>
-              <input type="time" class="wa-cfg-input" id="waCfgHoraInicio" value="08:00" />
-            </div>
-            <div class="wa-cfg-row">
-              <label>Fim</label>
-              <input type="time" class="wa-cfg-input" id="waCfgHoraFim" value="18:00" />
-            </div>
-            <div class="wa-toggle-row" style="margin-top:.1rem">
-              <span class="wa-toggle-label">Restringir horário</span>
-              <label class="toggle-switch">
-                <input type="checkbox" id="waCfgHoraAtivo" />
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
-          </div>
-
-          <!-- Spintax -->
-          <div class="wa-cfg-section">
-            <div class="wa-cfg-title">
-              <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:5px;background:#fed7aa;color:#c2410c;flex-shrink:0">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><line x1="21" y1="16" x2="21" y2="21"/><line x1="16" y1="21" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
-              </span>
-              Suporte a Spintax
-            </div>
-            <div class="wa-toggle-row">
-              <span class="wa-toggle-label">Ativar variações de texto</span>
-              <label class="toggle-switch">
-                <input type="checkbox" id="waCfgSpintax" checked />
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
-            <div class="wa-cfg-desc" style="margin-top:.1rem">
-              Use <code style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:.05rem .3rem;font-size:.75rem">{Olá|Oi|Bom dia}</code> na mensagem para variar o texto.
-            </div>
-            <textarea class="spin-test-area" id="spinTestInput" placeholder="{Olá|Oi|Bom dia} {nome}, tudo bem?&#10;Seu pedido de {R$|valor} foi confirmado!"></textarea>
-            <button class="btn btn-ghost btn-sm" onclick="previewSpintax()" style="align-self:flex-start">▶ Testar</button>
-            <div class="spin-preview-box" id="spinPreviewBox"></div>
-          </div>
-
-        </div>
-
-        <div id="waCfgAlert" style="display:none;padding:.6rem 1rem;border-radius:8px;font-size:.84rem;margin-top:1rem"></div>
-
-        <div style="display:flex;justify-content:flex-end;padding-top:1rem;border-top:1px solid var(--border);margin-top:1rem">
-          <button class="btn btn-primary" id="btnSalvarWACfg">Salvar Configurações</button>
-        </div>
-
+  <!-- Banner Anti-Ban -->
+  <div class="cfg-banner">
+    <span class="ci t-green" style="width:50px;height:50px;border-radius:14px;flex:none">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    </span>
+    <div>
+      <h2 style="margin:0;font-size:19px">Proteção Anti-Ban</h2>
+      <p style="margin:4px 0 12px;color:var(--text-2);font-size:14px">Configure os limites abaixo para que os disparos se comportem como um humano real e evite o bloqueio do número no WhatsApp.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <span class="badge" style="background:var(--surface);border:1px solid var(--border)">⏱️ Delay entre envios</span>
+        <span class="badge" style="background:var(--surface);border:1px solid var(--border)">📊 Limite diário</span>
+        <span class="badge" style="background:var(--surface);border:1px solid var(--border)">🕐 Horário humano</span>
+        <span class="badge" style="background:var(--surface);border:1px solid var(--border)">⌨️ Simulação de digitação</span>
+        <span class="badge" style="background:var(--surface);border:1px solid var(--border)">🔀 Variação de texto</span>
       </div>
     </div>
+  </div>
+
+  <!-- 2x2 Grid -->
+  <div class="grid" style="grid-template-columns:1fr 1fr;gap:var(--gap);margin-top:var(--gap)">
+
+    <!-- Delay Randômico -->
+    <div class="card pad">
+      <div class="card-head" style="margin-bottom:14px">
+        <span class="ci t-amber">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        </span>
+        <h2 style="font-size:16px">Delay Randômico</h2>
+        <span class="grow"></span>
+        <span class="badge queue">🔥 Alto impacto</span>
+      </div>
+      <p class="cfg-desc">Tempo de espera aleatório entre cada mensagem. Simula comportamento humano e é o principal mecanismo contra detecção de bots.</p>
+      <div style="display:flex;gap:18px">
+        <label class="cfg-inline">Mínimo <input type="number" class="field sm" id="waCfgDelayMin" min="1" max="300" step="1" value="5" style="width:80px"> s</label>
+        <label class="cfg-inline">Máximo <input type="number" class="field sm" id="waCfgDelayMax" min="1" max="600" step="1" value="15" style="width:80px"> s</label>
+      </div>
+      <div class="note ok" style="margin-top:14px">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        <div>Recomendado: 8 a 20 segundos</div>
+      </div>
+    </div>
+
+    <!-- Limite Diário -->
+    <div class="card pad">
+      <div class="card-head" style="margin-bottom:14px">
+        <span class="ci t-blue">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        </span>
+        <h2 style="font-size:16px">Limite Diário</h2>
+        <span class="grow"></span>
+        <span class="badge queue">⚡ Médio impacto</span>
+      </div>
+      <p class="cfg-desc">Teto de mensagens enviadas por dia por número conectado. Números novos devem começar baixo e aumentar gradualmente — o <b>warm-up</b>.</p>
+      <label class="cfg-inline">Máx/dia <input type="number" class="field sm" id="waCfgDailyLimit" min="0" max="9999" step="1" value="0" style="width:90px"> <span style="color:var(--text-3);font-size:12.5px">(0 = ilimitado)</span></label>
+      <div class="note ok" style="margin-top:14px">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        <div>Recomendado: 200–500 msg/dia para números novos</div>
+      </div>
+    </div>
+
+    <!-- Horário de Funcionamento -->
+    <div class="card pad">
+      <div class="card-head" style="margin-bottom:14px">
+        <span class="ci t-violet">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </span>
+        <h2 style="font-size:16px">Horário de Funcionamento</h2>
+        <span class="grow"></span>
+        <span class="badge queue">⚡ Médio impacto</span>
+      </div>
+      <p class="cfg-desc">Disparos só dentro desta janela. Mensagens na fila aguardam fora do horário — ninguém envia às 3h da madrugada.</p>
+      <div style="display:flex;gap:18px">
+        <label class="cfg-inline">Início <input type="time" class="field sm" id="waCfgHoraInicio" value="08:00"></label>
+        <label class="cfg-inline">Fim <input type="time" class="field sm" id="waCfgHoraFim" value="20:00"></label>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px">
+        <span style="font-weight:600">Restringir ao horário acima</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="waCfgHoraAtivo">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="note ok" style="margin-top:12px">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        <div>Recomendado: 08:00 às 20:00</div>
+      </div>
+    </div>
+
+    <!-- Simulação de Digitação (ATIVA) -->
+    <div class="card pad cfg-active">
+      <div class="card-head" style="margin-bottom:14px">
+        <span class="ci t-green">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </span>
+        <h2 style="font-size:16px">Simulação de Digitação</h2>
+        <span class="grow"></span>
+        <span class="badge ok">⭐ Mais importante</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font-weight:600">Ativar indicador "digitando…"</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="waCfgComposing" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <p class="cfg-desc" style="margin-top:12px">Antes de enviar, o sistema aguarda um tempo proporcional ao tamanho da mensagem. O destinatário vê <b>"digitando…"</b> por 1 a 8 segundos.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <span class="badge" style="background:var(--surface-2);color:var(--text-2)">"Oi!" → ~1s</span>
+        <span class="badge" style="background:var(--surface-2);color:var(--text-2)">50 chars → ~2.5s</span>
+        <span class="badge" style="background:var(--surface-2);color:var(--text-2)">160+ chars → ~8s</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Spintax (full-width) -->
+  <div class="card pad" style="margin-top:var(--gap)">
+    <div class="card-head" style="margin-bottom:14px">
+      <span class="ci t-amber">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><line x1="21" y1="16" x2="21" y2="21"/><line x1="16" y1="21" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+      </span>
+      <h2 style="font-size:16px">Suporte a Spintax</h2>
+      <span class="grow"></span>
+      <span class="badge info">🔀 Variação</span>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <span style="font-weight:600">Ativar variações de texto</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="waCfgSpintax" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <p class="cfg-desc" style="margin-top:12px">Cada mensagem usa uma variação diferente do texto, tornando o conteúdo único a cada envio. Use <code style="font-family:var(--mono);background:var(--surface-3);padding:2px 6px;border-radius:5px;font-size:12px">{Olá|Oi|E aí}</code> para alternar trechos.</p>
+
+    <textarea class="field" id="spinTestInput" rows="3" placeholder="{Olá|Oi|Bom dia} {nome}, tudo bem?&#10;Seu pedido de {R$|valor} foi confirmado!" style="margin-top:12px"></textarea>
+    <div style="display:flex;align-items:center;gap:.6rem;margin-top:.5rem">
+      <button class="btn ghost sm" onclick="previewSpintax()">▶ Testar</button>
+      <div id="spinPreviewBox" style="font-size:.85rem;color:var(--text-2);font-style:italic"></div>
+    </div>
+  </div>
+
+  <!-- Alert + Save -->
+  <div id="waCfgAlert" style="display:none;padding:.6rem 1rem;border-radius:8px;font-size:.84rem;margin-top:var(--gap)"></div>
+
+  <div style="display:flex;justify-content:flex-end;margin-top:var(--gap)">
+    <button class="btn" id="btnSalvarWACfg">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      Salvar Configurações
+    </button>
+  </div>
+
+</div>

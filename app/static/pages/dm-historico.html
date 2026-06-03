@@ -1,65 +1,79 @@
 <div class="page" id="page-dm-historico">
 
+  <!-- Group tabs -->
+  <div class="wa-tabs cols-5">
+    <button class="wa-tab" onclick="navigate('dm-dashboard')">
+      <span class="wa-tab-ic"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
+      <span class="wa-tab-label">Campanhas</span>
+      <span class="wa-tab-go"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+    </button>
+    <button class="wa-tab" onclick="navigate('dm-contatos')">
+      <span class="wa-tab-ic"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></span>
+      <span class="wa-tab-label">Contatos</span>
+      <span class="wa-tab-go"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+    </button>
+    <button class="wa-tab" onclick="navigate('dm-campanha')">
+      <span class="wa-tab-ic"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></span>
+      <span class="wa-tab-label">Criar Campanhas</span>
+      <span class="wa-tab-go"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+    </button>
+    <button class="wa-tab on" onclick="navigate('dm-historico')">
+      <span class="wa-tab-ic"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+      <span class="wa-tab-label">Gerenciar</span>
+      <span class="wa-tab-go"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span>
+    </button>
+    <button class="wa-tab" onclick="navigate('dm-enviadas')">
+      <span class="wa-tab-ic"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+      <span class="wa-tab-label">Enviadas</span>
+      <span class="wa-tab-go"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+    </button>
+  </div>
+
+
 
       <div class="alert" id="alertHistorico"></div>
 
-      <!-- Card de status do worker -->
-      <div class="card" id="workerStatusCard" style="margin-bottom:1rem;padding:.875rem 1.25rem">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
-          <div style="display:flex;align-items:center;gap:.75rem">
-            <div id="workerDot" style="width:10px;height:10px;border-radius:50%;background:var(--text-light);flex-shrink:0"></div>
-            <div>
-              <div style="font-size:.82rem;font-weight:600;color:var(--text)" id="workerLabel">Verificando worker…</div>
-              <div style="font-size:.75rem;color:var(--text-mid)" id="workerDetail"></div>
-            </div>
-          </div>
-          <div style="display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap">
-            <div style="text-align:center">
-              <div style="font-size:.72rem;color:var(--text-mid)">Mensagens</div>
-              <div style="font-size:.82rem;font-weight:600" id="wsqMsg">—</div>
-            </div>
-            <div style="text-align:center">
-              <div style="font-size:.72rem;color:var(--text-mid)">Arquivos</div>
-              <div style="font-size:.82rem;font-weight:600" id="wsqArq">—</div>
-            </div>
-            <div style="text-align:center">
-              <div style="font-size:.72rem;color:var(--text-mid)">Campanha</div>
-              <div style="font-size:.82rem;font-weight:600" id="wsqEnv">—</div>
-            </div>
-            <button class="btn btn-ghost btn-sm" id="btnRestartWorker" style="display:inline-flex;align-items:center;gap:.3rem;font-size:.78rem">
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-              Reiniciar Worker
-            </button>
-          </div>
+      <!-- Worker status compact (prototype) -->
+      <div class="card pad" id="workerStatusCard" style="display:flex;align-items:center;gap:14px;padding:16px 18px;margin-bottom:var(--gap);flex-wrap:wrap">
+        <span id="workerDot" style="width:10px;height:10px;border-radius:50%;background:var(--text-3);flex:none;box-shadow:0 0 0 3px color-mix(in srgb,currentColor 18%,transparent)"></span>
+        <div style="flex:1;min-width:180px">
+          <div style="font-weight:700" id="workerLabel">Verificando worker…</div>
+          <div style="font-size:12.5px;color:var(--text-3)" id="workerDetail"></div>
         </div>
+        <div style="display:flex;gap:22px;font-size:12.5px;color:var(--text-2)">
+          <div>Mensagens<br><b id="wsqMsg">—</b></div>
+          <div>Arquivos<br><b id="wsqArq">—</b></div>
+          <div>Campanha<br><b id="wsqEnv">—</b></div>
+        </div>
+        <button class="btn ghost sm" id="btnRestartWorker">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Reiniciar Worker
+        </button>
       </div>
 
-      <div class="card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
-          <div class="section-header" style="margin-bottom:0">
-            <div class="section-header-icon shi-teal">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-            </div>
-            <h2>Todas as Campanhas</h2>
-          </div>
-          <div style="display:flex;gap:.5rem;align-items:center">
-            <span style="font-size:.75rem;color:var(--text-mid);display:inline-flex;align-items:center;gap:.3rem">
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-              Auto-atualiza a cada 5s
-            </span>
-            <button class="btn btn-ghost btn-sm" onclick="loadCampanhas()" style="display:inline-flex;align-items:center;gap:.35rem">
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-              Atualizar
-            </button>
-            <button class="btn btn-primary btn-sm" onclick="showPage('dm-campanha')" style="display:inline-flex;align-items:center;gap:.35rem">
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Nova Campanha
-            </button>
-          </div>
+      <div class="card pad">
+        <div class="card-head">
+          <span class="ci t-blue">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </span>
+          <h2>Todas as Campanhas</h2>
+          <span class="grow"></span>
+          <span style="font-size:12.5px;color:var(--text-3);display:inline-flex;align-items:center;gap:6px">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Auto-atualiza a cada 5s
+          </span>
+          <button class="btn ghost sm" onclick="loadCampanhas()" style="margin-left:8px">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Atualizar
+          </button>
+          <button class="btn sm" onclick="showPage('dm-campanha')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nova Campanha
+          </button>
         </div>
 
         <div id="listaCampanhas">
-          <div style="text-align:center;padding:3rem;color:var(--text-mid)">Carregando…</div>
+          <div style="text-align:center;padding:3rem;color:var(--text-2)">Carregando…</div>
         </div>
       </div>
 
@@ -94,7 +108,7 @@
 
             <!-- Modo: grupo -->
             <div id="selPainelGrupo" style="display:none;margin-bottom:.75rem">
-              <label style="font-size:.82rem;font-weight:600;color:var(--text-mid);display:block;margin-bottom:.35rem">Selecione o grupo:</label>
+              <label style="font-size:.82rem;font-weight:600;color:var(--text-2);display:block;margin-bottom:.35rem">Selecione o grupo:</label>
               <select id="selGrupoId" style="width:100%;padding:.5rem .75rem;border:1px solid var(--border);border-radius:8px;font-size:.875rem;font-family:inherit;outline:none;background:var(--surface)">
                 <option value="">Carregando grupos…</option>
               </select>
@@ -108,12 +122,12 @@
                 <button class="btn btn-ghost btn-sm" id="btnDesmarcarTodos">Nenhum</button>
               </div>
               <!-- Contador -->
-              <div style="font-size:.8rem;color:var(--text-mid);margin-bottom:.5rem">
+              <div style="font-size:.8rem;color:var(--text-2);margin-bottom:.5rem">
                 <span id="selContatosCount">0</span> contatos selecionados de <span id="selContatosTotal">0</span>
               </div>
               <!-- Lista de contatos com checkbox -->
-              <div id="listaSelContatos" style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:.3rem;border:1px solid var(--border);border-radius:8px;padding:.5rem;background:var(--surface2)">
-                <div style="text-align:center;padding:1rem;color:var(--text-mid)">Carregando…</div>
+              <div id="listaSelContatos" style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:.3rem;border:1px solid var(--border);border-radius:8px;padding:.5rem;background:var(--surface-2)">
+                <div style="text-align:center;padding:1rem;color:var(--text-2)">Carregando…</div>
               </div>
             </div>
 

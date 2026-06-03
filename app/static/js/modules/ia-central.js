@@ -59,7 +59,7 @@ const iaCentral = (() => {
 
     /* ── Nebulas ── */
     const nebulas = [
-      { nx:.12, ny:.18, nr:.45, col:'#3d7f1f', a:.09, sp:.00018, ph:0.0  },
+      { nx:.12, ny:.18, nr:.45, col:'var(--primary-deep)', a:.09, sp:.00018, ph:0.0  },
       { nx:.82, ny:.72, nr:.4,  col:'#1a4fd6', a:.08, sp:.00013, ph:2.1  },
       { nx:.48, ny:.42, nr:.35, col:'#6d28d9', a:.06, sp:.00025, ph:4.3  },
       { nx:.15, ny:.82, nr:.3,  col:'#0891b2', a:.07, sp:.00016, ph:1.5  },
@@ -439,7 +439,7 @@ const iaCentral = (() => {
   function init() {
     const msgsEl = document.getElementById('iaMsgs');
     if (!msgsEl) return;
-    _startUniverse();
+    // _startUniverse desativado — tema claro substituiu canvas escuro
     if (_initialized) return;
     _initialized = true;
     _addMsg('ia', 'Olá! Sou a IA Central do ZapDin. Posso responder perguntas sobre envios, campanhas, chatbot, sessões WhatsApp e muito mais. Como posso ajudar?');

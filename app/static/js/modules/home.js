@@ -64,7 +64,7 @@ async function homeCarregarClima() {
     // Preenche inputs de config
     if (d.cidade) document.getElementById('home-clima-cidade-input').value = d.cidade;
     if (d.uf) document.getElementById('home-clima-uf-input').value = d.uf;
-  } catch(e) { console.log('[home] clima error', e); }
+  } catch (e) {}
 }
 
 async function homeSalvarCidade() {
@@ -161,7 +161,7 @@ function _renderNextEvents() {
     const eHoje = ev._data === `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
     const label = eHoje ? 'Hoje' : `${dia}/${mes}`;
     return `<div class="hd-next-event" onclick="homeAbrirAgenda('${ev._data}')">
-      <div class="hd-nev-dot" style="background:${ev.cor||'#3d7f1f'}"></div>
+      <div class="hd-nev-dot" style="background:${ev.cor||'var(--primary-deep)'}"></div>
       <div class="hd-nev-body">
         <div class="hd-nev-titulo">${ev.titulo}</div>
         <div class="hd-nev-hora">${label}${ev.hora_inicio ? ' · '+ev.hora_inicio : ''}</div>
@@ -207,7 +207,7 @@ function homeRenderAgendaLista() {
   if (!lista.length) { el.innerHTML = '<div class="home-empty" style="padding:.8rem 0">Nenhum compromisso neste dia</div>'; return; }
   el.innerHTML = lista.map(c => `
     <div class="home-agenda-item" onclick="homeEditarAgenda(${c.id})">
-      <div class="home-agenda-cor" style="background:${c.cor||'#3d7f1f'}"></div>
+      <div class="home-agenda-cor" style="background:${c.cor||'var(--primary-deep)'}"></div>
       <div class="home-agenda-item-body">
         <div class="home-agenda-item-titulo">${c.titulo}</div>
         <div class="home-agenda-item-hora">${c.hora_inicio||''} ${c.hora_fim ? '→ '+c.hora_fim : ''}</div>
@@ -227,7 +227,7 @@ function homeEditarAgenda(id) {
   document.getElementById('home-agenda-desc').value = c.descricao || '';
   const linkEl = document.getElementById('home-agenda-link');
   if (linkEl) linkEl.value = c.link || '';
-  const radio = document.querySelector(`input[name="agenda-cor"][value="${c.cor||'#3d7f1f'}"]`);
+  const radio = document.querySelector(`input[name="agenda-cor"][value="${c.cor||'var(--primary-deep)'}"]`);
   if (radio) radio.checked = true;
 }
 
@@ -239,7 +239,7 @@ function homeLimparAgendaForm() {
   document.getElementById('home-agenda-desc').value = '';
   const linkEl = document.getElementById('home-agenda-link');
   if (linkEl) linkEl.value = '';
-  const r = document.querySelector('input[name="agenda-cor"][value="#3d7f1f"]');
+  const r = document.querySelector('input[name="agenda-cor"][value="var(--primary-deep)"]');
   if (r) r.checked = true;
 }
 
@@ -255,7 +255,7 @@ async function homeSalvarAgenda() {
     hora_fim: document.getElementById('home-agenda-fim').value || null,
     titulo,
     descricao: document.getElementById('home-agenda-desc').value || null,
-    cor: (document.querySelector('input[name="agenda-cor"]:checked') || {}).value || '#3d7f1f',
+    cor: (document.querySelector('input[name="agenda-cor"]:checked') || {}).value || 'var(--primary-deep)',
     link: (linkEl ? linkEl.value.trim() : '') || null
   };
   const url = id ? `/api/home/agenda/${id}` : '/api/home/agenda';
@@ -313,7 +313,7 @@ function homeNovoPostit() {
   document.getElementById('home-postit-id').value = '';
   document.getElementById('home-postit-titulo').value = '';
   document.getElementById('home-postit-conteudo').value = '';
-  const r = document.querySelector('input[name="postit-cor"][value="#fef08a"]');
+  const r = document.querySelector('input[name="postit-cor"][value="var(--amber-bg)"]');
   if (r) r.checked = true;
   document.getElementById('home-postit-del-btn').style.display = 'none';
   document.getElementById('home-postit-overlay').classList.add('open');
@@ -341,7 +341,7 @@ async function homeSalvarPostit() {
   const body = {
     titulo: document.getElementById('home-postit-titulo').value,
     conteudo: document.getElementById('home-postit-conteudo').value,
-    cor: (document.querySelector('input[name="postit-cor"]:checked') || {}).value || '#fef08a'
+    cor: (document.querySelector('input[name="postit-cor"]:checked') || {}).value || 'var(--amber-bg)'
   };
   const url = id ? `/api/home/postits/${id}` : '/api/home/postits';
   const method = id ? 'PUT' : 'POST';
@@ -384,7 +384,7 @@ async function homeCarregarAgendaAlerta() {
     if (chk) chk.checked = !!d.ativo;
     const msgEl = document.getElementById('agendaAlertaMensagem');
     if (msgEl) msgEl.value = d.mensagem || '';
-  } catch(e) { console.log('[home] agenda-alerta error', e); }
+  } catch (e) {}
 }
 
 async function homeSalvarAgendaAlerta() {
@@ -397,7 +397,7 @@ async function homeSalvarAgendaAlerta() {
       body: JSON.stringify({ ativo, mensagem })
     });
     agwaToast('Configurações salvas ✓');
-  } catch(e) { console.log('[home] salvar agenda-alerta error', e); }
+  } catch (e) {}
 }
 
 function homeSalvarAgendaAlertaDebounce() {
@@ -435,7 +435,7 @@ function agwaRenderUsuarios() {
   const el = document.getElementById('agwa-usuarios-lista');
   if (!el) return;
   if (!_agwaUsuarios.length) {
-    el.innerHTML = `<div style="text-align:center;padding:1.2rem 0;color:var(--text-muted);font-size:.82rem">
+    el.innerHTML = `<div style="text-align:center;padding:1.2rem 0;color:var(--text-3);font-size:.82rem">
       <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:.25;display:block;margin:0 auto .4rem"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       Nenhum usuário cadastrado
     </div>`;
@@ -444,35 +444,50 @@ function agwaRenderUsuarios() {
   el.innerHTML = _agwaUsuarios.map(u => {
     const ini     = agwaIniciais(u.nome).toUpperCase();
     const nomeEsc = u.nome.replace(/'/g, '&#39;');
-    const atv  = u.ativo ? '<span class="agwa-badge agwa-badge-green">Ativo</span>' : '<span class="agwa-badge agwa-badge-gray">Inativo</span>';
-    const bell = u.recebe_alertas ? '<span class="agwa-badge agwa-badge-bell">🔔</span>' : '';
-    const digestInfo = u.morning_digest_hora
-      ? `<span class="agwa-badge agwa-badge-digest">☀️ ${u.morning_digest_hora}</span>` : '';
+    const atv  = u.ativo ? '<span class="badge ok" style="height:21px">Ativo</span>' : '<span class="badge" style="height:21px;background:var(--surface-3);color:var(--text-3)">Inativo</span>';
+    const bell = u.recebe_alertas ? '<span style="color:var(--amber)">🔔</span>' : '';
+    const badges = [];
+    if (u.morning_digest_hora) badges.push(`<span class="badge" style="height:21px;font-size:11px;background:var(--surface-3);color:var(--text-2)">🌅 ${u.morning_digest_hora}</span>`);
     const ants = (u.alert_antecedencias || [60]);
-    const antsInfo = ants.length ? `<span class="agwa-badge agwa-badge-ant">⏰ ${ants.join(', ')}min</span>` : '';
+    if (ants.length) badges.push(`<span class="badge" style="height:21px;font-size:11px;background:var(--surface-3);color:var(--text-2)">⏰ ${ants.join(', ')}min</span>`);
     return `
-    <div class="agwa-user-card" id="agwa-card-${u.id}">
-      <div class="agwa-user-avatar">${ini}</div>
-      <div class="agwa-user-info">
-        <div class="agwa-user-nome">${u.nome}</div>
-        <div class="agwa-user-phone">📱 ${u.phone}</div>
-        <div class="agwa-user-config-badges">${digestInfo}${antsInfo}</div>
+    <div class="agenda-user" id="agwa-card-${u.id}">
+      <span class="avatar-sm">${ini}</span>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <b>${u.nome}</b>
+          ${atv}
+          ${bell}
+        </div>
+        <div style="font-size:13px;color:var(--text-2);margin-top:2px">📱 ${u.phone}</div>
+        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">${badges.join('')}</div>
       </div>
-      <div class="agwa-user-badges">${atv}${bell}</div>
-      <div class="agwa-user-actions">
-        <button class="agwa-act-btn cfg" title="Configurar alertas" onclick="agwaAbrirConfig(${u.id})">
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <div style="display:flex;gap:6px">
+        <button class="icon-btn" style="width:32px;height:32px" title="Configurar" onclick="agwaAbrirConfig(${u.id})">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
-        <button class="agwa-act-btn edit" title="Editar" onclick="agwaEditarUsuario(${u.id})">
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        <button class="icon-btn" style="width:32px;height:32px" title="Editar" onclick="agwaEditarUsuario(${u.id})">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
-        <button class="agwa-act-btn del" title="Remover" onclick="agwaDeletarUsuario(${u.id},'${nomeEsc}')">
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-        </button>
+        <button class="icon-btn" style="width:32px;height:32px;color:var(--red)" title="Remover" onclick="agwaDeletarUsuario(${u.id},'${nomeEsc}')">🗑</button>
       </div>
     </div>`;
   }).join('');
 }
+
+// Insere variável no textarea de mensagem de alerta
+function agwaInsertVar(k) {
+  const ta = document.getElementById('agendaAlertaMensagem');
+  if (!ta) return;
+  const tok = '{' + k + '}';
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  const v = ta.value;
+  ta.value = v.slice(0, s) + tok + v.slice(e);
+  ta.focus();
+  ta.selectionStart = ta.selectionEnd = s + tok.length;
+  homeSalvarAgendaAlertaDebounce();
+}
+window.agwaInsertVar = agwaInsertVar;
 
 async function agwaAdicionarUsuario() {
   const nome  = (document.getElementById('agwa-add-nome') || {}).value?.trim() || '';
@@ -696,7 +711,7 @@ async function homeCarregarRecados() {
       return;
     }
     el.innerHTML = lista.map(rec => `
-      <div class="hd-recado-item" style="border-left-color:${rec.cor||'#3d7f1f'}">
+      <div class="hd-recado-item" style="border-left-color:${rec.cor||'var(--primary-deep)'}">
         <div class="hd-recado-titulo">${rec.titulo}</div>
         <div class="hd-recado-conteudo">${rec.conteudo}</div>
         <div class="hd-recado-data">📅 ${new Date(rec.created_at).toLocaleDateString('pt-BR')}</div>

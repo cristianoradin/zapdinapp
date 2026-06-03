@@ -10,22 +10,27 @@ window.arquivoModule = (() => {
 
   function _statusChip(a) {
     const map = {
-      queued:    ['chip-yellow', '&#x23F3; Na fila'],
-      pending:   ['chip-yellow', '&#x23F3; Pendente'],
-      failed:    ['chip-red',    '&#x2717; Falhou'],
-      sent:      ['chip-gray',   '&#x2713; Enviado'],
-      delivered: ['chip-blue',   '&#x2713;&#x2713; Entregue'],
-      read:      ['chip-green',  '&#x2713;&#x2713; Visualizado'],
+      queued:    ['badge queue dot', 'Na fila'],
+      pending:   ['badge queue dot', 'Pendente'],
+      failed:    ['badge fail dot',  'Falhou'],
+      sent:      ['badge ok dot',    'Enviado'],
+      delivered: ['badge info dot',  'Entregue'],
+      read:      ['badge ok dot',    'Visualizado'],
     };
-    const [cls, label] = map[a.status] || ['chip-gray', a.status];
-    return `<span class="chip ${cls}">${label}</span>`;
+    const [cls, label] = map[a.status] || ['badge dot', a.status];
+    return `<span class="${cls}">${label}</span>`;
   }
 
   function _fmtTs(ts) {
-    if (!ts) return '<span style="color:var(--text-mid)">—</span>';
+    if (!ts) return '—';
     const d = new Date(ts.replace(' ', 'T'));
     if (isNaN(d)) return ts;
-    return `<span style="font-size:.78rem;color:var(--text-mid)">${d.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})} ${d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span>`;
+    return `${d.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})} · ${d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}`;
+  }
+
+  function _digits2(s) {
+    s = (s || '?').trim();
+    return s.length >= 1 ? s[0].toUpperCase() : '?';
   }
 
   async function load() {
@@ -44,45 +49,46 @@ window.arquivoModule = (() => {
     setEl('arqStFalhou',   counts.failed);
 
     if (arqs.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:3rem 1rem">
-        <div style="font-size:2rem;margin-bottom:.5rem">📭</div>
-        <div style="color:var(--text-mid);font-size:.9rem">Nenhum arquivo enviado ainda.</div>
-        <div style="color:var(--text-light);font-size:.8rem;margin-top:.25rem">Os arquivos enviados pelo ERP aparecerão aqui.</div>
-      </td></tr>`;
+      tbody.innerHTML = `<div class="empty-box">
+        <div class="empty-ic">
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <div style="font-weight:700;color:var(--primary-deep)">Nenhum arquivo enviado ainda</div>
+        <div style="font-size:13px;color:var(--text-2)">Os arquivos enviados pelo ERP aparecerão aqui.</div>
+      </div>`;
       return;
     }
 
     tbody.innerHTML = arqs.map(a => {
       const ts = a.sent_at || a.created_at;
       const dtLabel = _fmtTs(ts);
-      let detail = '';
-      if (a.delivered_at) detail += `<span style="color:#1a7db5">✓✓ ${a.delivered_at.slice(11,16)}</span> `;
-      if (a.read_at)       detail += `<span style="color:var(--accent)">✓✓ vis. ${a.read_at.slice(11,16)}</span>`;
 
-      const ext = (a.nome_original || '').split('.').pop().toLowerCase();
-      const _svgPDF  = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15h6M9 11h3"/></svg>`;
-      const _svgIMG  = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
-      const _svgFILE = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>`;
-      const icon = ext === 'pdf' ? _svgPDF : ['jpg','jpeg','png','gif','webp'].includes(ext) ? _svgIMG : _svgFILE;
+      const dest = a.destinatario_nome || a.destinatario || '—';
+      const tel = a.destinatario || '';
 
       return `
-      <tr>
-        <td>
-          <div style="display:flex;align-items:center;gap:.5rem">
-            <span style="display:flex;align-items:center;width:28px;height:28px;background:var(--surface2);border-radius:6px;justify-content:center;flex-shrink:0">${icon}</span>
-            <div>
-              <div style="font-size:.85rem;font-weight:600;color:var(--text)">${a.nome_original}</div>
-              ${a.caption ? `<div style="font-size:.72rem;color:var(--text-mid);margin-top:.1rem">${a.caption}</div>` : ''}
-            </div>
-          </div>
-        </td>
-        <td><span style="font-size:.8rem;font-family:monospace;background:var(--surface2);padding:.2rem .5rem;border-radius:5px;color:var(--text-mid)">${a.destinatario || '—'}</span></td>
-        <td>${dtLabel}</td>
-        <td>
-          ${_statusChip(a)}
-          ${detail ? `<div style="font-size:.68rem;margin-top:.3rem;line-height:1.6">${detail}</div>` : ''}
-        </td>
-      </tr>`;
+      <div class="file-card">
+        <span class="file-ic">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </span>
+        <div class="file-info">
+          <b class="file-name">${a.nome_original || '—'}</b>
+          <span class="file-tel">${tel}</span>
+        </div>
+        <span class="file-dest">
+          <span class="avatar-sm">${_digits2(dest)}</span>
+          <span style="white-space:nowrap">${dest}</span>
+        </span>
+        <span class="file-date">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          ${dtLabel}
+        </span>
+        ${_statusChip(a)}
+        <button class="btn ghost sm" style="height:32px">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          Ver
+        </button>
+      </div>`;
     }).join('');
 
     const hasPending = arqs.some(a => ['queued','pending','sent','delivered'].includes(a.status));

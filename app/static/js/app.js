@@ -44,6 +44,7 @@
       console.error(`[pages] Failed to load ${page}:`, e);
     }
   }
+  window._loadPage = _loadPage;
 
   // ── Nav ──────────────────────────────────────────────────────────────────────
   // Nomes devem bater exatamente com os itens do menu lateral
@@ -68,7 +69,7 @@
     'dm-enviadas':    'Campanhas Enviadas',
     'ctb-dashboard':  'Gestão de Documentos',
     'ctb-empresas':   'Cadastro de Empresas',
-    'ctb-arquivos':   'Gestão de Arquivos',
+    'ctb-arquivos':   'Arquivados',
     'sistema':        'Sistema',
     'chatbot':        'Chatbot',
     'ia-central':     'IA Central',
@@ -89,77 +90,12 @@
     document.title = 'ZapDin — ' + label;
   }
 
-  // ── Conector visual + cantos côncavos ────────────────────────────────────────
-  function _updateNavConnector(navItem) {
-    // ─ Conector: faixa vertical que tapa qualquer gap entre sidebar e conteúdo
-    let connector = document.getElementById('nav-connector');
-    if (!connector) {
-      connector = document.createElement('div');
-      connector.id = 'nav-connector';
-      document.body.appendChild(connector);
-    }
-
-    // ─ Cantos côncavos superiror e inferior (position:fixed → imune a overflow)
-    let concTop = document.getElementById('nav-concave-top');
-    if (!concTop) {
-      concTop = document.createElement('div');
-      concTop.id = 'nav-concave-top';
-      document.body.appendChild(concTop);
-    }
-    let concBot = document.getElementById('nav-concave-bot');
-    if (!concBot) {
-      concBot = document.createElement('div');
-      concBot.id = 'nav-concave-bot';
-      document.body.appendChild(concBot);
-    }
-
-    if (!navItem) {
-      connector.style.display = 'none';
-      concTop.style.display   = 'none';
-      concBot.style.display   = 'none';
-      return;
-    }
-
-    const rect    = navItem.getBoundingClientRect();
-    const sbW     = parseFloat(getComputedStyle(document.documentElement)
-                      .getPropertyValue('--sidebar-w')) || 224;
-
-    // Conector: cobre 1-2 px de gap na borda direita da sidebar
-    connector.style.cssText = `
-      position: fixed;
-      left: ${sbW - 2}px;
-      top: ${rect.top}px;
-      height: ${rect.height}px;
-      width: 4px;
-      background: var(--bg);
-      z-index: 101;
-      pointer-events: none;
-      display: block;
-    `;
-
-    // Canto côncavo superior: 14×14 acima do item, alinhado à borda direita da sidebar
-    concTop.style.cssText = `
-      position: fixed;
-      left: ${sbW - 14}px;
-      top: ${rect.top - 14}px;
-      width: 14px;
-      height: 14px;
-      z-index: 101;
-      pointer-events: none;
-      display: block;
-    `;
-
-    // Canto côncavo inferior
-    concBot.style.cssText = `
-      position: fixed;
-      left: ${sbW - 14}px;
-      top: ${rect.bottom}px;
-      width: 14px;
-      height: 14px;
-      z-index: 101;
-      pointer-events: none;
-      display: block;
-    `;
+  // ── Nav toggle ───────────────────────────────────────────────────────────────
+  const btnToggleNav = document.getElementById('btnToggleNav');
+  if (btnToggleNav) {
+    btnToggleNav.addEventListener('click', () => {
+      document.getElementById('appRoot')?.classList.toggle('nav-collapsed');
+    });
   }
 
   async function navigate(page) {
@@ -177,7 +113,21 @@
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
     // Marca nav-item normal
-    const navItem = document.querySelector(`.nav-item[data-page="${page}"]`);
+    let navItem = document.querySelector(`.nav-item[data-page="${page}"]`);
+    // Para sub-páginas (dm-*, ctb-*), destaca o item pai visível do grupo
+    if (navItem && navItem.style.display === 'none') {
+      // Sub-page: encontra o pai do grupo (primeiro item visível do grupo Campanhas/Contábil)
+      const parentMap = {
+        'dm-contatos': 'dm-dashboard', 'dm-campanha': 'dm-dashboard',
+        'dm-historico': 'dm-dashboard', 'dm-enviadas': 'dm-dashboard',
+        'ctb-dashboard': 'ctb-empresas', 'ctb-arquivos': 'ctb-empresas',
+      };
+      const parentPage = parentMap[page];
+      if (parentPage) {
+        const parentItem = document.querySelector(`.nav-item[data-page="${parentPage}"]`);
+        if (parentItem) navItem = parentItem;
+      }
+    }
     if (navItem) navItem.classList.add('active');
     // Marca botão IA no topbar quando página ia-central está ativa
     const topbarIaBtn = document.getElementById('topbarIaBtn');
@@ -186,8 +136,6 @@
     if (pageEl) pageEl.classList.add('active');
     _setTopbarPage(page);
     onPageLoad(page);
-    // Atualiza conector visual
-    _updateNavConnector(navItem || null);
 
     // ── Scroll reset ─────────────────────────────────────────────────────────
     // Feito APÓS a transição de páginas (display:none→block recalcula layout),
@@ -217,11 +165,11 @@
       const txt  = document.getElementById('topbarStatusText');
       const banner = document.getElementById('waBanner');
       if (connected > 0) {
-        pill.classList.add('active');
+        pill.classList.add('wa-on'); pill.classList.remove('wa-off');
         txt.textContent = connected === 1 ? '1 número ativo' : `${connected} números ativos`;
         if (banner) banner.classList.remove('visible');
       } else {
-        pill.classList.remove('active');
+        pill.classList.remove('wa-on'); pill.classList.add('wa-off');
         txt.textContent = 'Sem conexão WA';
         if (banner) banner.classList.add('visible');
       }
@@ -315,10 +263,10 @@
         });
 
         // Ocultar section labels da sidebar que ficaram sem itens visíveis
-        document.querySelectorAll('.sidebar-section').forEach(section => {
+        document.querySelectorAll('.nav-group-label').forEach(section => {
           let next = section.nextElementSibling;
           let hasVisible = false;
-          while (next && !next.classList.contains('sidebar-section')) {
+          while (next && !next.classList.contains('nav-group-label')) {
             if (next.classList.contains('nav-item') && next.style.display !== 'none') hasVisible = true;
             next = next.nextElementSibling;
           }
@@ -380,8 +328,10 @@
   }
 
   document.getElementById('btnLogout').addEventListener('click', async () => {
-    await fetch('/api/logout', { method: 'POST' });
-    window.location.href = '/login';
+    // Redireciona SEMPRE, mesmo se o servidor não responder (logout client-side garantido)
+    try { await fetch('/api/logout', { method: 'POST' }); }
+    catch (e) { /* servidor offline — sai mesmo assim */ }
+    finally { window.location.href = '/login'; }
   });
 
   // ── Confirm dialog (substitui confirm() nativo) ───────────────────────────────
@@ -419,11 +369,26 @@
       bodyEl.textContent     = body;
       btnOk.textContent      = okLabel;
       btnCancel.textContent  = cancelLabel;
+      btnCancel.style.display = '';
       iconEl.textContent     = icon || _icons[type] || '❓';
       iconWrap.className     = 'confirm-icon-wrap ' + type;
       btnOk.className        = 'confirm-btn confirm-btn-ok ' + type;
       overlay.classList.add('open');
       setTimeout(() => btnCancel.focus(), 50);
+      return new Promise(res => { _resolve = res; });
+    };
+
+    // Single-button modal (substitui alert() nativo)
+    window.showInfo = function(body = '', { title = 'Aviso', okLabel = 'OK', type = 'info', icon = null } = {}) {
+      titleEl.textContent    = title;
+      bodyEl.textContent     = body;
+      btnOk.textContent      = okLabel;
+      btnCancel.style.display = 'none';
+      iconEl.textContent     = icon || _icons[type] || 'ℹ️';
+      iconWrap.className     = 'confirm-icon-wrap ' + type;
+      btnOk.className        = 'confirm-btn confirm-btn-ok ' + type;
+      overlay.classList.add('open');
+      setTimeout(() => btnOk.focus(), 50);
       return new Promise(res => { _resolve = res; });
     };
   })();
@@ -482,11 +447,11 @@
       const tbody = document.getElementById('tbodyRecentes');
       if (!d.recentes || d.recentes.length === 0) {
         tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:3rem 1rem">
-          <div style="width:48px;height:48px;background:var(--accent-soft);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto .75rem">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <div style="width:48px;height:48px;background:var(--primary-soft);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto .75rem">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary-deep)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           </div>
           <div style="color:var(--text);font-size:.9rem;font-weight:600;margin-bottom:.3rem">Nenhuma mensagem enviada ainda</div>
-          <div style="color:var(--text-mid);font-size:.8rem;margin-bottom:1rem">Configure e envie sua primeira mensagem para começar.</div>
+          <div style="color:var(--text-2);font-size:.8rem;margin-bottom:1rem">Configure e envie sua primeira mensagem para começar.</div>
           <button class="btn btn-primary btn-sm" onclick="showPage('mensagem')" style="display:inline-flex;align-items:center;gap:.4rem">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Configurar mensagem
@@ -499,7 +464,7 @@
           <td>${r.destinatario}</td>
           <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.mensagem || '—'}</td>
           <td><span class="chip ${r.status === 'sent' ? 'chip-green' : r.status === 'failed' ? 'chip-red' : 'chip-yellow'}">${r.status}</span></td>
-          <td style="color:var(--text-mid);font-size:.8rem">${r.created_at}</td>
+          <td style="color:var(--text-2);font-size:.8rem">${r.created_at}</td>
         </tr>`).join('');
     } catch(e) { console.error(e); }
   }
@@ -520,7 +485,7 @@
     if (page === 'home') initHome();
     if (page !== 'whatsapp') whatsappModule.stop();
     if (page !== 'arquivo') arquivoModule.stopTimer();
-    if (page !== 'teste') _pararTestePoll();
+    if (page !== 'teste' && typeof _pararTestePoll === 'function') _pararTestePoll();
     if (page === 'dashboard') {
       // Módulo dashboard.js (modules/) tem prioridade; loadStats() como fallback legado
       if (window.ZD && ZD.registry._handlers['dashboard']) ZD.registry.dispatch('dashboard');
@@ -528,16 +493,16 @@
     }
     else if (page === 'mensagem') mensagemModule.init();
     else if (window.ZD && ZD.registry._handlers[page]) ZD.registry.dispatch(page);
-    else if (page === 'whatsapp') whatsappModule.init();
+    else if (page === 'whatsapp') { whatsappModule.init(); window.initTesteEnvio && window.initTesteEnvio(); }
     else if (page === 'token') tokenModule.init();
     else if (page === 'arquivo') arquivoModule.init();
     else if (page === 'teste') loadTeste();
     else if (page === 'telegram') telegramModule.init();
-    else if (page === 'dm-dashboard') loadDashboardCampanhas();
-    else if (page === 'dm-contatos') loadContatos();
-    else if (page === 'dm-campanha') initNovaCampanha();
-    else if (page === 'dm-historico') { loadCampanhas(); loadWorkerStatus(); }
-    else if (page === 'dm-enviadas') loadCampanhasEnviadas();
+    else if (page === 'dm-dashboard') window.loadDashboardCampanhas && window.loadDashboardCampanhas();
+    else if (page === 'dm-contatos') window.loadContatos && window.loadContatos();
+    else if (page === 'dm-campanha') window.initNovaCampanha && window.initNovaCampanha();
+    else if (page === 'dm-historico') { window.loadCampanhas && window.loadCampanhas(); window.loadWorkerStatus && window.loadWorkerStatus(); }
+    else if (page === 'dm-enviadas') window.loadCampanhasEnviadas && window.loadCampanhasEnviadas();
     else if (page === 'ctb-dashboard') { if (window.ctbDashboard) ctbDashboard.reload(); }
     else if (page === 'ctb-empresas')  { if (window.ctbEmpresas)  ctbEmpresas.carregar(); }
     else if (page === 'ctb-arquivos')  { if (window.ctbArquivos)  ctbArquivos.carregar(); }
@@ -560,7 +525,7 @@
   // Modal Teste de Envio → whatsappModule
 
   // ── Teste de Envio (página) ───────────────────────────────────────────────────
-  let _testePoller = null;
+  var _testePoller = null;
 
   function _pararTestePoll() {
     if (_testePoller) { clearInterval(_testePoller); _testePoller = null; }
@@ -569,9 +534,9 @@
   function _testeResult(elId, type, msg) {
     const el = document.getElementById(elId);
     el.style.display = 'block';
-    el.style.background = type === 'ok' ? 'var(--accent-soft)' : type === 'loading' ? 'var(--surface2)' : 'var(--red-soft)';
-    el.style.border = `1px solid ${type === 'ok' ? 'var(--accent-mid)' : type === 'loading' ? 'var(--border)' : '#fecaca'}`;
-    el.style.color = type === 'ok' ? 'var(--accent)' : type === 'loading' ? 'var(--text-mid)' : 'var(--red)';
+    el.style.background = type === 'ok' ? 'var(--primary-soft)' : type === 'loading' ? 'var(--surface-2)' : 'var(--red-soft)';
+    el.style.border = `1px solid ${type === 'ok' ? 'color-mix(in srgb,var(--primary) 35%,transparent)' : type === 'loading' ? 'var(--border)' : 'color-mix(in srgb,var(--red) 30%,transparent)'}`;
+    el.style.color = type === 'ok' ? 'var(--primary-deep)' : type === 'loading' ? 'var(--text-2)' : 'var(--red)';
     el.textContent = msg;
   }
 
@@ -589,7 +554,7 @@
       sel.innerHTML = '<option value="">Nenhuma sessão conectada</option>';
       alertEl.style.display = 'block';
       alertEl.style.background = 'var(--red-soft)';
-      alertEl.style.border = '1px solid #fecaca';
+      alertEl.style.border = '1px solid color-mix(in srgb,var(--red) 30%,transparent)';
       alertEl.style.color = 'var(--red)';
       alertEl.textContent = 'Nenhuma sessão WhatsApp conectada. Vá em Conectar WhatsApp para escanear o QR Code.';
     } else {
@@ -670,5 +635,4 @@
     if (pageEl) pageEl.classList.add('active');
     _setTopbarPage(p);
     onPageLoad(p);
-    _updateNavConnector(navItem || null);
   }

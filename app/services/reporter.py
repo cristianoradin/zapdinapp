@@ -139,6 +139,27 @@ def _wa_info_for_empresa(empresa_id: int) -> dict:
     return {"wa_status": "disconnected", "wa_phone": None}
 
 
+def _agents_for_empresa(empresa_id: int) -> list:
+    """Retorna lista de agentes WS conectados para a empresa (modo híbrido NAT).
+
+    Cada agente: {sid, version, connected_at, last_seen}. Lista vazia se nenhum.
+    """
+    try:
+        from .agent_bridge import get_agent
+        a = get_agent(empresa_id)
+        if not a:
+            return []
+        return [{
+            "sid":          a.get("sid"),
+            "version":      a.get("version"),
+            "connected_at": a.get("connected_at"),
+            "last_seen":    a.get("last_seen"),
+        }]
+    except Exception as exc:
+        logger.debug("[reporter] _agents_for_empresa(%s) erro: %s", empresa_id, exc)
+        return []
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 #  Lógica principal do heartbeat
 # ─────────────────────────────────────────────────────────────────────────────
@@ -175,19 +196,22 @@ async def _send_heartbeat() -> None:
                 continue  # empresa sem token não pode se identificar — pula
 
             wa_info = _wa_info_for_empresa(emp.get("id", 0))
+            agents_list = _agents_for_empresa(emp.get("id", 0))
 
             # Coleta logs acumulados desde o último heartbeat para enviar ao Monitor
             from ..core import log_collector as _lc
             logs_batch = _lc.flush()
 
             payload = {
-                "nome":      emp.get("nome", settings.client_name),
-                "cnpj":      emp.get("cnpj", settings.client_cnpj),
-                "versao":    version,
-                "porta":     settings.port,
-                "wa_status": wa_info["wa_status"],
-                "wa_phone":  wa_info["wa_phone"],
-                "logs":      logs_batch,  # lista de {ts, nivel, cat, msg}
+                "nome":         emp.get("nome", settings.client_name),
+                "cnpj":         emp.get("cnpj", settings.client_cnpj),
+                "versao":       version,
+                "porta":        settings.port,
+                "wa_status":    wa_info["wa_status"],
+                "wa_phone":     wa_info["wa_phone"],
+                "agents":       agents_list,                # F3.6 — agentes WS conectados
+                "agents_count": len(agents_list),
+                "logs":         logs_batch,                 # lista de {ts, nivel, cat, msg}
             }
 
             try:

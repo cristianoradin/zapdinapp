@@ -50,6 +50,7 @@ def _setup_logging() -> None:
 
 _setup_logging()
 from .core.database import init_db, get_db, get_db_direct
+from .core.security import get_current_user
 from .core.http_client import close_http_client
 from .routers import whatsapp, erp, config_router, arquivos, stats, telegram_router
 from .routers.ai_config_router import router as ai_config_router
@@ -69,6 +70,7 @@ from .routers.dominio_router import router as dominio_router
 from .routers.syslog_router import router as syslog_router
 from .routers.ia_central_router import router as ia_central_router
 from .routers.home_router import router as home_router
+from .routers.agents import router as agents_router
 from .services import reporter, updater, telegram_service, queue_worker
 from .services.log_service import log_event
 from .services.whatsapp_service import wa_manager as _playwright_manager
@@ -88,6 +90,13 @@ _WS_ORIGINS = [
 ]
 sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins=_WS_ORIGINS)
 
+# Injeta sio no evolution_service para que comandos em modo agente sejam roteados via WS
+try:
+    from .services import evolution_service as _evo_svc
+    _evo_svc.set_sio(sio)
+except Exception:
+    pass
+
 
 @sio.event
 async def connect(sid, environ):
@@ -97,6 +106,72 @@ async def connect(sid, environ):
 @sio.event
 async def disconnect(sid):
     pass
+
+
+# ── Namespace /agent ─────────────────────────────────────────────────────────
+# WebSocket persistente cliente-agente → servidor (atravessa NAT do posto).
+# Agente Python no cliente conecta com auth={"token": <empresas.token>, "version": "..."}.
+# Servidor valida token, registra sid no agent_bridge e pode chamar comandos.
+from .services import agent_bridge as _agent_bridge
+
+_agent_log = logging.getLogger("app.agent")
+
+
+@sio.event(namespace="/agent")
+async def connect(sid, environ, auth):
+    token = None
+    version = "?"
+    if isinstance(auth, dict):
+        token = auth.get("token")
+        version = auth.get("version", "?")
+    if not token:
+        _agent_log.warning("[agent] connect rejeitado: sem token (sid=%s)", sid)
+        return False
+
+    from .core import database as _db_mod
+    pool = _db_mod._pool
+    if pool is None:
+        _agent_log.error("[agent] pool de DB indisponível (sid=%s)", sid)
+        return False
+
+    empresa_id = await _agent_bridge._resolve_empresa_by_token(pool, token)
+    if not empresa_id:
+        _agent_log.warning("[agent] connect rejeitado: token inválido (sid=%s)", sid)
+        return False
+
+    _agent_bridge.register_agent(empresa_id, sid, {"version": version})
+    await sio.emit(
+        "welcome",
+        {"ok": True, "empresa_id": empresa_id},
+        to=sid,
+        namespace="/agent",
+    )
+    return True
+
+
+@sio.event(namespace="/agent")
+async def disconnect(sid):
+    _agent_bridge.unregister_by_sid(sid)
+
+
+@sio.on("heartbeat", namespace="/agent")
+async def agent_heartbeat(sid, data):
+    _agent_bridge.touch(sid)
+    import time as _t
+    return {"ok": True, "t": _t.time()}
+
+
+@sio.on("evo_event", namespace="/agent")
+async def agent_evo_event(sid, payload):
+    """Webhook reverso: agente local repassa eventos da Evolution dele via WS."""
+    _agent_bridge.touch(sid)
+    try:
+        from .services.evolution_service import evo_manager
+        evo_manager.handle_webhook(payload or {})
+    except Exception as e:
+        _agent_log.warning("[agent] evo_event erro: %s", e)
+        return {"ok": False, "error": str(e)}
+    return {"ok": True}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -307,6 +382,7 @@ fastapi_app.include_router(dominio_router)          # /api/dominio/* (integraç�
 fastapi_app.include_router(syslog_router)            # /api/syslog/* (log do sistema)
 fastapi_app.include_router(ia_central_router)       # /api/ia-central/* (IA Central)
 fastapi_app.include_router(home_router)             # /api/home/* (Home Dashboard)
+fastapi_app.include_router(agents_router)           # /api/agents + /metrics (NAT agent + Prometheus)
 
 
 @fastapi_app.post("/api/logout")
@@ -327,6 +403,19 @@ async def logout_alias(request: Request, db=Depends(get_db)):
     resp = JSONResponse({"ok": True})
     resp.delete_cookie(SESSION_COOKIE)
     return resp
+
+
+@fastapi_app.get("/api/agents")
+async def list_connected_agents(user: dict = Depends(get_current_user)):
+    """Lista agentes locais (postos) conectados via WS /agent.
+
+    Requer sessão autenticada. Filtra por empresa_id do usuário.
+    """
+    agents = _agent_bridge.list_agents()
+    emp_id = user.get("empresa_id") if isinstance(user, dict) else None
+    if emp_id:
+        agents = [a for a in agents if a.get("empresa_id") == emp_id]
+    return {"agents": agents, "count": len(agents)}
 
 
 @fastapi_app.get("/api/evo-file/{token}")
@@ -368,7 +457,7 @@ _static_dir = os.path.join(os.path.dirname(__file__), "static")
 _logo_dir = os.path.join(_static_dir, "logo")
 
 _NO_CACHE = {"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
-APP_BUILD = "20260521k"
+APP_BUILD = "20260603ze"
 
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -415,9 +504,12 @@ async def spa_fallback(request: Request, full_path: str):
         return JSONResponse({"error": "Not found"}, status_code=404)
     index = os.path.join(_static_dir, "index.html")
     if os.path.exists(index):
-        with open(index, "r", encoding="utf-8") as f:
-            content = f.read().replace("__BUILD__", APP_BUILD)
-        return HTMLResponse(content=content, headers=_NO_CACHE)
+        import asyncio as _aio
+        def _read_index():
+            with open(index, "r", encoding="utf-8") as f:
+                return f.read()
+        content = (await _aio.to_thread(_read_index)).replace("__BUILD__", APP_BUILD)
+        return HTMLResponse(content=content, headers=_NO_CACHE, media_type="text/html; charset=utf-8")
     return JSONResponse({"error": "Frontend not found"}, status_code=404)
 
 

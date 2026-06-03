@@ -106,6 +106,12 @@ def _file_to_base64(path: str) -> tuple[str, str]:
         return base64.b64encode(f.read()).decode(), mime
 
 
+async def _file_to_base64_async(path: str) -> tuple[str, str]:
+    """Versão async — não bloqueia event loop em arquivos grandes."""
+    import asyncio as _aio
+    return await _aio.to_thread(_file_to_base64, path)
+
+
 def _pdf_to_image_base64(path: str) -> Optional[tuple[str, str]]:
     """
     Converte primeira página do PDF em JPEG via pdftoppm.
@@ -150,7 +156,7 @@ async def _call_gemini(path: str, is_pdf: bool) -> str:
     if not key:
         raise ValueError("Gemini: chave não configurada")
 
-    b64, mime = _file_to_base64(path)
+    b64, mime = await _file_to_base64_async(path)
 
     # Gemini 2.0 Flash — melhor custo-benefício com suporte a PDF
     model = "gemini-2.0-flash"
@@ -194,7 +200,7 @@ async def _call_anthropic(path: str, is_pdf: bool) -> str:
     if not key:
         raise ValueError("Anthropic: chave não configurada")
 
-    b64, mime = _file_to_base64(path)
+    b64, mime = await _file_to_base64_async(path)
 
     if is_pdf:
         # Claude aceita PDF como document type
@@ -256,7 +262,7 @@ async def _call_openai(path: str, b64: str = None, mime: str = None) -> str:
         raise ValueError("OpenAI: chave não configurada")
 
     if b64 is None:
-        b64, mime = _file_to_base64(path)
+        b64, mime = await _file_to_base64_async(path)
 
     payload = {
         "model": "gpt-4o",
@@ -300,7 +306,7 @@ async def _call_groq(path: str, b64: str = None, mime: str = None) -> str:
         raise ValueError("Groq: chave não configurada")
 
     if b64 is None:
-        b64, mime = _file_to_base64(path)
+        b64, mime = await _file_to_base64_async(path)
 
     payload = {
         "model": "meta-llama/llama-4-scout-17b-16e-instruct",
@@ -479,10 +485,36 @@ async def extrair_dados_fiscal(documento_id: int, arquivo_path: str) -> dict[str
     """
     Extrai dados fiscais usando roteamento inteligente multi-provider.
     Atualiza o banco automaticamente.
+
+    Master switch: config key 'ocr_ativo' por empresa. Se '0'/False, pula extração.
     """
     logger.info("[ocr] Iniciando extração — doc_id=%d, arquivo=%s", documento_id, arquivo_path)
 
     async with get_db_direct() as db:
+        # Master OCR switch — busca empresa do doc + checa config
+        try:
+            async with db.execute(
+                "SELECT empresa_id FROM documentos_contabeis WHERE id=?", (documento_id,)
+            ) as cur:
+                drow = await cur.fetchone()
+            if drow and drow["empresa_id"]:
+                async with db.execute(
+                    "SELECT value FROM config WHERE empresa_id=? AND key='ocr_ativo' LIMIT 1",
+                    (drow["empresa_id"],),
+                ) as cur:
+                    crow = await cur.fetchone()
+                if crow and crow["value"] in ("0", "false", "False", False):
+                    logger.info("[ocr] OCR desativado pra empresa %s — pulando doc %s",
+                                drow["empresa_id"], documento_id)
+                    await db.execute(
+                        "UPDATE ocr_jobs SET status='skipped', erro_msg='OCR desativado' WHERE documento_id=?",
+                        (documento_id,),
+                    )
+                    await db.commit()
+                    return {"ok": False, "skipped": True, "reason": "ocr_ativo=false"}
+        except Exception:
+            pass  # se schema diferente, segue normal
+
         await db.execute(
             "UPDATE ocr_jobs SET status='processing', tentativas=tentativas+1 WHERE documento_id=?",
             (documento_id,)

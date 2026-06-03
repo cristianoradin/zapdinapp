@@ -14,7 +14,7 @@ window.telegramModule = (() => {
     const s = getComputedStyle(document.documentElement);
     el.style.background = type === 'ok' ? s.getPropertyValue('--accent-soft').trim() : s.getPropertyValue('--red-soft').trim();
     el.style.color      = type === 'ok' ? s.getPropertyValue('--accent').trim()      : s.getPropertyValue('--red').trim();
-    el.style.border     = type === 'ok' ? '1px solid ' + s.getPropertyValue('--accent-mid').trim() : '1px solid #fecaca';
+    el.style.border     = type === 'ok' ? '1px solid ' + s.getPropertyValue('--accent-mid').trim() : '1px solid color-mix(in srgb,var(--red) 30%,transparent)';
     el.textContent = msg;
   }
 

@@ -308,6 +308,12 @@ async def receber_arquivo(
     nome_original = ""
 
     if tem_arquivo:
+        # Pre-check tamanho do base64 antes do decode (4 chars b64 ≈ 3 bytes raw)
+        MAX_BYTES = 50 * 1024 * 1024  # 50MB
+        b64_len = len(body.conteudo_base64 or "")
+        estimated_bytes = (b64_len * 3) // 4
+        if estimated_bytes > MAX_BYTES:
+            raise HTTPException(status_code=413, detail=f"Arquivo excede {MAX_BYTES // (1024*1024)}MB.")
         os.makedirs(UPLOAD_DIR, exist_ok=True)
         ext = os.path.splitext(body.nome_arquivo)[1] or ".pdf"
         nome_salvo = f"{uuid.uuid4().hex}{ext}"
@@ -320,9 +326,14 @@ async def receber_arquivo(
                 empresa_id, body.nome_arquivo, exc,
             )
             raise HTTPException(status_code=400, detail="Conteúdo base64 inválido.")
+        if len(conteudo) > MAX_BYTES:
+            raise HTTPException(status_code=413, detail=f"Arquivo excede {MAX_BYTES // (1024*1024)}MB.")
         try:
-            with open(caminho, "wb") as f:
-                f.write(conteudo)
+            import asyncio as _aio
+            def _write_blocking():
+                with open(caminho, "wb") as f:
+                    f.write(conteudo)
+            await _aio.to_thread(_write_blocking)
         except Exception as exc:
             logger.error(
                 "[erp] Erro ao gravar arquivo em disco: empresa=%s caminho=%s erro=%s",

@@ -37,7 +37,7 @@ window.mensagemModule = (() => {
     const txt  = document.getElementById('templateSaveStatusText');
     if (!el) return;
     if (saved) {
-      el.style.cssText   = 'display:flex;align-items:center;gap:.45rem;font-size:.8rem;font-weight:600;padding:.5rem .75rem;border-radius:8px;margin-top:.5rem;background:#f0fdf4;border:1px solid #86efac;color:#15803d';
+      el.style.cssText   = 'display:flex;align-items:center;gap:.45rem;font-size:.8rem;font-weight:600;padding:.5rem .75rem;border-radius:8px;margin-top:.5rem;background:var(--primary-soft);border:1px solid #86efac;color:#15803d';
       icon.innerHTML     = '<polyline points="20 6 9 17 4 12"/>';
       icon.setAttribute('viewBox','0 0 24 24');
       txt.textContent    = '✅ Template salvo com sucesso';
@@ -104,28 +104,15 @@ window.mensagemModule = (() => {
       const cfg = res.ok ? await res.json() : {};
       const ativo = cfg.avaliacao_ativa === '1' || cfg.avaliacao_ativa === true;
       document.getElementById('toggleAvaliacao').checked = ativo;
-      document.getElementById('avaliacaoPreviewWrap').style.display = ativo ? '' : 'none';
       const cbTeste = document.getElementById('testeMsgIncluirAval');
       if (cbTeste) { cbTeste.checked = ativo; atualizarPreviewTeste(); }
-      if (ativo) {
-        const iframe = document.getElementById('avaliacaoPreviewIframe');
-        const empresaId = cfg.empresa_id || '';
-        iframe.src = '/avaliacao/preview' + (empresaId ? '?empresa_id=' + empresaId : '');
-      }
     } catch(e) {}
   }
 
   async function salvarAvaliacaoCfg() {
     const ativo = document.getElementById('toggleAvaliacao').checked;
-    document.getElementById('avaliacaoPreviewWrap').style.display = ativo ? '' : 'none';
     await _fetch('POST', '/api/config', { avaliacao_ativa: ativo ? '1' : '0' });
     updatePreview(document.getElementById('inputMensagem')?.value || '');
-    if (ativo) {
-      const res = await fetch('/api/config');
-      const cfg = res.ok ? await res.json() : {};
-      const empresaId = cfg.empresa_id || '';
-      document.getElementById('avaliacaoPreviewIframe').src = '/avaliacao/preview' + (empresaId ? '?empresa_id=' + empresaId : '');
-    }
   }
 
   // ── Teste de envio (integrado na página mensagem) ─────────────────────────
@@ -200,8 +187,38 @@ window.mensagemModule = (() => {
       atualizarPreviewTeste();
     });
 
+    // Cor do cartão de avaliação: swatches — aplica + persiste em /api/config
+    function _applyReviewColor(color) {
+      const card = document.getElementById('reviewCardPreview');
+      if (!card) return;
+      card.style.setProperty('--primary', color);
+      card.style.setProperty('--primary-strong', `color-mix(in srgb, ${color} 100%, #000 16%)`);
+      card.style.setProperty('--primary-deep', `color-mix(in srgb, ${color} 100%, #000 34%)`);
+    }
+    function _markSwatch(color) {
+      document.querySelectorAll('#reviewSwatchRow .tw-swatch').forEach(s => {
+        s.classList.toggle('on', s.dataset.color === color);
+      });
+    }
+    document.querySelectorAll('#reviewSwatchRow .tw-swatch').forEach(sw => {
+      sw.addEventListener('click', async () => {
+        const color = sw.dataset.color;
+        _markSwatch(color);
+        _applyReviewColor(color);
+        try { await _fetch('POST', '/api/config', { review_color: color }); } catch {}
+      });
+    });
+    // Carrega cor salva
+    _fetch('GET', '/api/config').then(cfg => {
+      const saved = cfg?.review_color;
+      if (saved && /^#[0-9a-fA-F]{6}$/.test(saved)) {
+        _markSwatch(saved);
+        _applyReviewColor(saved);
+      }
+    }).catch(() => {});
+
     // Clique nas var-tags: insere variável na posição do cursor
-    document.querySelectorAll('.var-tag[data-var]').forEach(tag => {
+    document.querySelectorAll('[data-var]').forEach(tag => {
       tag.addEventListener('click', () => {
         const ta = document.getElementById('inputMensagem');
         const v  = tag.dataset.var;
@@ -215,7 +232,7 @@ window.mensagemModule = (() => {
     });
 
     // Salvar mensagem
-    document.getElementById('btnSalvarMensagem').addEventListener('click', async () => {
+    document.getElementById('btnSalvarMensagem')?.addEventListener('click', async () => {
       const corpo = document.getElementById('inputMensagem').value;
       const header = _clientName ? '🏪 *' + _clientName + '*\n\n' : '';
       const val = header + corpo;
@@ -229,20 +246,31 @@ window.mensagemModule = (() => {
     });
 
     // Quando o usuário editar o textarea, volta ao estado "não salvo"
-    document.getElementById('inputMensagem').addEventListener('input', () => {
+    document.getElementById('inputMensagem')?.addEventListener('input', () => {
       _setTemplateStatus(false);
     });
 
-    // Enviar teste de mensagem
-    document.getElementById('btnEnviarTesteMensagem').addEventListener('click', async () => {
+    // Quando avaliação é ligada/desligada, sincroniza estado do alerta crítico
+    const toggleAval = document.getElementById('toggleAvaliacao');
+    if (toggleAval) toggleAval.addEventListener('change', _syncAlertaToggleState);
+  }
+
+  // ── Teste de Envio (montado na página Conectar WhatsApp) ──────────────────
+  let _testeBound = false;
+  function _bindTesteEnvio() {
+    if (_testeBound) return;
+    const btn = document.getElementById('btnEnviarTesteMensagem');
+    if (!btn) return;
+    _testeBound = true;
+    btn.addEventListener('click', async () => {
       const sessaoId = document.getElementById('testeMsgSessao').value;
       const phoneRaw = document.getElementById('testeMsgPhone').value.trim().replace(/\D/g,'');
       const phone = '55' + phoneRaw;
       const resEl = document.getElementById('testeMsgResult');
       const show = (type, msg) => {
-        resEl.style.cssText = `display:block;border:1px solid ${type==='ok'?'var(--accent-mid)':type==='loading'?'var(--border)':'#fecaca'};` +
-          `background:${type==='ok'?'var(--accent-soft)':type==='loading'?'var(--surface2)':'var(--red-soft)'};` +
-          `color:${type==='ok'?'var(--accent)':type==='loading'?'var(--text-mid)':'var(--red)'}`;
+        resEl.style.cssText = `display:block;border:1px solid ${type==='ok'?'color-mix(in srgb,var(--primary) 35%,transparent)':type==='loading'?'var(--border)':'color-mix(in srgb,var(--red) 30%,transparent)'};` +
+          `background:${type==='ok'?'var(--primary-soft)':type==='loading'?'var(--surface-2)':'var(--red-soft)'};` +
+          `color:${type==='ok'?'var(--primary-deep)':type==='loading'?'var(--text-2)':'var(--red)'}`;
         resEl.textContent = msg;
       };
       if (!sessaoId) { show('error','Selecione uma sessão conectada.'); return; }
@@ -253,18 +281,29 @@ window.mensagemModule = (() => {
       if (res && res.ok) show('ok','✅ Mensagem enviada com sucesso!');
       else show('error','❌ ' + (res?.detail || 'Erro ao enviar mensagem.'));
     });
+    document.getElementById('testeMsgIncluirAval')?.addEventListener('change', atualizarPreviewTeste);
+    document.getElementById('testeMsgPhone')?.addEventListener('input', atualizarPreviewTeste);
+  }
 
-    // Preview de teste ao mudar checkbox avaliação
-    const cbAval = document.getElementById('testeMsgIncluirAval');
-    if (cbAval) cbAval.addEventListener('change', atualizarPreviewTeste);
+  async function initTesteEnvio() {
+    _bindTesteEnvio();
+    // Sincroniza toggle "incluir avaliação" com config
+    try {
+      const cfg = await (await fetch('/api/config')).json();
+      const ativo = cfg.avaliacao_ativa === '1' || cfg.avaliacao_ativa === true;
+      const cbTeste = document.getElementById('testeMsgIncluirAval');
+      if (cbTeste) cbTeste.checked = ativo;
+    } catch {}
+    await Promise.all([_refreshTesteMensagem(), _carregarLinkDemo(), _carregarClientName()]);
+    atualizarPreviewTeste();
+  }
 
-    // Quando avaliação é ligada/desligada, sincroniza estado do alerta crítico
-    const toggleAval = document.getElementById('toggleAvaliacao');
-    if (toggleAval) toggleAval.addEventListener('change', _syncAlertaToggleState);
-
-    // Preview de teste ao digitar número de telefone
-    const phoneEl = document.getElementById('testeMsgPhone');
-    if (phoneEl) phoneEl.addEventListener('input', atualizarPreviewTeste);
+  async function _carregarClientName() {
+    try {
+      const r = await fetch('/api/config');
+      const cfg = r.ok ? await r.json() : {};
+      _clientName = cfg.client_name || '';
+    } catch {}
   }
 
   // ── Alerta Crítico de Avaliação ───────────────────────────────────────────────
@@ -301,7 +340,7 @@ window.mensagemModule = (() => {
     const resEl = document.getElementById('alertaCriticoResult');
     if (!resEl) return;
     if (salvo) {
-      resEl.style.cssText = 'display:flex;align-items:center;gap:.45rem;font-size:.8rem;font-weight:600;padding:.5rem .75rem;border-radius:8px;background:#f0fdf4;border:1px solid #86efac;color:#15803d';
+      resEl.style.cssText = 'display:flex;align-items:center;gap:.45rem;font-size:.8rem;font-weight:600;padding:.5rem .75rem;border-radius:8px;background:var(--primary-soft);border:1px solid #86efac;color:#15803d';
       resEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg>Configuração salva com sucesso`;
     } else {
       resEl.style.display = 'none';
@@ -339,10 +378,10 @@ window.mensagemModule = (() => {
 
     const show = (type, txt) => {
       if (type === 'ok') {
-        resEl.style.cssText = 'display:flex;align-items:center;gap:.45rem;font-size:.8rem;font-weight:600;padding:.5rem .75rem;border-radius:8px;background:#f0fdf4;border:1px solid #86efac;color:#15803d';
+        resEl.style.cssText = 'display:flex;align-items:center;gap:.45rem;font-size:.8rem;font-weight:600;padding:.5rem .75rem;border-radius:8px;background:var(--primary-soft);border:1px solid #86efac;color:#15803d';
         resEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg>${txt}`;
       } else {
-        resEl.style.cssText = 'display:flex;align-items:center;gap:.45rem;font-size:.8rem;font-weight:600;padding:.5rem .75rem;border-radius:8px;background:#fef2f2;border:1px solid #fca5a5;color:#991b1b';
+        resEl.style.cssText = 'display:flex;align-items:center;gap:.45rem;font-size:.8rem;font-weight:600;padding:.5rem .75rem;border-radius:8px;background:var(--red-bg);border:1px solid #fca5a5;color:var(--red)';
         resEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>${txt}`;
         setTimeout(() => { resEl.style.display = 'none'; }, 5000);
       }
@@ -380,18 +419,17 @@ window.mensagemModule = (() => {
       _registerEvents();
       _initialized = true;
     }
-    // Carrega avaliação e link demo em paralelo, depois carrega mensagem e teste
     Promise.all([loadAvaliacaoCfg(), _carregarLinkDemo()]).then(() => {
       loadMensagem();
-      loadTesteMensagem();
       loadAlertaCritico();
     });
   }
 
-  return { init, salvarAvaliacaoCfg, salvarAlertaCritico, insertAlertaVar };
+  return { init, salvarAvaliacaoCfg, salvarAlertaCritico, insertAlertaVar, initTesteEnvio };
 })();
 
 // ── Globais para chamadas inline no HTML ─────────────────────────────────────
 window.salvarAvaliacaoCfg  = () => mensagemModule.salvarAvaliacaoCfg();
 window.salvarAlertaCritico = () => mensagemModule.salvarAlertaCritico();
 window.insertAlertaVar     = (v) => mensagemModule.insertAlertaVar(v);
+window.initTesteEnvio      = () => mensagemModule.initTesteEnvio();

@@ -7,7 +7,7 @@
 function chatbotNav(el, panel) {
   document.querySelectorAll('[id^="cbMenu-"]').forEach(i => i.classList.remove('active'));
   document.querySelectorAll('[id^="cb-panel-"]').forEach(p => p.classList.remove('active'));
-  el.classList.add('active');
+  if (el && el.classList) el.classList.add('active');
   const target = document.getElementById('cb-panel-' + panel);
   if (target) target.classList.add('active');
   // Carrega dados do painel ao abrir
@@ -18,6 +18,14 @@ function chatbotNav(el, panel) {
   if (panel === 'aprendizado') chatbot.carregarAprendizado();
   if (panel === 'memoria') chatbot.carregarMemoria();
 }
+
+// Helper: navega pra chatbot + ativa um painel diretamente (usado por atalhos da Central de IA)
+window.chatbotGoTo = async function chatbotGoTo(panel) {
+  await window.navigate('chatbot');
+  // espera DOM carregar
+  await new Promise(r => setTimeout(r, 250));
+  chatbotNav(null, panel);
+};
 
 const chatbot = (() => {
   let _phoneAtual       = null;
@@ -31,9 +39,9 @@ const chatbot = (() => {
     const el = document.getElementById(id);
     if (!el) return;
     el.style.display = 'block';
-    el.style.background  = tipo === 'ok' ? '#f0fdf4' : '#fef2f2';
-    el.style.color       = tipo === 'ok' ? '#3d7f1f' : '#ef4444';
-    el.style.border      = tipo === 'ok' ? '1px solid #bbf7d0' : '1px solid #fecaca';
+    el.style.background  = tipo === 'ok' ? 'var(--primary-soft)' : 'var(--red-bg)';
+    el.style.color       = tipo === 'ok' ? 'var(--primary-deep)' : 'var(--red)';
+    el.style.border      = tipo === 'ok' ? '1px solid color-mix(in srgb,var(--primary) 30%,transparent)' : '1px solid color-mix(in srgb,var(--red) 30%,transparent)';
     el.textContent = msg;
     setTimeout(() => { el.style.display = 'none'; }, 3200);
   }
@@ -95,25 +103,25 @@ const chatbot = (() => {
     if (!el) return;
     try {
       const r = await fetch('/api/chatbot/faq');
-      if (!r.ok) { el.innerHTML = '<div style="color:#ef4444;font-size:.8rem">Erro ao carregar.</div>'; return; }
+      if (!r.ok) { el.innerHTML = '<div style="color:var(--red);font-size:.8rem">Erro ao carregar.</div>'; return; }
       const lista = await r.json();
       if (!lista.length) {
-        el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:.82rem">Nenhuma pergunta cadastrada ainda</div>';
+        el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-3);font-size:.82rem">Nenhuma pergunta cadastrada ainda</div>';
         return;
       }
       el.innerHTML = lista.map(f => `
-        <div style="border:1px solid var(--border);border-radius:10px;padding:.8rem 1rem;background:var(--surface2)">
+        <div style="border:1px solid var(--border);border-radius:10px;padding:.8rem 1rem;background:var(--surface-2)">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem">
             <div style="flex:1;min-width:0">
               <div style="font-size:.8rem;font-weight:600;color:var(--text);margin-bottom:.3rem">❓ ${f.pergunta}</div>
-              <div style="font-size:.78rem;color:var(--text-muted);line-height:1.5">💬 ${f.resposta}</div>
+              <div style="font-size:.78rem;color:var(--text-3);line-height:1.5">💬 ${f.resposta}</div>
             </div>
-            <button onclick="chatbot.removerFaq(${f.id})" style="background:none;border:none;cursor:pointer;color:#9ca3af;padding:.2rem;flex-shrink:0" title="Remover">
+            <button onclick="chatbot.removerFaq(${f.id})" style="background:none;border:none;cursor:pointer;color:var(--text-3);padding:.2rem;flex-shrink:0" title="Remover">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
             </button>
           </div>
         </div>`).join('');
-    } catch { el.innerHTML = '<div style="color:#ef4444;font-size:.8rem">Erro ao carregar.</div>'; }
+    } catch { el.innerHTML = '<div style="color:var(--red);font-size:.8rem">Erro ao carregar.</div>'; }
   }
 
   async function adicionarFaq() {
@@ -132,7 +140,8 @@ const chatbot = (() => {
   }
 
   async function removerFaq(id) {
-    if (!confirm('Remover esta pergunta?')) return;
+    const ok = await window.showConfirm({ title: 'Remover esta pergunta?', body: 'A pergunta será excluída da FAQ.', okLabel: 'Remover', type: 'danger' });
+    if (!ok) return;
     await api('DELETE', '/api/chatbot/faq/' + id);
     await carregarFaq();
   }
@@ -141,39 +150,39 @@ const chatbot = (() => {
   async function carregarAprendizado() {
     const el = document.getElementById('aprendizadoLista');
     if (!el) return;
-    el.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text-muted)">Carregando…</div>';
+    el.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text-3)">Carregando…</div>';
     try {
       const url = '/api/chatbot/aprendizado' + (_filtroAprendizado !== 'todos' ? '?filtro=' + _filtroAprendizado : '');
       const r = await fetch(url);
-      if (!r.ok) { el.innerHTML = '<div style="color:#ef4444;font-size:.8rem">Erro ao carregar.</div>'; return; }
+      if (!r.ok) { el.innerHTML = '<div style="color:var(--red);font-size:.8rem">Erro ao carregar.</div>'; return; }
       const lista = await r.json();
       if (!lista.length) {
-        el.innerHTML = '<div style="text-align:center;padding:2.5rem;color:var(--text-muted);font-size:.82rem">Nenhum item para revisar</div>';
+        el.innerHTML = '<div style="text-align:center;padding:2.5rem;color:var(--text-3);font-size:.82rem">Nenhum item para revisar</div>';
         return;
       }
       el.innerHTML = lista.map(item => {
         const aprovado = item.aprovado === true;
         const rejeitado = item.aprovado === false;
         const badge = aprovado
-          ? '<span style="background:#f0fdf4;color:#3d7f1f;border:1px solid #bbf7d0;border-radius:20px;font-size:.65rem;font-weight:700;padding:.15rem .5rem">✅ Aprovado</span>'
+          ? '<span style="background:var(--primary-soft);color:var(--primary-deep);border:1px solid color-mix(in srgb,var(--primary) 30%,transparent);border-radius:20px;font-size:.65rem;font-weight:700;padding:.15rem .5rem">✅ Aprovado</span>'
           : rejeitado
-          ? '<span style="background:#fef2f2;color:#ef4444;border:1px solid #fecaca;border-radius:20px;font-size:.65rem;font-weight:700;padding:.15rem .5rem">👎 Rejeitado</span>'
+          ? '<span style="background:var(--red-bg);color:var(--red);border:1px solid color-mix(in srgb,var(--red) 30%,transparent);border-radius:20px;font-size:.65rem;font-weight:700;padding:.15rem .5rem">👎 Rejeitado</span>'
           : '<span style="background:#fffbeb;color:#d97706;border:1px solid #fde68a;border-radius:20px;font-size:.65rem;font-weight:700;padding:.15rem .5rem">⏳ Pendente</span>';
-        return `<div style="border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;background:var(--surface2)">
+        return `<div style="border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;background:var(--surface-2)">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
-            <div style="font-size:.72rem;color:var(--text-muted)">${item.phone} · ${item.created_at ? new Date(item.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : ''}</div>
+            <div style="font-size:.72rem;color:var(--text-3)">${item.phone} · ${item.created_at ? new Date(item.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : ''}</div>
             ${badge}
           </div>
           <div style="margin-bottom:.3rem"><span style="font-size:.72rem;font-weight:700;color:#6b7280">Cliente:</span> <span style="font-size:.8rem;color:var(--text)">${item.pergunta}</span></div>
           <div style="margin-bottom:.65rem"><span style="font-size:.72rem;font-weight:700;color:#8b5cf6">Bot:</span> <span style="font-size:.8rem;color:var(--text)">${item.resposta}</span></div>
           <div style="display:flex;gap:.4rem;flex-wrap:wrap">
-            ${!aprovado ? `<button class="btn btn-sm" onclick="chatbot.avaliarAprendizado(${item.id},true)" style="background:#f0fdf4;color:#3d7f1f;border:1px solid #bbf7d0;font-size:.72rem">👍 Aprovar</button>` : ''}
-            ${!rejeitado ? `<button class="btn btn-sm" onclick="chatbot.avaliarAprendizado(${item.id},false)" style="background:#fef2f2;color:#ef4444;border:1px solid #fecaca;font-size:.72rem">👎 Rejeitar</button>` : ''}
+            ${!aprovado ? `<button class="btn btn-sm" onclick="chatbot.avaliarAprendizado(${item.id},true)" style="background:var(--primary-soft);color:var(--primary-deep);border:1px solid color-mix(in srgb,var(--primary) 30%,transparent);font-size:.72rem">👍 Aprovar</button>` : ''}
+            ${!rejeitado ? `<button class="btn btn-sm" onclick="chatbot.avaliarAprendizado(${item.id},false)" style="background:var(--red-bg);color:var(--red);border:1px solid color-mix(in srgb,var(--red) 30%,transparent);font-size:.72rem">👎 Rejeitar</button>` : ''}
             <button class="btn btn-ghost btn-sm" onclick="chatbot.removerAprendizado(${item.id})" style="font-size:.72rem">🗑 Remover</button>
           </div>
         </div>`;
       }).join('');
-    } catch { el.innerHTML = '<div style="color:#ef4444;font-size:.8rem">Erro ao carregar.</div>'; }
+    } catch { el.innerHTML = '<div style="color:var(--red);font-size:.8rem">Erro ao carregar.</div>'; }
   }
 
   function filtrarAprendizado(filtro) {
@@ -182,8 +191,8 @@ const chatbot = (() => {
     ['todos','aprovados','pendentes'].forEach(f => {
       const btn = document.getElementById('aprendFiltro' + f.charAt(0).toUpperCase() + f.slice(1));
       if (!btn) return;
-      if (f === filtro) { btn.style.background = 'var(--accent)'; btn.style.color = '#fff'; btn.style.border = 'none'; }
-      else { btn.style.background = 'transparent'; btn.style.color = 'var(--text-mid)'; btn.style.border = '1px solid var(--border)'; }
+      if (f === filtro) { btn.style.background = 'var(--primary-deep)'; btn.style.color = '#fff'; btn.style.border = 'none'; }
+      else { btn.style.background = 'transparent'; btn.style.color = 'var(--text-2)'; btn.style.border = '1px solid var(--border)'; }
     });
     carregarAprendizado();
   }
@@ -228,7 +237,7 @@ const chatbot = (() => {
         abrirConversa(phone, nome, ativo);
       });
     }
-    el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-mid);font-size:.8rem">Carregando…</div>';
+    el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-2);font-size:.8rem">Carregando…</div>';
     try {
       const r = await fetch('/api/chatbot/conversas');
       if (!r.ok) throw new Error('status ' + r.status);
@@ -236,14 +245,14 @@ const chatbot = (() => {
       _renderContatos(_conversasCache);
     } catch(e) {
       el.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2.5rem 1rem;gap:.75rem;text-align:center">
-      <div style="width:44px;height:44px;border-radius:50%;background:#fef2f2;display:flex;align-items:center;justify-content:center">
-        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <div style="width:44px;height:44px;border-radius:50%;background:var(--red-bg);display:flex;align-items:center;justify-content:center">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
       </div>
       <div>
-        <div style="font-size:.82rem;font-weight:600;color:#dc2626;margin-bottom:.2rem">Erro ao carregar</div>
-        <div style="font-size:.72rem;color:var(--text-mid)">Verifique sua conexão</div>
+        <div style="font-size:.82rem;font-weight:600;color:var(--red);margin-bottom:.2rem">Erro ao carregar</div>
+        <div style="font-size:.72rem;color:var(--text-2)">Verifique sua conexão</div>
       </div>
-      <button onclick="chatbot.carregarConversas()" style="display:inline-flex;align-items:center;gap:.35rem;padding:.4rem .9rem;border-radius:20px;border:1px solid #fecaca;background:#fef2f2;color:#dc2626;font-size:.75rem;cursor:pointer;font-weight:600">
+      <button onclick="chatbot.carregarConversas()" style="display:inline-flex;align-items:center;gap:.35rem;padding:.4rem .9rem;border-radius:20px;border:1px solid color-mix(in srgb,var(--red) 30%,transparent);background:var(--red-bg);color:var(--red);font-size:.75rem;cursor:pointer;font-weight:600">
         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
         Tentar novamente
       </button>
@@ -256,7 +265,7 @@ const chatbot = (() => {
     const el = document.getElementById('chatbotConversasList');
     if (!el) return;
     if (!lista.length) {
-      el.innerHTML = '<div style="text-align:center;padding:3rem 1rem;color:var(--text-mid);font-size:.8rem">Nenhuma conversa ainda</div>';
+      el.innerHTML = '<div style="text-align:center;padding:3rem 1rem;color:var(--text-2);font-size:.8rem">Nenhuma conversa ainda</div>';
       return;
     }
     el.innerHTML = lista.map(c => {
@@ -324,14 +333,14 @@ const chatbot = (() => {
     msgsEl.style.display  = 'flex';
     // composer (locked vs aberto) decidido por _updatePausarToggle acima
     void inputEl;
-    msgsEl.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text-mid);font-size:.8rem">Carregando…</div>';
+    msgsEl.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text-2);font-size:.8rem">Carregando…</div>';
 
     try {
       const r = await fetch('/api/chatbot/historico/' + encodeURIComponent(phone));
       if (!r.ok) throw new Error('status ' + r.status);
       const msgs = await r.json();
       if (!msgs.length) {
-        msgsEl.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-mid);font-size:.8rem">Sem mensagens nesta conversa</div>';
+        msgsEl.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-2);font-size:.8rem">Sem mensagens nesta conversa</div>';
         return;
       }
       msgsEl.innerHTML = msgs.map(m => {
@@ -356,7 +365,7 @@ const chatbot = (() => {
       }).join('');
       msgsEl.scrollTop = msgsEl.scrollHeight;
     } catch(e) {
-      msgsEl.innerHTML = '<div style="text-align:center;padding:1rem;color:#ef4444;font-size:.8rem">Erro ao carregar histórico.</div>';
+      msgsEl.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--red);font-size:.8rem">Erro ao carregar histórico.</div>';
       console.error('[chatbot] abrirConversa:', e);
     }
   }
@@ -374,18 +383,17 @@ const chatbot = (() => {
     const locked = document.getElementById('cbComposerLocked');
     const open   = document.getElementById('cbChatInput');
     if (_chatbotAtivoAtual) {
-      // IA ativa → botão "Assumir conversa" (warn) + composer travado
-      btn.className = 'cbx-btn warn';
+      // IA ativa → btn "Assumir conversa" (warn) + composer travado + sem pill
+      btn.className = 'btn cb-btn-retomar warn';
       if (label) label.textContent = 'Assumir conversa';
-      if (pill)  pill.className = 'cbx-pill ativo';
-      if (ptxt)  ptxt.textContent = 'IA ativa';
+      if (pill)  { pill.className = 'cb-pill-status'; pill.style.display = 'none'; }
       if (locked) locked.style.display = 'flex';
       if (open)   open.style.display = 'none';
     } else {
-      // Humano assumiu → botão "Retomar IA" (primary) + composer aberto
-      btn.className = 'cbx-btn primary';
+      // Humano assumiu → btn verde "Retomar IA" + pill amber "Pausado"
+      btn.className = 'btn cb-btn-retomar';
       if (label) label.textContent = 'Retomar IA';
-      if (pill)  pill.className = 'cbx-pill pausado';
+      if (pill)  { pill.className = 'cb-pill-status pausado'; pill.style.display = 'inline-flex'; }
       if (ptxt)  ptxt.textContent = 'Pausado';
       if (locked) locked.style.display = 'none';
       if (open)   open.style.display = 'flex';
@@ -398,6 +406,10 @@ const chatbot = (() => {
     set('cbDetAvatar', _digits2(_phoneAtual || _nomeAtual));
     set('cbDetNome', _nomeAtual || _phoneAtual);
     set('cbDetPhone', '+55 ' + (_phoneAtual || '').replace(/\D/g,''));
+    const nomeInp = document.getElementById('cbDetNomeInput');
+    if (nomeInp) nomeInp.value = (_nomeAtual && _nomeAtual !== _phoneAtual) ? _nomeAtual : '';
+    const nomeAlert = document.getElementById('cbDetNomeAlert');
+    if (nomeAlert) nomeAlert.style.display = 'none';
     const pill = document.getElementById('cbDetPill');
     set('cbDetPillTxt', _chatbotAtivoAtual ? 'IA ativa' : 'Pausado');
     if (pill) pill.className = 'cbx-pill ' + (_chatbotAtivoAtual ? 'ativo' : 'pausado');
@@ -463,9 +475,7 @@ const chatbot = (() => {
 
   async function encerrarAtendimento() {
     if (!_phoneAtual) return;
-    const ok = await (window.showConfirm
-      ? showConfirm({ title: 'Encerrar atendimento?', body: 'A IA para de responder este contato. Pode reabrir depois retomando a IA.', okLabel: 'Encerrar', type: 'danger', icon: '📁' })
-      : Promise.resolve(confirm('Encerrar atendimento deste contato?')));
+    const ok = await window.showConfirm({ title: 'Encerrar atendimento?', body: 'A IA para de responder este contato. Pode reabrir depois retomando a IA.', okLabel: 'Encerrar', type: 'danger', icon: '📁' });
     if (!ok) return;
     try {
       await api('PATCH', '/api/chatbot/contato/' + encodeURIComponent(_phoneAtual) + '/encerrar');
@@ -607,7 +617,8 @@ const chatbot = (() => {
 
   async function limparHistorico() {
     if (!_phoneAtual) return;
-    if (!confirm('Apagar todo o histórico de ' + (_nomeAtual || _phoneAtual) + '?')) return;
+    const ok = await window.showConfirm({ title: 'Apagar histórico?', body: 'Todo o histórico de ' + (_nomeAtual || _phoneAtual) + ' será removido. Esta ação não pode ser desfeita.', okLabel: 'Apagar', type: 'danger' });
+    if (!ok) return;
     await api('DELETE', `/api/chatbot/historico/${encodeURIComponent(_phoneAtual)}`);
     // Reseta painel
     document.getElementById('cbChatHeader').style.display  = 'none';
@@ -633,9 +644,9 @@ const chatbot = (() => {
     const statsEl = document.getElementById('memoriaIaStats');
     if (statsEl && stats._status === 200) {
       statsEl.innerHTML = `
-        <span class="mem-stat-chip" style="background:#f0fdf4;color:#166534">✅ ${stats.aprovadas} aprovadas</span>
+        <span class="mem-stat-chip" style="background:var(--primary-soft);color:var(--primary-deep)">✅ ${stats.aprovadas} aprovadas</span>
         <span class="mem-stat-chip" style="background:#fefce8;color:#854d0e">⏳ ${stats.pendentes} pendentes</span>
-        <span class="mem-stat-chip" style="background:#fef2f2;color:#991b1b">❌ ${stats.rejeitadas} rejeitadas</span>
+        <span class="mem-stat-chip" style="background:var(--red-bg);color:var(--red)">❌ ${stats.rejeitadas} rejeitadas</span>
         <span class="mem-stat-chip" style="background:#f5f3ff;color:#5b21b6">🔄 ${stats.total_usos} usos totais</span>`;
     }
     // Carrega config (memoria_ia_ativa)
@@ -649,15 +660,15 @@ const chatbot = (() => {
   async function _renderMemoria(filtro) {
     const el = document.getElementById('memoriaIaLista');
     if (!el) return;
-    el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-mid);font-size:.8rem">Carregando…</div>';
+    el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-2);font-size:.8rem">Carregando…</div>';
     const url = '/api/chatbot/memoria-ia' + (filtro ? '?filtro=' + filtro : '');
     const r = await api('GET', url);
     if (!r || r._status >= 400 || !Array.isArray(r)) {
-      el.innerHTML = '<div style="text-align:center;padding:2rem;color:#ef4444;font-size:.8rem">Erro ao carregar</div>';
+      el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--red);font-size:.8rem">Erro ao carregar</div>';
       return;
     }
     if (!r.length) {
-      el.innerHTML = '<div style="text-align:center;padding:3rem 1rem;color:var(--text-mid);font-size:.8rem">' +
+      el.innerHTML = '<div style="text-align:center;padding:3rem 1rem;color:var(--text-2);font-size:.8rem">' +
         (filtro ? 'Nenhuma entrada ' + filtro : 'Nenhuma entrada ainda — a IA vai alimentar esta base automaticamente') + '</div>';
       return;
     }
@@ -671,16 +682,16 @@ const chatbot = (() => {
         <div class="mem-card-header">
           <span class="mem-intencao">${_escHtml(m.intencao)}</span>
           ${statusBadge} ${fonteBadge}
-          <span style="margin-left:auto;font-size:.68rem;color:var(--text-light)">${m.usos} uso${m.usos !== 1 ? 's' : ''}</span>
+          <span style="margin-left:auto;font-size:.68rem;color:var(--text-3)">${m.usos} uso${m.usos !== 1 ? 's' : ''}</span>
         </div>
         <div class="mem-confianca-bar"><div class="mem-confianca-fill" style="width:${m.confianca || 0}%"></div></div>
         ${vars.length ? `<div class="mem-variacoes">📌 ${vars.slice(0,4).map(v => _escHtml(v)).join(' &nbsp;·&nbsp; ')}</div>` : ''}
         <div class="mem-resposta">${_escHtml(m.resposta_ideal)}</div>
         <div class="mem-actions">
-          ${m.aprovado !== true  ? `<button class="btn btn-sm" style="background:#dcfce7;color:#166534;border:none" onclick="chatbot.aprovarMemoria(${m.id},true)">✅ Aprovar</button>` : ''}
-          ${m.aprovado !== false ? `<button class="btn btn-sm" style="background:#fee2e2;color:#991b1b;border:none" onclick="chatbot.aprovarMemoria(${m.id},false)">❌ Rejeitar</button>` : ''}
+          ${m.aprovado !== true  ? `<button class="btn btn-sm" style="background:var(--primary-soft);color:var(--primary-deep);border:none" onclick="chatbot.aprovarMemoria(${m.id},true)">✅ Aprovar</button>` : ''}
+          ${m.aprovado !== false ? `<button class="btn btn-sm" style="background:var(--red-bg);color:var(--red);border:none" onclick="chatbot.aprovarMemoria(${m.id},false)">❌ Rejeitar</button>` : ''}
           <button class="btn btn-sm btn-ghost" onclick="chatbot.editarMemoria(${m.id})">✏️ Editar</button>
-          <button class="btn btn-sm btn-ghost" style="color:#ef4444" onclick="chatbot.deletarMemoria(${m.id})">🗑</button>
+          <button class="btn btn-sm btn-ghost" style="color:var(--red)" onclick="chatbot.deletarMemoria(${m.id})">🗑</button>
         </div>
       </div>`;
     }).join('');
@@ -699,7 +710,8 @@ const chatbot = (() => {
   }
 
   async function deletarMemoria(id) {
-    if (!confirm('Apagar esta entrada da memória?')) return;
+    const ok = await window.showConfirm({ title: 'Apagar memória?', body: 'A entrada será removida da memória da IA.', okLabel: 'Apagar', type: 'danger' });
+    if (!ok) return;
     await api('DELETE', `/api/chatbot/memoria-ia/${id}`);
     await carregarMemoria();
   }
@@ -738,7 +750,7 @@ const chatbot = (() => {
   async function abrirNovaMemoria() {
     const el = document.getElementById('memoriaIaLista');
     if (!el) return;
-    const formHtml = `<div class="mem-card" style="border-color:var(--accent)">
+    const formHtml = `<div class="mem-card" style="border-color:var(--primary-deep)">
       <div style="font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:.75rem">Nova entrada manual</div>
       <div style="display:flex;flex-direction:column;gap:.5rem">
         <input id="memNovaInt" placeholder="Intenção (ex: consulta_preco)"
@@ -769,6 +781,37 @@ const chatbot = (() => {
     await api('POST', '/api/chatbot/config/memoria-ia-ativa', { memoria_ia_ativa: ativo });
   }
 
+  async function salvarNomeContato() {
+    if (!_phoneAtual) return;
+    const inp = document.getElementById('cbDetNomeInput');
+    const alert = document.getElementById('cbDetNomeAlert');
+    const nome = (inp?.value || '').trim();
+    if (!nome) {
+      if (alert) { alert.textContent = 'Informe um nome.'; alert.style.color = 'var(--red)'; alert.style.display = 'block'; }
+      return;
+    }
+    try {
+      const r = await fetch('/api/chatbot/contato/' + encodeURIComponent(_phoneAtual) + '/nome', {
+        method: 'PATCH',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ nome }),
+      });
+      const d = r.ok ? await r.json() : null;
+      if (d?.ok) {
+        _nomeAtual = nome;
+        document.getElementById('cbDetNome').textContent = nome;
+        const hdrNome = document.getElementById('cbChatNome');
+        if (hdrNome) hdrNome.textContent = nome;
+        if (alert) { alert.textContent = '✓ Nome salvo'; alert.style.color = 'var(--primary-deep)'; alert.style.display = 'block'; }
+        carregarConversas();
+      } else {
+        if (alert) { alert.textContent = 'Erro ao salvar.'; alert.style.color = 'var(--red)'; alert.style.display = 'block'; }
+      }
+    } catch {
+      if (alert) { alert.textContent = 'Erro de conexão.'; alert.style.color = 'var(--red)'; alert.style.display = 'block'; }
+    }
+  }
+
   return {
     carregarConfig, salvarConfig,
     carregarBoasVindas, salvarBoasVindas,
@@ -778,6 +821,7 @@ const chatbot = (() => {
     toggleChatbotAtivo, enviarMensagem, limparHistorico, toggleDetalhes,
     abrirAdicionarTag, removerTag,
     transferirHumano, encerrarAtendimento, abrirRespostasRapidas,
+    salvarNomeContato,
     carregarMemoria, filtrarMemoria, aprovarMemoria, deletarMemoria,
     editarMemoria, _salvarEdicaoMemoria, abrirNovaMemoria, _salvarNovaMemoria,
     toggleMemoriaIaAtiva,

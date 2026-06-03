@@ -390,6 +390,33 @@ async def toggle_chatbot_ativo(
     return {"ok": True}
 
 
+class ContatoNomeBody(BaseModel):
+    nome: str
+
+
+@router.patch("/contato/{phone}/nome")
+async def set_contato_nome(
+    phone: str,
+    body: ContatoNomeBody,
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Define ou atualiza o nome de um contato."""
+    empresa_id = user["empresa_id"]
+    phone_local = phone.replace("@s.whatsapp.net", "").replace("@lid", "")
+    if phone_local.startswith("55") and len(phone_local) >= 12:
+        phone_local = phone_local[2:]
+    nome = (body.nome or "").strip()[:120]
+    await db.execute(
+        """INSERT INTO contatos(empresa_id, phone, nome, origem)
+           VALUES(?,?,?,'chatbot')
+           ON CONFLICT(empresa_id, phone) DO UPDATE SET nome=excluded.nome""",
+        (empresa_id, phone_local, nome),
+    )
+    await db.commit()
+    return {"ok": True, "nome": nome}
+
+
 @router.delete("/historico/{phone}")
 async def delete_historico(
     phone: str,
@@ -403,6 +430,47 @@ async def delete_historico(
     )
     await db.commit()
     return {"ok": True}
+
+
+# ── Seed conversa de demonstração ─────────────────────────────────────────────
+
+@router.post("/seed-demo")
+async def seed_demo_conversa(
+    db=Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Cria contato + histórico de exemplo pra demonstrar UI do chatbot."""
+    empresa_id = user["empresa_id"]
+    phone = "5511988887777"
+    # Garante contato
+    await db.execute(
+        """INSERT INTO contatos(empresa_id, phone, nome, origem, ativo, chatbot_ativo)
+           VALUES(?,?,?,?,TRUE,TRUE)
+           ON CONFLICT (empresa_id, phone) DO UPDATE SET nome=EXCLUDED.nome""",
+        (empresa_id, phone, "Cliente Demo", "chatbot"),
+    )
+    # Limpa histórico antigo do demo
+    await db.execute(
+        "DELETE FROM chat_historico WHERE empresa_id=? AND phone=?",
+        (empresa_id, phone),
+    )
+    msgs = [
+        ("user",      "Oi! Vocês trabalham com gasolina aditivada?"),
+        ("assistant", "Olá! Sim, temos gasolina comum e aditivada Premium. Posso te ajudar com o preço?"),
+        ("user",      "Quanto está o litro hoje?"),
+        ("assistant", "Hoje: Comum R$ 5,99 / Aditivada R$ 6,29. Aceitamos PIX, débito e crédito."),
+        ("user",      "Vocês entregam?"),
+        ("assistant", "Não fazemos entrega. Funcionamos 24h e ficamos na Av. Brasil, 1234."),
+        ("user",      "Beleza, obrigado!"),
+        ("assistant", "Disposição! Qualquer dúvida é só chamar. 🚗⛽"),
+    ]
+    for role, conteudo in msgs:
+        await db.execute(
+            "INSERT INTO chat_historico(empresa_id, phone, role, conteudo) VALUES(?,?,?,?)",
+            (empresa_id, phone, role, conteudo),
+        )
+    await db.commit()
+    return {"ok": True, "phone": phone, "msgs": len(msgs)}
 
 
 # ── Etiquetas (tags) — Fase 4 ─────────────────────────────────────────────────

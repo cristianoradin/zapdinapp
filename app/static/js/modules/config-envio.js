@@ -30,9 +30,9 @@
     if (!el) return;
     el.style.display = 'block';
     const ok = type === 'ok';
-    el.style.background = ok ? 'var(--accent-soft)' : 'var(--red-soft)';
-    el.style.border     = ok ? '1px solid var(--accent-mid)' : '1px solid #fecaca';
-    el.style.color      = ok ? 'var(--accent)' : 'var(--red)';
+    el.style.background = ok ? 'var(--primary-soft)' : 'var(--red-soft)';
+    el.style.border     = ok ? '1px solid color-mix(in srgb,var(--primary) 35%,transparent)' : '1px solid color-mix(in srgb,var(--red) 30%,transparent)';
+    el.style.color      = ok ? 'var(--primary-deep)' : 'var(--red)';
     el.textContent = msg;
   }
 
@@ -65,8 +65,8 @@
     try {
       const r = await fetch('/api/docs/abrir-erp');
       const data = await r.json();
-      if (!data.ok) alert('Não foi possível abrir o documento: ' + (data.error || 'erro'));
-    } catch (e) { alert('Erro ao abrir o documento: ' + e.message); }
+      if (!data.ok) await window.showInfo('Não foi possível abrir o documento: ' + (data.error || 'erro'), { type: 'warning' });
+    } catch (e) { await window.showInfo('Erro ao abrir o documento: ' + e.message, { type: 'danger', title: 'Erro' }); }
   };
 
   window.baixarDocErp = function baixarDocErp() {
@@ -79,8 +79,8 @@
     try {
       const r = await fetch('/api/docs/abrir-pdv');
       const data = await r.json();
-      if (!data.ok) alert('Não foi possível abrir o documento: ' + (data.error || 'erro'));
-    } catch (e) { alert('Erro ao abrir o documento: ' + e.message); }
+      if (!data.ok) await window.showInfo('Não foi possível abrir o documento: ' + (data.error || 'erro'), { type: 'warning' });
+    } catch (e) { await window.showInfo('Erro ao abrir o documento: ' + e.message, { type: 'danger', title: 'Erro' }); }
   };
 
   window.baixarDocPdv = function baixarDocPdv() {

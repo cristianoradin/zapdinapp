@@ -91,9 +91,44 @@ def record_error() -> None:
 #  Envio base
 # ─────────────────────────────────────────────────────────────────────────────
 
-async def send(text: str) -> bool:
-    """Envia uma mensagem de texto formatada (HTML) via Telegram Bot API."""
+# Cache de toggles de alerta (key → bool). Default: todos ativos.
+_alerts_cache: dict[str, bool] = {}
+_alerts_cache_ts: float = 0.0
+_ALERTS_TTL = 60.0  # 1 min
+
+
+async def _alerts_enabled(key: str) -> bool:
+    """Lê toggles salvos via /api/config key=telegram_alerts. Default True."""
+    global _alerts_cache, _alerts_cache_ts
+    import json
+    now = time.time()
+    if now - _alerts_cache_ts > _ALERTS_TTL:
+        try:
+            from ..core.database import get_db_direct
+            async with get_db_direct() as db:
+                async with db.execute(
+                    "SELECT value FROM config WHERE key='telegram_alerts' LIMIT 1"
+                ) as cur:
+                    row = await cur.fetchone()
+            if row and row["value"]:
+                _alerts_cache = json.loads(row["value"])
+            else:
+                _alerts_cache = {}
+        except Exception:
+            _alerts_cache = {}
+        _alerts_cache_ts = now
+    # Default True quando não há configuração explícita
+    return _alerts_cache.get(key, True)
+
+
+async def send(text: str, alert_key: Optional[str] = None) -> bool:
+    """Envia uma mensagem de texto formatada (HTML) via Telegram Bot API.
+
+    Se alert_key for fornecido, respeita os toggles salvos em config.telegram_alerts.
+    """
     if not is_configured():
+        return False
+    if alert_key and not await _alerts_enabled(alert_key):
         return False
     url     = f"https://api.telegram.org/bot{_bot_token}/sendMessage"
     payload = {"chat_id": _chat_id, "text": text, "parse_mode": "HTML"}
@@ -131,7 +166,8 @@ async def notify_disconnected(sessao_nome: str) -> None:
         f"📱 Sessão: <b>{sessao_nome}</b>\n"
         f"⚠️ O dispositivo foi removido pelo usuário.\n"
         f"Acesse o painel e escaneie o QR Code novamente.\n"
-        f"🕐 {_now()}"
+        f"🕐 {_now()}",
+        alert_key="sessao_desconectada",
     )
 
 
@@ -155,7 +191,8 @@ async def notify_send_failure(sessao_nome: str, destinatario: str, erro: str) ->
         f"📱 Sessão: <b>{sessao_nome}</b>\n"
         f"📞 Destinatário: <code>{destinatario}</code>\n"
         f"❌ Erro: {erro}\n"
-        f"🕐 {_now()}"
+        f"🕐 {_now()}",
+        alert_key="falha_envio",
     )
 
 
@@ -166,7 +203,8 @@ async def notify_erp_invalid_token(ip: str) -> None:
         f"{_header()}\n\n"
         f"📡 ERP enviou token inválido\n"
         f"🌐 IP de origem: <code>{ip}</code>\n"
-        f"🕐 {_now()}"
+        f"🕐 {_now()}",
+        alert_key="erro_critico",
     )
 
 
@@ -186,7 +224,8 @@ async def notify_queue_blocked(pending_count: int) -> None:
         f"📨 {pending_count} mensagem(ns) aguardando envio.\n"
         f"❌ Nenhuma sessão WhatsApp conectada.\n"
         f"Acesse o painel para reconectar.\n"
-        f"🕐 {_now()}"
+        f"🕐 {_now()}",
+        alert_key="erro_critico",
     )
 
 
@@ -207,7 +246,8 @@ async def notify_worker_stuck(worker_name: str, minutes: int) -> None:
         f"🔴 <b>{worker_name}</b> sem heartbeat há {minutes} minuto(s).\n"
         f"O processo pode ter travado ou encerrado inesperadamente.\n"
         f"Verifique o status do serviço no servidor.\n"
-        f"🕐 {_now()}"
+        f"🕐 {_now()}",
+        alert_key="erro_critico",
     )
 
 
@@ -227,7 +267,35 @@ async def notify_api_error(detail: str) -> None:
         f"🚨 <b>ZapDin — Erro na API</b>\n"
         f"{_header()}\n\n"
         f"{detail}\n"
-        f"🕐 {_now()}"
+        f"🕐 {_now()}",
+        alert_key="erro_critico",
+    )
+
+
+async def notify_avaliacao_negativa(nome: str, nota: int, vendedor: str = "", comentario: str = "") -> None:
+    """Avaliação com nota baixa (1-3 estrelas) recebida."""
+    await send(
+        f"⭐ <b>ZapDin — Avaliação Negativa</b>\n"
+        f"{_header()}\n\n"
+        f"👤 Cliente: <b>{nome}</b>\n"
+        f"⭐ Nota: <b>{nota}</b> estrela(s)\n"
+        + (f"👨‍💼 Vendedor: <b>{vendedor}</b>\n" if vendedor else "")
+        + (f"💬 Comentário: <i>{comentario}</i>\n" if comentario else "")
+        + f"🕐 {_now()}",
+        alert_key="avaliacao_negativa",
+    )
+
+
+async def notify_campanha_concluida(nome: str, enviados: int, erros: int) -> None:
+    """Disparo de campanha concluído — resumo final."""
+    await send(
+        f"📢 <b>ZapDin — Campanha Concluída</b>\n"
+        f"{_header()}\n\n"
+        f"📦 Campanha: <b>{nome}</b>\n"
+        f"✅ Enviados: <b>{enviados}</b>\n"
+        f"❌ Erros: <b>{erros}</b>\n"
+        f"🕐 {_now()}",
+        alert_key="campanha_concluida",
     )
 
 
@@ -290,7 +358,7 @@ async def _send_status_report() -> None:
     else:
         texto += f"✅ {len(conectadas)} sessão(ões) ativa(s) e pronta(s) para envio."
 
-    await send(texto)
+    await send(texto, alert_key="relatorio_3h")
     _reset_counters()
 
 

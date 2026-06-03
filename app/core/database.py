@@ -1109,6 +1109,11 @@ async def init_db() -> None:
             "ALTER TABLE sessoes_wa ADD COLUMN IF NOT EXISTS usos "
             "TEXT DEFAULT '[\"chatbot\",\"campanhas\",\"arquivos\",\"agenda\"]'"
         )
+        # Modo híbrido: sessão pode usar Evolution local do cliente (URL custom) ou
+        # a Evolution global do servidor (NULL → fallback settings.evolution_url).
+        await conn.execute(
+            "ALTER TABLE sessoes_wa ADD COLUMN IF NOT EXISTS evolution_url TEXT"
+        )
 
         # ── P2: Worker heartbeats ─────────────────────────────────────────────
         await conn.execute(

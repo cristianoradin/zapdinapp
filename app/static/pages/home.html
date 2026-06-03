@@ -1,251 +1,299 @@
 <div class="page active" id="page-home">
-  <div class="hd-root">
 
-    <!-- ── HERO ROW ─────────────────────────────────────── -->
-    <div class="hd-hero">
+  <!-- KPIs hidden — info available in Gestão de Envios -->
+  <div style="display:none" id="hd-kpi-hoje"><span id="hd-kpi-hoje-val"></span></div>
+  <div style="display:none" id="hd-kpi-wa"><span id="hd-kpi-wa-val"></span></div>
+  <div style="display:none" id="hd-kpi-fila"><span id="hd-kpi-fila-val"></span></div>
+  <div style="display:none" id="hd-kpi-total"><span id="hd-kpi-total-val"></span></div>
 
-      <!-- Relógio -->
-      <div class="hd-clock-card">
-        <div class="hd-clock-glow"></div>
-        <div class="hd-clock-body">
-          <div class="hd-clock-time" id="home-time">00:00</div>
-          <div class="hd-clock-meta">
+  <!-- OUTER GRID: left (1fr) + right (300px) -->
+  <div class="grid" style="grid-template-columns:1fr 300px;gap:var(--gap);align-items:start">
+
+    <!-- LEFT COLUMN -->
+    <div style="display:flex;flex-direction:column;gap:var(--gap)">
+
+      <!-- TOP ROW: Clock + Weather -->
+      <div class="grid" style="grid-template-columns:380px 1fr;gap:var(--gap)">
+
+        <div class="clock-card">
+          <div class="glow"></div>
+          <div class="time" id="home-time">00:00</div>
+          <div class="date">
             <span id="home-date">--/--/----</span>
-            <span class="hd-clock-sep">·</span>
+            <span style="opacity:.5;margin:0 .35rem">·</span>
             <span id="home-day">--</span>
           </div>
         </div>
-      </div>
 
-      <!-- Clima -->
-      <div class="hd-weather-card" id="home-clima-card">
-        <div class="hd-weather-main">
-          <div class="hd-weather-icon" id="home-clima-icon">🌤️</div>
-          <div class="hd-weather-temp" id="home-clima-temp">--°</div>
-          <div class="hd-weather-info">
-            <div class="hd-weather-city" id="home-clima-city">--</div>
-            <div class="hd-weather-desc" id="home-clima-desc">--</div>
-            <div class="hd-weather-details">
-              <span>💧<span id="home-clima-umid">--</span></span>
-              <span>💨<span id="home-clima-vento">--</span></span>
-            </div>
-          </div>
-        </div>
-        <div class="hd-weather-forecast" id="home-clima-forecast"></div>
-        <button class="hd-weather-cfg-btn" title="Configurar cidade" onclick="homeToggleClimaConfig()">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-        </button>
-        <div class="hd-weather-cfg" id="home-clima-config" style="display:none">
-          <input type="text" id="home-clima-cidade-input" placeholder="Cidade" class="hd-input-sm">
-          <input type="text" id="home-clima-uf-input" placeholder="UF" class="hd-input-sm" maxlength="2" style="width:52px">
-          <button onclick="homeSalvarCidade()" class="hd-btn-xs hd-btn-ok">✓</button>
-          <button onclick="homeToggleClimaConfig()" class="hd-btn-xs hd-btn-cancel">✕</button>
-        </div>
-      </div>
-
-      <!-- KPIs -->
-      <div class="hd-kpis">
-        <div class="hd-kpi" id="hd-kpi-hoje">
-          <div class="hd-kpi-icon hd-kpi-green">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-          </div>
-          <div>
-            <div class="hd-kpi-val" id="hd-kpi-hoje-val">--</div>
-            <div class="hd-kpi-label">Envios hoje</div>
-          </div>
-        </div>
-        <div class="hd-kpi" id="hd-kpi-wa">
-          <div class="hd-kpi-icon hd-kpi-blue">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          </div>
-          <div>
-            <div class="hd-kpi-val" id="hd-kpi-wa-val">--</div>
-            <div class="hd-kpi-label">WhatsApp ativo</div>
-          </div>
-        </div>
-        <div class="hd-kpi" id="hd-kpi-fila">
-          <div class="hd-kpi-icon hd-kpi-amber">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          </div>
-          <div>
-            <div class="hd-kpi-val" id="hd-kpi-fila-val">--</div>
-            <div class="hd-kpi-label">Na fila</div>
-          </div>
-        </div>
-        <div class="hd-kpi" id="hd-kpi-total">
-          <div class="hd-kpi-icon hd-kpi-purple">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-          </div>
-          <div>
-            <div class="hd-kpi-val" id="hd-kpi-total-val">--</div>
-            <div class="hd-kpi-label">Total enviados</div>
-          </div>
-        </div>
-      </div>
-
-    </div><!-- /hero -->
-
-    <!-- ── MAIN GRID ─────────────────────────────────────── -->
-    <div class="hd-grid">
-
-      <!-- COL A: Calendário -->
-      <div class="hd-col hd-col-cal">
-        <div class="hd-card">
-          <div class="hd-card-head">
-            <div class="hd-card-title">
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              Agenda
-            </div>
-            <div class="hd-cal-nav-row">
-              <button class="hd-icon-btn" onclick="homeCalNav(-1)">‹</button>
-              <span class="hd-cal-month" id="home-cal-month">Mai 2026</span>
-              <button class="hd-icon-btn" onclick="homeCalNav(1)">›</button>
-            </div>
-          </div>
-          <div class="hd-cal-weekdays">
-            <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span>
-          </div>
-          <div class="hd-cal-days" id="home-cal-days"></div>
-          <!-- Próximos compromissos -->
-          <div class="hd-next-events" id="hd-next-events"></div>
-        </div>
-      </div>
-
-      <!-- COL B: Post-its -->
-      <div class="hd-col hd-col-notes">
-        <div class="hd-card hd-card-fill">
-          <div class="hd-card-head">
-            <div class="hd-card-title">
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              Anotações
-            </div>
-            <button class="hd-btn-add" onclick="homeNovoPostit()">
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Nova
-            </button>
-          </div>
-          <div class="hd-notes-grid" id="home-postits-grid"></div>
-        </div>
-      </div>
-
-      <!-- COL C: Avisos + Ações Rápidas -->
-      <div class="hd-col hd-col-right">
-
-        <!-- Avisos -->
-        <div class="hd-card">
-          <div class="hd-card-head">
-            <div class="hd-card-title">
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-              Avisos
-            </div>
-            <span class="hd-badge" id="home-recados-badge">0</span>
-          </div>
-          <div class="hd-recados-list" id="home-recados-list">
-            <div class="hd-empty">
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:.25;margin-bottom:.4rem"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-              Nenhum aviso no momento
-            </div>
-          </div>
-        </div>
-
-        <!-- Ações rápidas -->
-        <div class="hd-card hd-quick-actions-card">
-          <div class="hd-card-head">
-            <div class="hd-card-title">
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-              Ações Rápidas
-            </div>
-          </div>
-          <div class="hd-quick-actions">
-            <button class="hd-qa-btn" onclick="navigate('whatsapp')">
-              <div class="hd-qa-icon hd-qa-green">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <div class="card pad" id="home-clima-card" style="position:relative;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:1rem;margin-bottom:.75rem">
+            <div class="home-clima-icon" id="home-clima-icon">🌤️</div>
+            <div style="font-size:2rem;font-weight:800;letter-spacing:-.03em;color:var(--text)" id="home-clima-temp">--°</div>
+            <div style="display:flex;flex-direction:column;gap:.15rem">
+              <div style="font-weight:700;color:var(--text);font-size:.95rem" id="home-clima-city">--</div>
+              <div style="font-size:.8rem;color:var(--text-2)" id="home-clima-desc">--</div>
+              <div style="display:flex;gap:.6rem;font-size:.78rem;color:var(--text-2)">
+                <span>💧<span id="home-clima-umid">--</span></span>
+                <span>💨<span id="home-clima-vento">--</span></span>
               </div>
-              <span>WhatsApp</span>
-            </button>
-            <button class="hd-qa-btn" onclick="navigate('dm-campanha')">
-              <div class="hd-qa-icon hd-qa-blue">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-              </div>
-              <span>Campanha</span>
-            </button>
-            <button class="hd-qa-btn" onclick="navigate('dashboard')">
-              <div class="hd-qa-icon hd-qa-purple">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-              </div>
-              <span>Envios</span>
-            </button>
-            <button class="hd-qa-btn" onclick="navigate('ia-central')">
-              <div class="hd-qa-icon hd-qa-amber">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73A2 2 0 0 1 10 4a2 2 0 0 1 2-2z"/></svg>
-              </div>
-              <span>IA Central</span>
-            </button>
+            </div>
+          </div>
+          <div id="home-clima-forecast" style="display:flex;gap:.5rem"></div>
+
+          <button title="Configurar cidade" onclick="homeToggleClimaConfig()"
+                  style="position:absolute;top:.75rem;right:.75rem;background:none;border:none;cursor:pointer;color:var(--text-3);padding:.25rem;border-radius:6px;display:inline-flex">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+          </button>
+
+          <div id="home-clima-config" style="display:none;margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--border);flex-direction:column;gap:.5rem">
+            <div style="display:flex;gap:.5rem;align-items:center">
+              <input type="text" id="home-clima-cidade-input" placeholder="Cidade" class="field" style="flex:1">
+              <input type="text" id="home-clima-uf-input" placeholder="UF" class="field" maxlength="2" style="width:56px">
+              <button onclick="homeSalvarCidade()" class="btn sm">✓</button>
+              <button onclick="homeToggleClimaConfig()" class="btn ghost sm">✕</button>
+            </div>
           </div>
         </div>
 
-      </div><!-- /col-right -->
+      </div><!-- /top row -->
 
-    </div><!-- /grid -->
+      <!-- Calendar -->
+      <div class="card pad">
+        <div class="card-head">
+          <span class="ci t-green">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </span>
+          <h2>Agenda</h2>
+          <button class="icon-btn" style="width:30px;height:30px;margin-left:.25rem" onclick="homeAbrirAgendaWaCfg()" title="Configurar Agenda WA">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
+          <span class="grow"></span>
+          <button class="btn ghost sm" onclick="homeCalNav(-1)" style="padding:.2rem .45rem">&#8249;</button>
+          <span id="home-cal-month" style="font-size:.85rem;font-weight:600;color:var(--text);min-width:80px;text-align:center">Mai 2026</span>
+          <button class="btn ghost sm" onclick="homeCalNav(1)" style="padding:.2rem .45rem">&#8250;</button>
+        </div>
 
-  </div><!-- /root -->
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-top:.75rem">
+          <span style="text-align:center;font-size:.7rem;font-weight:600;color:var(--text-3);padding:.25rem 0">Dom</span>
+          <span style="text-align:center;font-size:.7rem;font-weight:600;color:var(--text-3);padding:.25rem 0">Seg</span>
+          <span style="text-align:center;font-size:.7rem;font-weight:600;color:var(--text-3);padding:.25rem 0">Ter</span>
+          <span style="text-align:center;font-size:.7rem;font-weight:600;color:var(--text-3);padding:.25rem 0">Qua</span>
+          <span style="text-align:center;font-size:.7rem;font-weight:600;color:var(--text-3);padding:.25rem 0">Qui</span>
+          <span style="text-align:center;font-size:.7rem;font-weight:600;color:var(--text-3);padding:.25rem 0">Sex</span>
+          <span style="text-align:center;font-size:.7rem;font-weight:600;color:var(--text-3);padding:.25rem 0">Sab</span>
+        </div>
+        <div id="home-cal-days" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-top:2px"></div>
 
-  <!-- ── MODAL AGENDA ─────────────────────────── -->
-  <div class="home-modal-overlay" id="home-agenda-overlay" onclick="homeFecharAgenda(event)">
-    <div class="home-modal">
-      <div class="home-modal-header">
+        <div id="hd-next-events" style="margin-top:1rem;padding-top:.75rem;border-top:1px solid var(--border)"></div>
+      </div>
+
+    </div><!-- /left column -->
+
+    <!-- RIGHT COLUMN -->
+    <div style="display:flex;flex-direction:column;gap:var(--gap)">
+
+      <!-- Avisos -->
+      <div class="card pad">
+        <div class="card-head">
+          <span class="ci t-green">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          </span>
+          <h2>Avisos</h2>
+          <span class="grow"></span>
+          <span class="badge ok" id="home-recados-badge" style="display:none">0</span>
+        </div>
+        <div id="home-recados-list" style="margin-top:.75rem">
+          <div style="text-align:center;padding:1rem 0;color:var(--text-3);font-size:.82rem">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:.25;display:block;margin:0 auto .4rem"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            Nenhum aviso no momento
+          </div>
+        </div>
+      </div>
+
+      <!-- Anotações -->
+      <div class="card pad">
+        <div class="card-head">
+          <span class="ci t-green">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </span>
+          <h2>Anotações</h2>
+          <span class="grow"></span>
+          <button class="btn sm" onclick="homeNovoPostit()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nova
+          </button>
+        </div>
+        <div id="home-postits-grid" style="margin-top:.75rem;display:grid;grid-template-columns:1fr 1fr;gap:.5rem"></div>
+      </div>
+
+    </div><!-- /right column -->
+
+  </div><!-- /outer grid -->
+
+
+    <!-- ── MODAL AGENDA ────────────────────────────────────────────── -->
+  <div class="modal-backdrop" id="home-agenda-overlay" onclick="homeFecharAgenda(event)">
+    <div class="modal" style="max-width:480px;width:100%">
+      <div class="modal-head plain">
         <h3>Agenda — <span id="home-agenda-data-label"></span></h3>
-        <button onclick="homeFecharAgenda(null, true)" class="home-modal-close">✕</button>
+        <button onclick="homeFecharAgenda(null, true)" style="background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--text-3);padding:.25rem">✕</button>
       </div>
-      <div class="home-agenda-lista" id="home-agenda-lista"></div>
-      <div class="home-agenda-form">
-        <input type="hidden" id="home-agenda-id">
-        <input type="text" id="home-agenda-titulo" placeholder="Título do compromisso" class="home-input">
-        <div style="display:flex;gap:.5rem">
-          <input type="time" id="home-agenda-inicio" class="home-input">
-          <input type="time" id="home-agenda-fim" class="home-input">
-        </div>
-        <textarea id="home-agenda-desc" placeholder="Descrição (opcional)" class="home-input" rows="2"></textarea>
-        <div class="home-agenda-cores">
-          <span>Cor:</span>
-          <label><input type="radio" name="agenda-cor" value="#3d7f1f" checked> <span style="background:#3d7f1f" class="home-cor-dot"></span></label>
-          <label><input type="radio" name="agenda-cor" value="#3b82f6"> <span style="background:#3b82f6" class="home-cor-dot"></span></label>
-          <label><input type="radio" name="agenda-cor" value="#ef4444"> <span style="background:#ef4444" class="home-cor-dot"></span></label>
-          <label><input type="radio" name="agenda-cor" value="#f59e0b"> <span style="background:#f59e0b" class="home-cor-dot"></span></label>
-          <label><input type="radio" name="agenda-cor" value="#8b5cf6"> <span style="background:#8b5cf6" class="home-cor-dot"></span></label>
-        </div>
-        <div style="display:flex;gap:.5rem;justify-content:flex-end">
-          <button class="home-btn-cancel" onclick="homeLimparAgendaForm()">Cancelar</button>
-          <button class="home-btn-save" onclick="homeSalvarAgenda()">Salvar</button>
+      <div class="modal-body">
+        <div id="home-agenda-lista" style="margin-bottom:1rem"></div>
+        <div class="home-agenda-form" style="display:flex;flex-direction:column;gap:.65rem">
+          <input type="hidden" id="home-agenda-id">
+          <div>
+            <label class="flbl">Título do compromisso</label>
+            <input type="text" id="home-agenda-titulo" placeholder="Título do compromisso" class="field">
+          </div>
+          <div style="display:flex;gap:.5rem">
+            <div style="flex:1">
+              <label class="flbl">Início</label>
+              <input type="time" id="home-agenda-inicio" class="field">
+            </div>
+            <div style="flex:1">
+              <label class="flbl">Fim</label>
+              <input type="time" id="home-agenda-fim" class="field">
+            </div>
+          </div>
+          <div>
+            <label class="flbl">Descrição (opcional)</label>
+            <textarea id="home-agenda-desc" placeholder="Descrição (opcional)" class="field" rows="2"></textarea>
+          </div>
+          <div class="home-agenda-cores" style="display:flex;align-items:center;gap:.5rem">
+            <span style="font-size:.8rem;color:var(--text-3)">Cor:</span>
+            <label><input type="radio" name="agenda-cor" value="var(--primary-deep)" checked> <span style="background:var(--primary-deep);display:inline-block;width:16px;height:16px;border-radius:50%;vertical-align:middle"></span></label>
+            <label><input type="radio" name="agenda-cor" value="#3b82f6"> <span style="background:#3b82f6;display:inline-block;width:16px;height:16px;border-radius:50%;vertical-align:middle"></span></label>
+            <label><input type="radio" name="agenda-cor" value="var(--red)"> <span style="background:var(--red);display:inline-block;width:16px;height:16px;border-radius:50%;vertical-align:middle"></span></label>
+            <label><input type="radio" name="agenda-cor" value="#f59e0b"> <span style="background:#f59e0b;display:inline-block;width:16px;height:16px;border-radius:50%;vertical-align:middle"></span></label>
+            <label><input type="radio" name="agenda-cor" value="#8b5cf6"> <span style="background:#8b5cf6;display:inline-block;width:16px;height:16px;border-radius:50%;vertical-align:middle"></span></label>
+          </div>
+          <div style="display:flex;gap:.5rem;justify-content:flex-end">
+            <button class="btn ghost sm" onclick="homeLimparAgendaForm()">Cancelar</button>
+            <button class="btn sm" onclick="homeSalvarAgenda()">Salvar</button>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ── MODAL POST-IT ────────────────────────── -->
-  <div class="home-modal-overlay" id="home-postit-overlay" onclick="homeFecharPostit(event)">
-    <div class="home-modal home-postit-modal" id="home-postit-modal-inner">
-      <div class="home-modal-header">
+  <!-- ── MODAL POST-IT ───────────────────────────────────────────── -->
+  <div class="modal-backdrop" id="home-postit-overlay" onclick="homeFecharPostit(event)">
+    <div class="modal" id="home-postit-modal-inner" style="max-width:440px;width:100%">
+      <div class="modal-head plain">
         <h3>Anotação</h3>
-        <button onclick="homeFecharPostit(null, true)" class="home-modal-close">✕</button>
+        <button onclick="homeFecharPostit(null, true)" style="background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--text-3);padding:.25rem">✕</button>
       </div>
-      <input type="hidden" id="home-postit-id">
-      <input type="text" id="home-postit-titulo" placeholder="Título" class="home-input">
-      <textarea id="home-postit-conteudo" placeholder="Escreva sua anotação..." class="home-input home-postit-textarea" rows="6"></textarea>
-      <div class="home-postit-cores">
-        <span>Cor:</span>
-        <label><input type="radio" name="postit-cor" value="#fef08a" checked> <span style="background:#fef08a" class="home-cor-dot"></span></label>
-        <label><input type="radio" name="postit-cor" value="#bbf7d0"> <span style="background:#bbf7d0" class="home-cor-dot"></span></label>
-        <label><input type="radio" name="postit-cor" value="#bfdbfe"> <span style="background:#bfdbfe" class="home-cor-dot"></span></label>
-        <label><input type="radio" name="postit-cor" value="#fecaca"> <span style="background:#fecaca" class="home-cor-dot"></span></label>
-        <label><input type="radio" name="postit-cor" value="#e9d5ff"> <span style="background:#e9d5ff" class="home-cor-dot"></span></label>
-        <label><input type="radio" name="postit-cor" value="#fed7aa"> <span style="background:#fed7aa" class="home-cor-dot"></span></label>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:.65rem">
+        <input type="hidden" id="home-postit-id">
+        <div>
+          <label class="flbl">Título</label>
+          <input type="text" id="home-postit-titulo" placeholder="Título" class="field">
+        </div>
+        <div>
+          <label class="flbl">Conteúdo</label>
+          <textarea id="home-postit-conteudo" placeholder="Escreva sua anotação..." class="field" rows="6"></textarea>
+        </div>
+        <div class="home-postit-cores" style="display:flex;align-items:center;gap:.5rem">
+          <span style="font-size:.8rem;color:var(--text-3)">Cor:</span>
+          <label><input type="radio" name="postit-cor" value="var(--amber-bg)" checked> <span style="background:var(--amber-bg);display:inline-block;width:16px;height:16px;border-radius:50%;vertical-align:middle;border:1px solid rgba(0,0,0,.1)"></span></label>
+          <label><input type="radio" name="postit-cor" value="color-mix(in srgb,var(--primary) 30%,transparent)"> <span style="background:color-mix(in srgb,var(--primary) 30%,transparent);display:inline-block;width:16px;height:16px;border-radius:50%;vertical-align:middle;border:1px solid rgba(0,0,0,.1)"></span></label>
+          <label><input type="radio" name="postit-cor" value="var(--blue-bg)"> <span style="background:var(--blue-bg);display:inline-block;width:16px;height:16px;border-radius:50%;vertical-align:middle;border:1px solid rgba(0,0,0,.1)"></span></label>
+          <label><input type="radio" name="postit-cor" value="color-mix(in srgb,var(--red) 30%,transparent)"> <span style="background:color-mix(in srgb,var(--red) 30%,transparent);display:inline-block;width:16px;height:16px;border-radius:50%;vertical-align:middle;border:1px solid rgba(0,0,0,.1)"></span></label>
+          <label><input type="radio" name="postit-cor" value="#e9d5ff"> <span style="background:#e9d5ff;display:inline-block;width:16px;height:16px;border-radius:50%;vertical-align:middle;border:1px solid rgba(0,0,0,.1)"></span></label>
+          <label><input type="radio" name="postit-cor" value="#fed7aa"> <span style="background:#fed7aa;display:inline-block;width:16px;height:16px;border-radius:50%;vertical-align:middle;border:1px solid rgba(0,0,0,.1)"></span></label>
+        </div>
+        <div style="display:flex;gap:.5rem;justify-content:space-between;margin-top:.25rem">
+          <button class="btn danger sm" id="home-postit-del-btn" onclick="homeDeletarPostit()" style="display:none">
+            🗑 Excluir
+          </button>
+          <div style="display:flex;gap:.5rem;margin-left:auto">
+            <button class="btn ghost sm" onclick="homeFecharPostit(null,true)">Cancelar</button>
+            <button class="btn sm" onclick="homeSalvarPostit()">Salvar</button>
+          </div>
+        </div>
       </div>
-      <div style="display:flex;gap:.5rem;justify-content:space-between;margin-top:.5rem">
-        <button class="home-btn-cancel home-btn-danger" id="home-postit-del-btn" onclick="homeDeletarPostit()" style="display:none">🗑 Excluir</button>
-        <div style="display:flex;gap:.5rem;margin-left:auto">
-          <button class="home-btn-cancel" onclick="homeFecharPostit(null,true)">Cancelar</button>
-          <button class="home-btn-save" onclick="homeSalvarPostit()">Salvar</button>
+    </div>
+  </div>
+
+  <!-- ── MODAL AGENDA WA CONFIG (prototype-exact) ─────────────────── -->
+  <div class="modal-backdrop agwa-overlay" id="agwa-overlay" onclick="homeFecharAgendaWaCfg(event)">
+    <div class="modal" style="max-width:940px;width:100%" onclick="event.stopPropagation()">
+      <div class="modal-head agenda">
+        <span>📞 Agenda via WhatsApp</span>
+        <button class="modal-x" onclick="homeFecharAgendaWaCfg(null, true)">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="grid" style="grid-template-columns:1fr 1fr;gap:26px">
+
+          <!-- LEFT -->
+          <div>
+            <div class="sys-sep" style="margin-top:0">Configurações gerais</div>
+
+            <div class="toggle-box" style="margin:0 0 18px">
+              <div>
+                <b>Alertas WA ativos</b>
+                <div style="font-size:13px;color:var(--text-2)">Habilita alertas e consultas via WhatsApp</div>
+              </div>
+              <input type="checkbox" id="agendaAlertaAtivo" onchange="homeSalvarAgendaAlertaDebounce()" style="width:20px;height:20px;accent-color:var(--primary);cursor:pointer">
+            </div>
+
+            <label class="flbl">Mensagem de alerta (1h antes)</label>
+            <textarea class="editor-area" id="agendaAlertaMensagem"
+              spellcheck="false" style="min-height:130px"
+              oninput="homeSalvarAgendaAlertaDebounce()">📅 *Lembrete de Compromisso!*
+
+📌 *{titulo}*
+🕐 Horário: *{hora}*
+📝 {descricao}</textarea>
+
+            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0">
+              <span style="font-size:13px;color:var(--text-2);font-weight:600">Variáveis disponíveis:</span>
+              <button class="varchip" onclick="agwaInsertVar('nome')" style="padding:4px 9px;font-size:12px;color:var(--primary-deep);border-color:color-mix(in srgb,var(--primary) 35%,transparent);background:var(--primary-soft)">{nome}</button>
+              <button class="varchip" onclick="agwaInsertVar('titulo')" style="padding:4px 9px;font-size:12px;color:var(--primary-deep);border-color:color-mix(in srgb,var(--primary) 35%,transparent);background:var(--primary-soft)">{titulo}</button>
+              <button class="varchip" onclick="agwaInsertVar('hora')" style="padding:4px 9px;font-size:12px;color:var(--primary-deep);border-color:color-mix(in srgb,var(--primary) 35%,transparent);background:var(--primary-soft)">{hora}</button>
+              <button class="varchip" onclick="agwaInsertVar('descricao')" style="padding:4px 9px;font-size:12px;color:var(--primary-deep);border-color:color-mix(in srgb,var(--primary) 35%,transparent);background:var(--primary-soft)">{descricao}</button>
+              <button class="varchip" onclick="agwaInsertVar('link')" style="padding:4px 9px;font-size:12px;color:var(--primary-deep);border-color:color-mix(in srgb,var(--primary) 35%,transparent);background:var(--primary-soft)">{link}</button>
+            </div>
+
+            <button class="btn" onclick="homeSalvarAgendaAlerta()">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Salvar configurações
+            </button>
+          </div>
+
+          <!-- RIGHT -->
+          <div>
+            <div class="sys-sep" style="margin-top:0">Usuários via WhatsApp</div>
+
+            <div id="agwa-usuarios-lista">
+              <div style="text-align:center;padding:1.2rem 0;color:var(--text-3);font-size:.82rem">Carregando…</div>
+            </div>
+
+            <div class="agenda-add">
+              <div style="font-weight:700;color:var(--primary-deep);margin-bottom:12px">＋ Adicionar usuário</div>
+              <div class="grid" style="grid-template-columns:1fr 1fr;gap:12px">
+                <div>
+                  <label class="flbl">Nome</label>
+                  <input class="field sm" id="agwa-add-nome" placeholder="Ex: João Silva">
+                </div>
+                <div>
+                  <label class="flbl">WhatsApp</label>
+                  <input class="field sm" id="agwa-add-phone" placeholder="Ex: 11999990000">
+                </div>
+              </div>
+              <div style="display:flex;gap:18px;align-items:center;margin-top:12px">
+                <label style="display:flex;gap:7px;align-items:center;font-size:13.5px;cursor:pointer">
+                  <input type="checkbox" id="agwa-add-ativo" checked style="width:17px;height:17px;accent-color:var(--primary)"> Ativo
+                </label>
+                <label style="display:flex;gap:7px;align-items:center;font-size:13.5px;cursor:pointer">
+                  <input type="checkbox" id="agwa-add-alertas" checked style="width:17px;height:17px;accent-color:var(--primary)"> Recebe alertas
+                </label>
+                <button class="btn sm" style="margin-left:auto" onclick="agwaAdicionarUsuario()">Adicionar</button>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>

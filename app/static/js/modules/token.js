@@ -33,43 +33,42 @@ window.tokenModule = (() => {
     if (!el) return;
     const tokens = await _fetch('GET', '/api/pdv/tokens');
     if (!tokens || !Array.isArray(tokens)) {
-      el.innerHTML = '<div style="color:#dc2626;font-size:.82rem">Erro ao carregar tokens.</div>';
+      el.innerHTML = '<div style="color:var(--red);font-size:13px">Erro ao carregar tokens.</div>';
       return;
     }
     if (!tokens.length) {
-      el.innerHTML = '<div style="text-align:center;color:var(--text-mid);font-size:.85rem;padding:1rem">Nenhum token gerado ainda.</div>';
+      el.innerHTML = '<div style="text-align:center;color:var(--text-3);font-size:13px;padding:1rem">Nenhum token gerado ainda.</div>';
       return;
     }
     el.innerHTML = tokens.map(t => `
-      <div style="display:flex;align-items:center;gap:.6rem;padding:.55rem .1rem;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:.6rem;padding:.6rem .1rem;border-bottom:1px solid var(--border)">
         <div style="flex:1;min-width:0">
-          <div style="font-weight:600;font-size:.88rem">${t.nome}</div>
-          <div style="font-size:.74rem;color:var(--text-mid)">
-            Token: <code style="background:var(--surface2);padding:.1rem .3rem;border-radius:4px">${t.token_preview}</code>
+          <div style="font-weight:700;font-size:13.5px;color:var(--text)">${t.nome}</div>
+          <div style="font-size:11.5px;color:var(--text-3);margin-top:2px">
+            Token: <code class="mono" style="background:var(--surface-2);padding:.1rem .35rem;border-radius:5px;color:var(--text-2)">${t.token_preview}</code>
             ${t.ultimo_uso ? `· Último uso: ${new Date(t.ultimo_uso).toLocaleString('pt-BR')}` : '· Nunca usado'}
           </div>
         </div>
-        <span style="padding:.2rem .55rem;border-radius:10px;font-size:.72rem;font-weight:700;background:${t.ativo ? '#dcfce7' : '#f1f5f9'};color:${t.ativo ? '#15803d' : '#475569'}">${t.ativo ? 'Ativo' : 'Revogado'}</span>
-        ${t.ativo ? `<button onclick="revogarPdvToken(${t.id})" class="btn btn-ghost btn-sm" style="color:#dc2626;padding:.25rem .5rem" title="Revogar">🗑</button>` : ''}
+        <span class="badge ${t.ativo ? 'ok' : 'fail'}">${t.ativo ? 'Ativo' : 'Revogado'}</span>
+        ${t.ativo ? `<button onclick="revogarPdvToken(${t.id})" class="btn btn-ghost btn-sm" style="color:var(--red);padding:.3rem .55rem" title="Revogar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+        </button>` : ''}
       </div>`).join('');
   }
 
   // ── Token ERP ────────────────────────────────────────────────────────────────
 
   function _renderErpStatus(s) {
-    const hasCall  = !!s.timestamp;
+    const hasCall = !!s.timestamp;
     const statusEl = document.getElementById('erpStatStatus');
-    const cardEl   = statusEl ? statusEl.closest('.erp-stat-card') : null;
-
-    if (!hasCall) {
-      statusEl.textContent = '⭕ Aguardando';
-      if (cardEl) { cardEl.className = 'erp-stat-card erp-sc-gray'; }
-    } else if (s.status === 'ok') {
-      statusEl.innerHTML = 'Conectado';
-      if (cardEl) { cardEl.className = 'erp-stat-card erp-sc-green'; }
-    } else {
-      statusEl.innerHTML = 'Erro';
-      if (cardEl) { cardEl.className = 'erp-stat-card erp-sc-red'; cardEl.style.cssText += ';background:linear-gradient(135deg,#fff5f5,#fee2e2);border-color:#fecaca'; }
+    if (statusEl) {
+      if (!hasCall) {
+        statusEl.innerHTML = '<span class="badge queue">Aguardando</span>';
+      } else if (s.status === 'ok') {
+        statusEl.innerHTML = '<span class="badge ok">Conectado</span>';
+      } else {
+        statusEl.innerHTML = '<span class="badge fail">Erro</span>';
+      }
     }
     document.getElementById('erpStatTs').textContent       = s.timestamp   || '—';
     document.getElementById('erpStatIp').textContent       = s.ip          || '—';
@@ -116,12 +115,7 @@ window.tokenModule = (() => {
 
     // Gerar token ERP
     document.getElementById('btnGerarToken').addEventListener('click', async () => {
-      // Usa showConfirm se disponível, caso contrário usa confirm() nativo
-      const confirmar = typeof window.showConfirm === 'function'
-        ? window.showConfirm
-        : ({ title, body, okLabel }) => Promise.resolve(window.confirm(`${title}\n\n${body}`));
-
-      const ok = await confirmar({
+      const ok = await window.showConfirm({
         title: 'Gerar novo token API?',
         body: 'O token atual será invalidado imediatamente. Todas as integrações com o ERP precisarão ser atualizadas com o novo token.',
         okLabel: 'Sim, gerar novo',
@@ -167,11 +161,7 @@ window.tokenModule = (() => {
 
 // ── Globais para onclick inline no HTML gerado dinamicamente ─────────────────
 window.revogarPdvToken = async function(id) {
-  const confirmar = typeof window.showConfirm === 'function'
-    ? window.showConfirm
-    : ({ title, body }) => Promise.resolve(window.confirm(`${title}\n\n${body}`));
-
-  const ok = await confirmar({
+  const ok = await window.showConfirm({
     title: 'Revogar token PDV?',
     body: 'O PDV que usa este token ficará desconectado do App.',
     okLabel: 'Revogar', type: 'warning', icon: '⚠',

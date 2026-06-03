@@ -6,13 +6,13 @@
   const NIVEL_BADGE = {
     info:     '<span style="background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd;padding:1px 7px;border-radius:20px;font-size:.72rem;font-weight:700">INFO</span>',
     warn:     '<span style="background:#fffbeb;color:#b45309;border:1px solid #fde68a;padding:1px 7px;border-radius:20px;font-size:.72rem;font-weight:700">WARN</span>',
-    error:    '<span style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;padding:1px 7px;border-radius:20px;font-size:.72rem;font-weight:700">ERRO</span>',
+    error:    '<span style="background:var(--red-bg);color:var(--red);border:1px solid color-mix(in srgb,var(--red) 30%,transparent);padding:1px 7px;border-radius:20px;font-size:.72rem;font-weight:700">ERRO</span>',
     critical: '<span style="background:#4c0519;color:#fecdd3;border:1px solid #9f1239;padding:1px 7px;border-radius:20px;font-size:.72rem;font-weight:700">CRÍTICO</span>',
   };
   const MODULO_BADGE = {
-    whatsapp:  '#dcfce7', ia: '#f0f9ff', erp: '#fdf4ff',
+    whatsapp:  'var(--primary-soft)', ia: '#f0f9ff', erp: '#fdf4ff',
     campanhas: '#fff7ed', auth: '#f1f5f9', monitor: '#fefce8',
-    sistema:   '#f8fafc', chatbot: '#ecfdf5', dominio: '#eff6ff',
+    sistema:   'var(--surface-2)', chatbot: '#ecfdf5', dominio: '#eff6ff',
     worker:    '#fdf4ff',
   };
 
@@ -51,15 +51,15 @@
       return;
     }
     tbody.innerHTML = logs.map(l => {
-      const bg = MODULO_BADGE[l.modulo] || '#f8fafc';
-      const det = l.detalhe ? `<details style="margin-top:.3rem"><summary style="font-size:.75rem;color:var(--text-muted);cursor:pointer">Ver detalhe</summary><pre style="font-size:.72rem;background:var(--bg);padding:.4rem .6rem;border-radius:6px;margin-top:.3rem;white-space:pre-wrap;word-break:break-all">${esc(l.detalhe)}</pre></details>` : '';
+      const bg = MODULO_BADGE[l.modulo] || 'var(--surface-2)';
+      const det = l.detalhe ? `<details style="margin-top:.3rem"><summary style="font-size:.75rem;color:var(--text-3);cursor:pointer">Ver detalhe</summary><pre style="font-size:.72rem;background:var(--bg);padding:.4rem .6rem;border-radius:6px;margin-top:.3rem;white-space:pre-wrap;word-break:break-all">${esc(l.detalhe)}</pre></details>` : '';
       return `<tr>
-        <td style="white-space:nowrap;font-size:.78rem;color:var(--text-muted)">${_fmtDate(l.created_at)}</td>
+        <td style="white-space:nowrap;font-size:.78rem;color:var(--text-3)">${_fmtDate(l.created_at)}</td>
         <td>${NIVEL_BADGE[l.nivel] || esc(l.nivel)}</td>
         <td><span style="background:${bg};padding:2px 8px;border-radius:12px;font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em">${esc(l.modulo)}</span></td>
-        <td style="font-size:.8rem;font-family:monospace;color:var(--text-muted)">${esc(l.acao)}</td>
+        <td style="font-size:.8rem;font-family:monospace;color:var(--text-3)">${esc(l.acao)}</td>
         <td style="font-size:.83rem">${esc(l.mensagem)}${det}</td>
-        <td style="font-size:.75rem;color:var(--text-muted)">${l.empresa_id || '—'}</td>
+        <td style="font-size:.75rem;color:var(--text-3)">${l.empresa_id || '—'}</td>
       </tr>`;
     }).join('');
   }
@@ -72,7 +72,7 @@
     if (totalPag <= 1) { el.innerHTML = ''; return; }
     el.innerHTML = `
       <button class="btn btn-sm" onclick="syslog.pagPrev()" ${_state.offset === 0 ? 'disabled' : ''}>← Anterior</button>
-      <span style="font-size:.82rem;color:var(--text-muted)">Página ${curPag} de ${totalPag}</span>
+      <span style="font-size:.82rem;color:var(--text-3)">Página ${curPag} de ${totalPag}</span>
       <button class="btn btn-sm" onclick="syslog.pagNext()" ${_state.offset + _state.limit >= _state.total ? 'disabled' : ''}>Próxima →</button>
     `;
   }
@@ -100,10 +100,11 @@
   }
 
   async function limpar() {
-    if (!confirm('Apagar logs com mais de 30 dias?')) return;
+    const ok = await window.showConfirm({ title: 'Apagar logs antigos?', body: 'Todos os registros com mais de 30 dias serão removidos.', okLabel: 'Apagar', type: 'danger' });
+    if (!ok) return;
     const res = await fetch(API + '?dias=30', { method: 'DELETE' });
     const d = await res.json().catch(() => ({}));
-    alert(`${d.deleted || 0} registros removidos.`);
+    await window.showInfo(`${d.deleted || 0} registros removidos.`, { type: 'info' });
     carregar(true);
   }
 

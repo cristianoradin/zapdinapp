@@ -37,6 +37,24 @@ _TIMEOUT = 30.0
 # Backoff em segundos para tentativas de reconexão: 5, 10, 20, 40, 60, 60, 60...
 _RECONNECT_BACKOFF: List[int] = [5, 10, 20, 40, 60, 60, 60]
 
+# Modo agente: sessões com evolution_url == AGENT_SCHEME são roteadas via WS
+# para o agente local (atravessa NAT do cliente). Nada de HTTP direto.
+AGENT_SCHEME = "agent://"
+
+# Injetado por app.main.py após criar o socketio.AsyncServer.
+# Mantido fora do EvoManager para evitar import circular.
+_sio = None
+
+
+def set_sio(sio) -> None:
+    """Registra a instância do Socket.IO usada para comandos /agent."""
+    global _sio
+    _sio = sio
+
+
+def _is_agent_mode(evolution_url: Optional[str]) -> bool:
+    return bool(evolution_url) and evolution_url.strip().lower().startswith(AGENT_SCHEME)
+
 # ── Tokens temporários para servir arquivos à Evolution API ──────────────────
 _file_tokens: Dict[str, str] = {}
 _file_tokens_lock = threading.Lock()
@@ -64,13 +82,17 @@ def _webhook_url() -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 
 class EvoSession:
-    def __init__(self, session_id: str, nome: str, empresa_id: int):
+    def __init__(self, session_id: str, nome: str, empresa_id: int,
+                 evolution_url: Optional[str] = None):
         self.session_id  = session_id
         self.nome        = nome
         self.empresa_id  = empresa_id
         self.status      = "disconnected"
         self.qr_data:  Optional[str] = None
         self.phone:    Optional[str] = None
+        # Modo híbrido: URL custom da Evolution local do cliente (override per-sessão).
+        # None → usa settings.evolution_url (modo padrão, servidor).
+        self.evolution_url: Optional[str] = (evolution_url or "").strip() or None
 
         # True somente quando o usuário removeu o dispositivo no celular.
         # Neste caso NÃO tentamos reconectar — aguardamos novo QR.
@@ -81,6 +103,11 @@ class EvoSession:
 
         self._heartbeat_task:  Optional[asyncio.Task] = None
         self._reconnect_task:  Optional[asyncio.Task] = None
+
+    def _url(self, path: str) -> str:
+        """URL da Evolution API: usa custom desta sessão ou fallback ao settings."""
+        base = (self.evolution_url or settings.evolution_url).rstrip("/")
+        return f"{base}/{path.lstrip('/')}"
 
     # ─────────────────────────────────────────────────────────────────────────
     #  Handlers de webhook (chamados pelo EvoManager)
@@ -211,10 +238,21 @@ class EvoSession:
             if not self._reconnecting or self._logged_out:
                 break
 
+            # Modo agente: usa fetch_qr_now (que roteia via WS)
+            if _is_agent_mode(self.evolution_url):
+                try:
+                    await self.fetch_qr_now()
+                    if self.status == "connected":
+                        return
+                except Exception as exc:
+                    logger.debug("[evo-agent] reconnect [%s]: %s", self.session_id, exc)
+                attempt += 1
+                continue
+
             try:
                 async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
                     # Primeiro verifica se já reconectou sozinho (Baileys faz retry interno)
-                    rs = await client.get(_url(f"instance/connectionState/{inst}"), headers=_h())
+                    rs = await client.get(self._url(f"instance/connectionState/{inst}"), headers=_h())
                     if rs.status_code == 200:
                         state = (
                             rs.json().get("instance", {}).get("state")
@@ -227,7 +265,7 @@ class EvoSession:
                             return
 
                     # Força tentativa de reconexão via instance/connect
-                    r = await client.get(_url(f"instance/connect/{inst}"), headers=_h())
+                    r = await client.get(self._url(f"instance/connect/{inst}"), headers=_h())
 
                 if r.status_code == 200:
                     d = r.json()
@@ -365,8 +403,28 @@ class EvoSession:
     async def _check_state(self) -> None:
         """Consulta connectionState na Evolution API e atualiza o status local."""
         inst = _instance_name(self.empresa_id, self.session_id)
+
+        # Modo agente: pergunta estado via WS
+        if _is_agent_mode(self.evolution_url):
+            from . import agent_bridge as _ab
+            try:
+                resp = await _ab.send_command(
+                    _sio, self.empresa_id, "get_state", {"instance": inst}, timeout=15.0,
+                )
+                if not resp.get("ok"):
+                    return
+                state = resp.get("state") or "close"
+            except Exception:
+                return
+            if state == "open" and self.status != "connected":
+                self.on_connection_update("open")
+            elif state != "open" and self.status == "connected":
+                logger.warning("[evo-agent] [%s] heartbeat detectou queda", self.session_id)
+                self.on_connection_update(state)
+            return
+
         async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-            r = await client.get(_url(f"instance/connectionState/{inst}"), headers=_h())
+            r = await client.get(self._url(f"instance/connectionState/{inst}"), headers=_h())
         if r.status_code != 200:
             return
         data  = r.json()
@@ -398,10 +456,30 @@ class EvoSession:
         Se estiver desconectado (e não em logout), solicita QR/reconexão.
         """
         inst = _instance_name(self.empresa_id, self.session_id)
+
+        # Modo agente: solicita QR via WS, agente local consulta Evolution dele
+        if _is_agent_mode(self.evolution_url):
+            from . import agent_bridge as _ab
+            try:
+                resp = await _ab.send_command(
+                    _sio, self.empresa_id, "get_qr", {"instance": inst}, timeout=30.0,
+                )
+                if resp.get("ok"):
+                    state = resp.get("state") or ""
+                    if state == "open":
+                        self.on_connection_update("open")
+                        return
+                    qr = resp.get("qr") or resp.get("base64")
+                    if qr:
+                        self.on_qr_updated(qr)
+            except Exception as exc:
+                logger.debug("[evo-agent] fetch_qr_now [%s]: %s", self.session_id, exc)
+            return
+
         try:
             # Primeiro verifica se já está conectado (evita gerar QR desnecessário)
             async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-                rs = await client.get(_url(f"instance/connectionState/{inst}"), headers=_h())
+                rs = await client.get(self._url_for_inst(inst, f"instance/connectionState/{inst}"), headers=_h())
             if rs.status_code == 200:
                 state = (
                     rs.json().get("instance", {}).get("state")
@@ -423,7 +501,7 @@ class EvoSession:
 
             # Tenta reconectar (pode retornar "open" ou QR)
             async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-                r = await client.get(_url(f"instance/connect/{inst}"), headers=_h())
+                r = await client.get(self._url_for_inst(inst, f"instance/connect/{inst}"), headers=_h())
             if r.status_code == 200:
                 d = r.json()
                 qr = (
@@ -454,29 +532,41 @@ class EvoManager:
 
     async def load_from_db(self, db) -> None:
         """Carrega todas as sessões salvas no banco ao iniciar o app."""
-        async with db.execute("SELECT id, nome, empresa_id FROM sessoes_wa") as cur:
+        async with db.execute("SELECT id, nome, empresa_id, evolution_url FROM sessoes_wa") as cur:
             rows = await cur.fetchall()
         for row in rows:
-            await self.add_session(row["id"], row["nome"], row["empresa_id"])
+            await self.add_session(
+                row["id"], row["nome"], row["empresa_id"],
+                evolution_url=(row["evolution_url"] if "evolution_url" in row.keys() else None),
+            )
 
-    async def add_session(self, session_id: str, nome: str, empresa_id: int) -> None:
+    def _url_for_inst(self, inst: str, path: str) -> str:
+        """URL da Evolution API para uma instância — usa custom da sessão se houver."""
+        sess = self._inst_index.get(inst)
+        if sess and sess.evolution_url:
+            return sess._url(path)
+        return _url(path)
+
+    async def add_session(self, session_id: str, nome: str, empresa_id: int,
+                          evolution_url: Optional[str] = None) -> None:
         """
         Registra uma nova sessão WhatsApp.
-        Garante que a instância existe na Evolution API, inicia heartbeat
-        e tenta estabelecer conexão imediatamente.
+        evolution_url (opcional): URL custom da Evolution local do cliente (modo híbrido).
+        None = usa settings.evolution_url (servidor — modo padrão).
         """
         key = self._key(empresa_id, session_id)
         if key in self._sessions:
             return
         inst = _instance_name(empresa_id, session_id)
-        await self._ensure_instance(inst, nome=nome)
-        sess = EvoSession(session_id, nome, empresa_id)
+        sess = EvoSession(session_id, nome, empresa_id, evolution_url=evolution_url)
+        # _ensure_instance precisa saber a URL antes de criar a instance
         self._sessions[key]     = sess
         self._inst_index[inst]  = sess
+        await self._ensure_instance(inst, nome=nome)
         sess.start_heartbeat()
-        # Verifica estado atual imediatamente (não bloqueia o startup)
         asyncio.create_task(sess.fetch_qr_now())
-        logger.info("[evo] Sessão registrada: %s (empresa %s)", session_id, empresa_id)
+        logger.info("[evo] Sessão registrada: %s (empresa %s, evo_url=%s)",
+                    session_id, empresa_id, evolution_url or "default")
 
     async def remove_session(self, session_id: str, empresa_id: int) -> None:
         """
@@ -491,9 +581,20 @@ class EvoManager:
         sess._stop_reconnect()
         inst = _instance_name(empresa_id, session_id)
         self._inst_index.pop(inst, None)
+        # Modo agente: deleta via WS
+        if _is_agent_mode(sess.evolution_url):
+            from . import agent_bridge as _ab
+            try:
+                await _ab.send_command(
+                    _sio, empresa_id, "delete_instance", {"instance": inst}, timeout=30.0,
+                )
+                logger.info("[evo-agent] Instância deletada via agente: %s", inst)
+            except Exception as exc:
+                logger.debug("[evo-agent] remove_session erro: %s", exc)
+            return
         try:
             async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-                await client.delete(_url(f"instance/delete/{inst}"), headers=_h())
+                await client.delete(self._url_for_inst(inst, f"instance/delete/{inst}"), headers=_h())
             logger.info("[evo] Instância deletada: %s", inst)
         except Exception as exc:
             logger.debug("[evo] remove_session erro ao deletar instância: %s", exc)
@@ -580,6 +681,20 @@ class EvoManager:
         Se já existir, apenas atualiza a URL do webhook (caso tenha mudado de porta).
         Se não existir, cria uma nova instância com Baileys + webhook.
         """
+        # Modo agente: delega ao agente local — webhook reverso vem pelo WS
+        sess_agent = self._inst_index.get(inst)
+        if sess_agent and _is_agent_mode(sess_agent.evolution_url):
+            from . import agent_bridge as _ab
+            try:
+                resp = await _ab.send_command(
+                    _sio, sess_agent.empresa_id, "create_instance",
+                    {"instance": inst, "nome": nome}, timeout=60.0,
+                )
+                return bool(resp.get("ok"))
+            except Exception as exc:
+                logger.warning("[evo-agent] _ensure_instance %s: %s", inst, exc)
+                return False
+
         wh_url = _webhook_url()
         webhook_cfg = {
             "url":      wh_url,
@@ -606,7 +721,7 @@ class EvoManager:
                     if inst in existentes:
                         # Atualiza webhook (URL pode ter mudado de porta/IP)
                         await client.post(
-                            _url(f"webhook/set/{inst}"),
+                            self._url_for_inst(inst, f"webhook/set/{inst}"),
                             json=webhook_cfg,
                             headers=_h(),
                         )
@@ -629,7 +744,7 @@ class EvoManager:
                 if r2.status_code in (200, 201):
                     # Configura webhook separadamente (compatibilidade v1/v2)
                     await client.post(
-                        _url(f"webhook/set/{inst}"),
+                        self._url_for_inst(inst, f"webhook/set/{inst}"),
                         json=webhook_cfg,
                         headers=_h(),
                     )
@@ -678,10 +793,12 @@ class EvoManager:
         prefix = f"{empresa_id}:"
         return [
             {
-                "id":     k.split(":", 1)[1],
-                "nome":   s.nome,
-                "status": s.status,
-                "phone":  s.phone,
+                "id":            k.split(":", 1)[1],
+                "nome":          s.nome,
+                "status":        s.status,
+                "phone":         s.phone,
+                "evolution_url": s.evolution_url,
+                "modo":          "local" if s.evolution_url else "servidor",
             }
             for k, s in self._sessions.items()
             if k.startswith(prefix)
@@ -691,6 +808,10 @@ class EvoManager:
     #  Envio de mensagens
     # ─────────────────────────────────────────────────────────────────────────
 
+    def _is_agent_session(self, empresa_id: int, session_id: str) -> bool:
+        sess = self._sessions.get(self._key(empresa_id, session_id))
+        return bool(sess and _is_agent_mode(sess.evolution_url))
+
     async def send_text(
         self, session_id: str, empresa_id: int, phone: str, message: str,
         composing_delay: float = 0.0,
@@ -698,13 +819,36 @@ class EvoManager:
         """Envia mensagem de texto para um número."""
         inst   = _instance_name(empresa_id, session_id)
         number = phone.strip().lstrip("+").replace(" ", "")
+
+        # Modo agente: roteia comando via WebSocket /agent
+        if self._is_agent_session(empresa_id, session_id):
+            from . import agent_bridge as _ab
+            payload_agent = {
+                "instance": inst,
+                "number":   number,
+                "text":     message,
+                "delay_ms": int(composing_delay * 1000) if composing_delay > 0 else 0,
+            }
+            try:
+                resp = await _ab.send_command(_sio, empresa_id, "send_text", payload_agent)
+                if resp.get("ok"):
+                    try:
+                        from . import telegram_service
+                        telegram_service.record_sent("text")
+                    except Exception:
+                        pass
+                    return True, None
+                return False, str(resp.get("error") or "agent error")
+            except Exception as exc:
+                return False, f"agent: {exc}"
+
         try:
             payload: dict = {"number": number, "text": message}
             if composing_delay > 0:
                 payload["delay"] = int(composing_delay * 1000)  # ms — Evolution API simula "digitando..."
             async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
                 r = await client.post(
-                    _url(f"message/sendText/{inst}"),
+                    self._url_for_inst(inst, f"message/sendText/{inst}"),
                     json=payload,
                     headers=_h(),
                 )
@@ -757,8 +901,10 @@ class EvoManager:
     ) -> Tuple[bool, Optional[str]]:
         """Envia arquivo como data URI base64 (mais confiável que URL pública)."""
         try:
-            with open(file_path, "rb") as f:
-                raw = f.read()
+            def _read_blocking():
+                with open(file_path, "rb") as f:
+                    return f.read()
+            raw = await asyncio.to_thread(_read_blocking)
             # Evolution API aceita base64 puro — data URI (data:mime;base64,...) não é suportado
             b64 = base64.b64encode(raw).decode()
             payload = {
@@ -771,9 +917,31 @@ class EvoManager:
             }
             if composing_delay > 0:
                 payload["delay"] = int(composing_delay * 1000)  # ms — simula "gravando áudio" / "enviando arquivo"
+
+            # Modo agente: roteia via WS em vez de HTTP direto
+            sess_agent = self._inst_index.get(inst)
+            if sess_agent and _is_agent_mode(sess_agent.evolution_url):
+                from . import agent_bridge as _ab
+                payload_agent = {"instance": inst, **payload}
+                try:
+                    resp = await _ab.send_command(
+                        _sio, sess_agent.empresa_id, "send_media", payload_agent, timeout=90.0,
+                    )
+                    if resp.get("ok"):
+                        logger.info("[evo-agent] send_file OK: %s → %s", filename, number)
+                        try:
+                            from . import telegram_service
+                            telegram_service.record_sent("file")
+                        except Exception:
+                            pass
+                        return True, None
+                    return False, str(resp.get("error") or "agent error")
+                except Exception as exc:
+                    return False, f"agent: {exc}"
+
             async with httpx.AsyncClient(timeout=90.0) as client:
                 r = await client.post(
-                    _url(f"message/sendMedia/{inst}"),
+                    self._url_for_inst(inst, f"message/sendMedia/{inst}"),
                     json=payload,
                     headers=_h(),
                 )
@@ -922,7 +1090,7 @@ class EvoManager:
                 # O endpoint espera {"message": {"key": ..., "message": ...}}
                 async with httpx.AsyncClient(timeout=60.0) as client:
                     r = await client.post(
-                        _url(f"chat/getBase64FromMediaMessage/{inst}"),
+                        self._url_for_inst(inst, f"chat/getBase64FromMediaMessage/{inst}"),
                         json={"message": {"key": key, "message": msg}, "convertToMp4": False},
                         headers=_h(),
                     )

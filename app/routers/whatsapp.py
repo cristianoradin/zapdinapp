@@ -22,6 +22,9 @@ router = APIRouter(prefix="/api/sessoes", tags=["whatsapp"])
 
 class SessaoCreate(BaseModel):
     nome: str
+    # Modo híbrido: URL custom da Evolution local do cliente.
+    # None/vazio → usa Evolution do servidor (modo padrão).
+    evolution_url: str | None = None
 
 
 @router.get("")
@@ -31,7 +34,8 @@ async def list_sessoes(
 ):
     empresa_id = user["empresa_id"]
     async with db.execute(
-        "SELECT id, nome, status, phone, last_seen FROM sessoes_wa WHERE empresa_id=? ORDER BY created_at",
+        "SELECT id, nome, status, phone, last_seen, evolution_url FROM sessoes_wa "
+        "WHERE empresa_id=? ORDER BY created_at",
         (empresa_id,),
     ) as cur:
         rows = await cur.fetchall()
@@ -47,16 +51,23 @@ async def create_sessao(
     import uuid
     empresa_id = user["empresa_id"]
     sessao_id = str(uuid.uuid4())[:8]
+    # Normaliza evolution_url: vazio/só-espaços/inválido → None (usa servidor)
+    evo_url = (body.evolution_url or "").strip() or None
+    if evo_url and not evo_url.lower().startswith(("http://", "https://", "agent://")):
+        raise HTTPException(status_code=422, detail="URL inválida. Use http://, https:// ou agent://")
     await db.execute(
-        "INSERT INTO sessoes_wa (empresa_id, id, nome, status) VALUES (?, ?, ?, 'disconnected')",
-        (empresa_id, sessao_id, body.nome),
+        "INSERT INTO sessoes_wa (empresa_id, id, nome, status, evolution_url) "
+        "VALUES (?, ?, ?, 'disconnected', ?)",
+        (empresa_id, sessao_id, body.nome, evo_url),
     )
     await db.commit()
-    await wa_manager.add_session(sessao_id, body.nome, empresa_id)
-    logger.info("[whatsapp] Sessão criada: id=%s nome=%s empresa=%s", sessao_id, body.nome, empresa_id)
+    await wa_manager.add_session(sessao_id, body.nome, empresa_id, evolution_url=evo_url)
+    logger.info("[whatsapp] Sessão criada: id=%s nome=%s empresa=%s evo_url=%s",
+                sessao_id, body.nome, empresa_id, evo_url or "servidor")
     await log_event(empresa_id=empresa_id, nivel="info", modulo="whatsapp", acao="session_connect",
-                    mensagem=f"WhatsApp conectado: {sessao_id}")
-    return {"ok": True, "id": sessao_id, "nome": body.nome, "status": "disconnected"}
+                    mensagem=f"WhatsApp conectado: {sessao_id} ({'local cliente' if evo_url else 'servidor'})")
+    return {"ok": True, "id": sessao_id, "nome": body.nome, "status": "disconnected",
+            "evolution_url": evo_url}
 
 
 @router.delete("/{sessao_id}", status_code=status.HTTP_204_NO_CONTENT)

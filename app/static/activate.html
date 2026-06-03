@@ -11,7 +11,7 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --accent:       #3d7f1f;
+      --accent:       var(--primary-deep);
       --accent-light: #7cdc44;
       --accent-blue:  #3b82f6;
       --bg:           #f4f6f9;
@@ -19,12 +19,12 @@
       --border:       #e4e6ea;
       --text:         #1a1d23;
       --text-muted:   #6b7280;
-      --error:        #dc2626;
-      --error-bg:     #fef2f2;
+      --error:        var(--red);
+      --error-bg:     var(--red-bg);
       --success:      #16a34a;
-      --success-bg:   #f0fdf4;
+      --success-bg:   var(--primary-soft);
       --warn-bg:      #fffbeb;
-      --grad: linear-gradient(90deg, #3d7f1f 0%, #7cdc44 50%, #3b82f6 100%);
+      --grad: linear-gradient(90deg, var(--primary-deep) 0%, #7cdc44 50%, #3b82f6 100%);
     }
 
     body {
@@ -84,7 +84,7 @@
 
     .logo-sub {
       font-size: 12px;
-      color: var(--text-muted);
+      color: var(--text-3);
       margin-top: 2px;
     }
 
@@ -98,7 +98,7 @@
 
     .card-subtitle {
       font-size: 14px;
-      color: var(--text-muted);
+      color: var(--text-3);
       line-height: 1.6;
       margin-bottom: 28px;
     }
@@ -108,7 +108,7 @@
       display: block;
       font-size: 12px;
       font-weight: 600;
-      color: var(--text-muted);
+      color: var(--text-3);
       text-transform: uppercase;
       letter-spacing: .7px;
       margin-bottom: 8px;
@@ -134,7 +134,7 @@
     }
 
     input[type="text"]:focus {
-      border-color: var(--accent);
+      border-color: var(--primary-deep);
       box-shadow: 0 0 0 3px rgba(61,127,31,.12);
       background: #fff;
     }
@@ -200,7 +200,7 @@
     .alert.error   {
       background: var(--error-bg);
       border: 1px solid rgba(220,38,38,.25);
-      color: #b91c1c;
+      color: var(--red);
     }
     .alert.success {
       background: var(--success-bg);
@@ -241,12 +241,12 @@
 
     .footer {
       font-size: 12px;
-      color: var(--text-muted);
+      color: var(--text-3);
       text-align: center;
       line-height: 1.7;
     }
 
-    .footer a { color: var(--accent); text-decoration: none; }
+    .footer a { color: var(--primary-deep); text-decoration: none; }
     .footer a:hover { text-decoration: underline; }
   </style>
 </head>

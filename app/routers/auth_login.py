@@ -262,6 +262,141 @@ async def login(body: LoginRequest, request: Request, response: Response, db=Dep
     return {"ok": True, "username": username, "empresa": empresa_nome}
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+#  LOGIN MULTI-EMPRESA
+#  Etapa 1: /login-empresas  — valida user/senha no Monitor → empresas vinculadas
+#  Etapa 2: /selecionar-empresa — revalida + emite cookie da empresa escolhida
+#  (Trocar de empresa exige relogar — não há troca em sessão.)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class LoginMultiRequest(BaseModel):
+    username: str
+    password: str
+
+class SelecionarEmpresaRequest(BaseModel):
+    username: str
+    password: str
+    empresa_id: int
+
+
+async def _empresas_do_monitor(username: str, password: str) -> list[dict]:
+    """Consulta o Monitor: valida credencial e retorna empresas vinculadas ao usuário.
+    Retorna lista de dicts {nome, cnpj, token}. Lança HTTPException em 401/erro."""
+    monitor_url = settings.monitor_url.rstrip("/")
+    try:
+        http = get_http_client()
+        r = await http.post(
+            f"{monitor_url}/api/auth/empresas-do-usuario",
+            json={"username": username, "password": password},
+        )
+    except Exception as exc:
+        logger.error("[login-multi] Erro ao contatar Monitor: %s", exc)
+        raise HTTPException(status_code=503, detail="Não foi possível conectar ao servidor de autenticação.")
+    if r.status_code == 401:
+        raise HTTPException(status_code=401, detail="Credenciais inválidas.")
+    if r.status_code == 429:
+        raise HTTPException(status_code=429, detail="Muitas tentativas. Aguarde 1 minuto.")
+    if r.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"Erro no servidor de autenticação ({r.status_code}).")
+    return (r.json() or {}).get("empresas", []) or []
+
+
+async def _resolver_empresas_locais(db, monitor_empresas: list[dict]) -> list[dict]:
+    """Mapeia empresas do Monitor → empresas locais existentes (por CNPJ, fallback token).
+    Só retorna as que existem no banco do app e estão ativas."""
+    out = []
+    for me in monitor_empresas:
+        cnpj = normalize_cnpj(me.get("cnpj") or "")
+        tok  = me.get("token") or ""
+        emp = None
+        if cnpj:
+            async with db.execute(
+                "SELECT id, nome, cnpj FROM empresas WHERE cnpj = ? AND ativo = TRUE", (cnpj,)
+            ) as cur:
+                emp = await cur.fetchone()
+        if not emp and tok:
+            async with db.execute(
+                "SELECT id, nome, cnpj FROM empresas WHERE token = ? AND ativo = TRUE", (tok,)
+            ) as cur:
+                emp = await cur.fetchone()
+        if emp:
+            out.append({"empresa_id": emp["id"], "nome": emp["nome"], "cnpj": emp["cnpj"]})
+    return out
+
+
+async def _emitir_cookie_empresa(db, response, username: str, empresa_id: int) -> str:
+    """Cria/acha o usuário local na empresa e emite o cookie de sessão. Retorna nome da empresa."""
+    async with db.execute("SELECT nome FROM empresas WHERE id = ?", (empresa_id,)) as cur:
+        emp = await cur.fetchone()
+    empresa_nome = emp["nome"] if emp else ""
+    async with db.execute(
+        "SELECT id FROM usuarios WHERE username = ? AND empresa_id = ?", (username, empresa_id)
+    ) as cur:
+        u = await cur.fetchone()
+    if u:
+        local_uid = u["id"]
+    else:
+        cur2 = await db.execute(
+            "INSERT INTO usuarios (empresa_id, username, password_hash) VALUES (?, ?, ?) RETURNING id",
+            (empresa_id, username, MONITOR_AUTH_SENTINEL),
+        )
+        await db.commit()
+        local_uid = cur2.lastrowid or 0
+    token = create_session_token(local_uid, username, empresa_id)
+    response.set_cookie(
+        key=SESSION_COOKIE, value=token, httponly=True, samesite="lax",
+        secure=settings.cookie_secure, max_age=settings.session_max_age,
+    )
+    return empresa_nome
+
+
+@router.post("/login-empresas")
+async def login_empresas(body: LoginMultiRequest, request: Request, response: Response, db=Depends(get_db)):
+    """Etapa 1: valida credencial no Monitor e lista empresas vinculadas que existem no app.
+    - 0 empresas → 403
+    - 1 empresa  → loga direto (emite cookie)
+    - N empresas → retorna lista (sem cookie); cliente chama /selecionar-empresa"""
+    username = body.username.strip().lower()
+    ip = client_ip(request)
+    if not _login_limiter.is_allowed(ip):
+        raise HTTPException(status_code=429, detail="Muitas tentativas. Aguarde 1 minuto.")
+
+    monitor_emps = await _empresas_do_monitor(username, body.password)
+    locais = await _resolver_empresas_locais(db, monitor_emps)
+
+    if not locais:
+        raise HTTPException(status_code=403, detail="Usuário sem empresas liberadas neste servidor.")
+    if len(locais) == 1:
+        empresa_id = locais[0]["empresa_id"]
+        empresa_nome = await _emitir_cookie_empresa(db, response, username, empresa_id)
+        await log_event(empresa_id=empresa_id, nivel="info", modulo="auth", acao="login_ok",
+                        mensagem=f"Login (1 empresa): {username}")
+        return {"ok": True, "multi": False, "username": username, "empresa": empresa_nome}
+    return {"ok": True, "multi": True, "username": username, "empresas": locais}
+
+
+@router.post("/selecionar-empresa")
+async def selecionar_empresa(body: SelecionarEmpresaRequest, request: Request, response: Response, db=Depends(get_db)):
+    """Etapa 2: revalida credencial + vínculo da empresa escolhida e emite o cookie.
+    Anti-burla: re-checa no Monitor que o usuário tem acesso à empresa pedida."""
+    username = body.username.strip().lower()
+    ip = client_ip(request)
+    if not _login_limiter.is_allowed(ip):
+        raise HTTPException(status_code=429, detail="Muitas tentativas. Aguarde 1 minuto.")
+
+    monitor_emps = await _empresas_do_monitor(username, body.password)
+    locais = await _resolver_empresas_locais(db, monitor_emps)
+    permitido = any(e["empresa_id"] == body.empresa_id for e in locais)
+    if not permitido:
+        logger.warning("[selecionar-empresa] '%s' tentou empresa %s sem vínculo", username, body.empresa_id)
+        raise HTTPException(status_code=403, detail="Você não tem acesso a esta empresa.")
+
+    empresa_nome = await _emitir_cookie_empresa(db, response, username, body.empresa_id)
+    await log_event(empresa_id=body.empresa_id, nivel="info", modulo="auth", acao="login_ok",
+                    mensagem=f"Login (empresa selecionada): {username}")
+    return {"ok": True, "username": username, "empresa": empresa_nome}
+
+
 @router.post("/logout")
 async def logout(request: Request, response: Response):
     token = request.cookies.get(SESSION_COOKIE)

@@ -25,25 +25,25 @@
         </div>
         <div class="info-banner info-banner-yellow" style="margin-bottom:0">
           <span class="ib-icon">⚠️</span>
-          <div><strong>Telefone:</strong> envie apenas <strong>DDD + número</strong> (sem o 55). Ex: <code style="color:var(--accent)">"11999990000"</code></div>
+          <div><strong>Telefone:</strong> envie apenas <strong>DDD + número</strong> (sem o 55). Ex: <code style="color:var(--primary-deep)">"11999990000"</code></div>
         </div>
       </div>
 
       <!-- Autenticação + Endpoints lado a lado -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.25rem">
 
-        <div class="card" style="margin-bottom:0">
+        <div class="card pad" style="margin-bottom:0">
           <div class="section-header">
             <div class="section-header-icon shi-orange">
               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
             </div>
             <h2>Autenticação</h2>
           </div>
-          <p style="font-size:.84rem;color:var(--text-mid);margin-bottom:.75rem">Envie o token no header de toda requisição:</p>
+          <p style="font-size:.84rem;color:var(--text-2);margin-bottom:.75rem">Envie o token no header de toda requisição:</p>
           <div class="code-block">
 <span class="cb-header">x-token:</span> <span class="cb-string">rYq1OWgra44Nx_nlaSWF...</span></div>
           <div style="display:flex;flex-direction:column;gap:.4rem;font-size:.82rem">
-            <div style="display:flex;align-items:center;gap:.5rem;padding:.4rem .65rem;background:#fef2f2;border-radius:6px;color:#b91c1c">
+            <div style="display:flex;align-items:center;gap:.5rem;padding:.4rem .65rem;background:var(--red-bg);border-radius:6px;color:var(--red)">
               <span>❌</span> <code>401</code> Token inválido ou ausente
             </div>
             <div style="display:flex;align-items:center;gap:.5rem;padding:.4rem .65rem;background:#fff7ed;border-radius:6px;color:#c2410c">
@@ -52,7 +52,7 @@
           </div>
         </div>
 
-        <div class="card" style="margin-bottom:0">
+        <div class="card pad" style="margin-bottom:0">
           <div class="section-header">
             <div class="section-header-icon shi-blue">
               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
@@ -60,36 +60,36 @@
             <h2>Endpoints</h2>
           </div>
           <div style="display:flex;flex-direction:column;gap:.5rem">
-            <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .875rem;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #bbf7d0;border-radius:8px">
+            <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .875rem;background:linear-gradient(135deg,var(--primary-soft),var(--primary-soft));border:1px solid color-mix(in srgb,var(--primary) 30%,transparent);border-radius:8px">
               <span class="chip chip-green" style="flex-shrink:0">POST</span>
-              <div><code style="font-size:.8rem">/api/erp/venda</code><br><span style="font-size:.75rem;color:var(--text-mid)">Envia mensagem de venda</span></div>
+              <div><code style="font-size:.8rem">/api/erp/venda</code><br><span style="font-size:.75rem;color:var(--text-2)">Envia mensagem de venda</span></div>
             </div>
-            <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .875rem;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #bbf7d0;border-radius:8px">
+            <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .875rem;background:linear-gradient(135deg,var(--primary-soft),var(--primary-soft));border:1px solid color-mix(in srgb,var(--primary) 30%,transparent);border-radius:8px">
               <span class="chip chip-green" style="flex-shrink:0">POST</span>
-              <div><code style="font-size:.8rem">/api/erp/arquivo</code><br><span style="font-size:.75rem;color:var(--text-mid)">Envia arquivo em base64</span></div>
+              <div><code style="font-size:.8rem">/api/erp/arquivo</code><br><span style="font-size:.75rem;color:var(--text-2)">Envia arquivo em base64</span></div>
             </div>
             <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .875rem;background:linear-gradient(135deg,#fffbeb,#fef9c3);border:1px solid #fde68a;border-radius:8px">
               <span class="chip chip-yellow" style="flex-shrink:0">GET</span>
-              <div><code style="font-size:.8rem">/api/erp/status</code><br><span style="font-size:.75rem;color:var(--text-mid)">Última conexão ERP</span></div>
+              <div><code style="font-size:.8rem">/api/erp/status</code><br><span style="font-size:.75rem;color:var(--text-2)">Última conexão ERP</span></div>
             </div>
             <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .875rem;background:linear-gradient(135deg,#fffbeb,#fef9c3);border:1px solid #fde68a;border-radius:8px">
               <span class="chip chip-yellow" style="flex-shrink:0">GET</span>
-              <div><code style="font-size:.8rem">/api/arquivos &nbsp; /api/stats</code><br><span style="font-size:.75rem;color:var(--text-mid)">Listagem e estatísticas</span></div>
+              <div><code style="font-size:.8rem">/api/arquivos &nbsp; /api/stats</code><br><span style="font-size:.75rem;color:var(--text-2)">Listagem e estatísticas</span></div>
             </div>
           </div>
         </div>
       </div>
 
       <!-- POST /api/erp/venda -->
-      <div class="card" style="margin-bottom:1.25rem">
+      <div class="card pad" style="margin-bottom:1.25rem">
         <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem">
           <span class="chip chip-green" style="font-size:.82rem">POST</span>
           <h3 style="font-size:1rem;font-weight:700;margin:0;font-family:monospace">/api/erp/venda</h3>
-          <span style="font-size:.8rem;color:var(--text-mid)">— Notifica cliente com dados da venda</span>
+          <span style="font-size:.8rem;color:var(--text-2)">— Notifica cliente com dados da venda</span>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem">
           <div>
-            <table style="margin-bottom:.5rem">
+            <table class="table" style="margin-bottom:.5rem">
               <thead><tr><th>Campo</th><th>Req.</th><th>Tipo</th></tr></thead>
               <tbody>
                 <tr><td><code>telefone</code></td><td><span class="chip chip-green">Sim</span></td><td>string</td></tr>
@@ -114,21 +114,21 @@
   ],
   <span class="cb-key">"valor_total"</span>: <span class="cb-string">"281,60"</span>
 }</div>
-            <div style="font-size:.78rem;color:var(--text-mid);padding:.4rem .65rem;background:var(--accent-soft);border-radius:6px">✅ Resposta: <code style="color:var(--accent)">{"ok": true, "queued": true}</code></div>
+            <div style="font-size:.78rem;color:var(--text-2);padding:.4rem .65rem;background:var(--primary-soft);border-radius:6px">✅ Resposta: <code style="color:var(--primary-deep)">{"ok": true, "queued": true}</code></div>
           </div>
         </div>
       </div>
 
       <!-- POST /api/erp/arquivo -->
-      <div class="card" style="margin-bottom:1.25rem">
+      <div class="card pad" style="margin-bottom:1.25rem">
         <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem">
           <span class="chip chip-green" style="font-size:.82rem">POST</span>
           <h3 style="font-size:1rem;font-weight:700;margin:0;font-family:monospace">/api/erp/arquivo</h3>
-          <span style="font-size:.8rem;color:var(--text-mid)">— Envia arquivo via WhatsApp (base64)</span>
+          <span style="font-size:.8rem;color:var(--text-2)">— Envia arquivo via WhatsApp (base64)</span>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem">
           <div>
-            <table>
+            <table class="table">
               <thead><tr><th>Campo</th><th>Req.</th><th>Descrição</th></tr></thead>
               <tbody>
                 <tr><td><code>telefone</code></td><td><span class="chip chip-green">Sim</span></td><td>DDD + número</td></tr>
@@ -153,38 +153,38 @@
       </div>
 
       <!-- Variáveis -->
-      <div class="card">
+      <div class="card pad">
         <div class="section-header">
           <div class="section-header-icon shi-purple">
             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
           </div>
           <h2>Variáveis do Template</h2>
         </div>
-        <p style="font-size:.84rem;color:var(--text-mid);margin-bottom:1rem">Use estas variáveis em <strong>Configurar Mensagem</strong> para personalizar automaticamente o texto enviado.</p>
+        <p style="font-size:.84rem;color:var(--text-2);margin-bottom:1rem">Use estas variáveis em <strong>Configurar Mensagem</strong> para personalizar automaticamente o texto enviado.</p>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.5rem">
           <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .875rem;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px">
             <code style="color:#4338ca;font-size:.85rem;font-weight:700">{nome}</code>
-            <span style="font-size:.82rem;color:var(--text-mid)">Nome completo do cliente</span>
+            <span style="font-size:.82rem;color:var(--text-2)">Nome completo do cliente</span>
           </div>
           <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .875rem;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px">
             <code style="color:#4338ca;font-size:.85rem;font-weight:700">{telefone}</code>
-            <span style="font-size:.82rem;color:var(--text-mid)">Número com DDI</span>
+            <span style="font-size:.82rem;color:var(--text-2)">Número com DDI</span>
           </div>
           <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .875rem;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px">
             <code style="color:#4338ca;font-size:.85rem;font-weight:700">{data}</code>
-            <span style="font-size:.82rem;color:var(--text-mid)">Data da compra</span>
+            <span style="font-size:.82rem;color:var(--text-2)">Data da compra</span>
           </div>
           <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .875rem;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px">
             <code style="color:#4338ca;font-size:.85rem;font-weight:700">{produtos}</code>
-            <span style="font-size:.82rem;color:var(--text-mid)">Lista de itens da venda</span>
+            <span style="font-size:.82rem;color:var(--text-2)">Lista de itens da venda</span>
           </div>
           <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .875rem;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px">
             <code style="color:#4338ca;font-size:.85rem;font-weight:700">{valor_total_itens}</code>
-            <span style="font-size:.82rem;color:var(--text-mid)">Soma dos itens</span>
+            <span style="font-size:.82rem;color:var(--text-2)">Soma dos itens</span>
           </div>
           <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .875rem;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px">
             <code style="color:#4338ca;font-size:.85rem;font-weight:700">{valor_total}</code>
-            <span style="font-size:.82rem;color:var(--text-mid)">Total final da compra</span>
+            <span style="font-size:.82rem;color:var(--text-2)">Total final da compra</span>
           </div>
         </div>
       </div>

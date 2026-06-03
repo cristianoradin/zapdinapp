@@ -22,55 +22,47 @@
 
   function _statusChip(status) {
     const map = {
-      sent:    { cls: 'chip-green',  label: 'Enviada' },
-      failed:  { cls: 'chip-red',    label: 'Falhou' },
-      error:   { cls: 'chip-red',    label: 'Erro' },
-      queued:  { cls: 'chip-yellow', label: 'Na fila' },
-      pending: { cls: 'chip-yellow', label: 'Pendente' },
+      sent:    { cls: 'badge ok dot',    label: 'Enviada' },
+      failed:  { cls: 'badge fail dot',  label: 'Falhou' },
+      error:   { cls: 'badge fail dot',  label: 'Erro' },
+      queued:  { cls: 'badge queue dot', label: 'Na fila' },
+      pending: { cls: 'badge queue dot', label: 'Pendente' },
     };
-    const { cls, label } = map[status] || { cls: 'chip-yellow', label: status };
-    return `<span class="chip ${cls}">${label}</span>`;
+    const { cls, label } = map[status] || { cls: 'badge queue dot', label: status };
+    return `<span class="${cls}">${label}</span>`;
   }
 
   function _renderVazio() {
     return `
       <tr>
-        <td colspan="4" style="text-align:center;padding:3rem 1rem">
-          <div style="width:48px;height:48px;background:var(--accent-soft);border-radius:12px;
-                      display:flex;align-items:center;justify-content:center;margin:0 auto .75rem">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                 fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            </svg>
+        <td colspan="4">
+          <div class="empty-box">
+            <div class="empty-ic">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div style="font-weight:700;color:var(--primary-deep)">Nenhuma mensagem enviada ainda</div>
+            <div style="font-size:13px;color:var(--text-2)">Configure e envie sua primeira mensagem para começar.</div>
+            <button class="btn sm" style="margin-top:8px" onclick="showPage('mensagem')">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Configurar mensagem
+            </button>
           </div>
-          <div style="color:var(--text);font-size:.9rem;font-weight:600;margin-bottom:.3rem">
-            Nenhuma mensagem enviada ainda
-          </div>
-          <div style="color:var(--text-mid);font-size:.8rem;margin-bottom:1rem">
-            Configure e envie sua primeira mensagem para começar.
-          </div>
-          <button class="btn btn-primary btn-sm"
-                  onclick="showPage('mensagem')"
-                  style="display:inline-flex;align-items:center;gap:.4rem">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
-                 fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-            Configurar mensagem
-          </button>
         </td>
       </tr>`;
   }
 
   function _renderRow(r) {
+    const empresa = r.empresa || r.client_name || '';
+    const msg = (r.mensagem || '—').replace(/^🏪\s*\*[^*]+\*\s*\n+/, '');
+    const empresaHtml = empresa
+      ? `<span style="font-weight:700">🏢 ${escHtml(empresa)}</span> <span style="color:var(--text-2)">${escHtml(msg)}</span>`
+      : `<span style="color:var(--text-2)">${escHtml(msg)}</span>`;
     return `
       <tr>
-        <td style="font-family:monospace;font-size:.84rem">${escHtml(r.destinatario || '—')}</td>
-        <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-          ${escHtml(r.mensagem || '—')}
-        </td>
+        <td class="mono">${escHtml(r.destinatario || '—')}</td>
+        <td style="max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${empresaHtml}</td>
         <td>${_statusChip(r.status)}</td>
-        <td style="color:var(--text-mid);font-size:.8rem;white-space:nowrap">${r.created_at || '—'}</td>
+        <td class="mono">${r.created_at || '—'}</td>
       </tr>`;
   }
 
@@ -93,6 +85,28 @@
       }
     } catch (_) { /* best-effort */ }
   }
+
+  // ── Filtro client-side de mensagens ──────────────────────────────────────
+  let _msgRecentesCache = [];
+  let _msgFiltro = 'todas';
+  function _aplicarFiltro() {
+    const tbody = document.getElementById('tbodyRecentes');
+    if (!tbody) return;
+    let rows = _msgRecentesCache;
+    if (_msgFiltro === 'enviadas') rows = rows.filter(r => r.status === 'sent');
+    else if (_msgFiltro === 'falhas') rows = rows.filter(r => r.status === 'failed' || r.status === 'error');
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--text-3);padding:1.5rem">Nenhuma mensagem ${_msgFiltro==='enviadas'?'enviada':_msgFiltro==='falhas'?'com falha':''}</td></tr>`;
+    } else {
+      tbody.innerHTML = rows.map(_renderRow).join('');
+    }
+  }
+  window.filtrarMsgRecentes = function (f, btn) {
+    _msgFiltro = f;
+    document.querySelectorAll('#dashFiltroMsg button').forEach(b => b.classList.remove('on'));
+    if (btn) btn.classList.add('on');
+    _aplicarFiltro();
+  };
 
   // ── API pública ─────────────────────────────────────────────────────────────
 
@@ -118,10 +132,11 @@
 
       const tbody = document.getElementById('tbodyRecentes');
       if (!tbody) return;
-      if (!d.recentes || d.recentes.length === 0) {
+      _msgRecentesCache = d.recentes || [];
+      if (_msgRecentesCache.length === 0) {
         tbody.innerHTML = _renderVazio();
       } else {
-        tbody.innerHTML = d.recentes.map(_renderRow).join('');
+        _aplicarFiltro();
       }
     } catch (_) {
       ['statHoje', 'statEnviadas', 'statFalhas', 'statSessoes'].forEach(id => {

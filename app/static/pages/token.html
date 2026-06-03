@@ -1,93 +1,146 @@
-    <div class="page" id="page-token">
-    <div id="sys-panel-token">
-      <div class="sys-panel-header">
-        <div class="sys-panel-title">Token de Integração ERP</div>
-        <div class="sys-panel-sub">Gere e gerencie o token de acesso à API. Envie-o no header <code>x-token</code> em cada chamada.</div>
+<div class="page" id="page-token">
+
+  <!-- Sub-navegação horizontal (espelha sys-topnav do sistema) -->
+  <div class="card sys-topnav">
+    <div class="sys-navgroup">
+      <span class="sys-navgroup-label">Sistema</span>
+      <div class="sys-navgroup-items">
+        <button class="sys-tab sys-menu-item" onclick="sysGoTo('token-ia')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/><circle cx="7.5" cy="14.5" r="1.5"/><circle cx="16.5" cy="14.5" r="1.5"/></svg>
+          <span>Central de IA</span>
+        </button>
+        <button class="sys-tab sys-menu-item" onclick="sysGoTo('usuario')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span>Usuário</span>
+        </button>
+        <button class="sys-tab sys-menu-item on active" onclick="event.preventDefault()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+          <span>Token API</span>
+        </button>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;align-items:start">
+    </div>
 
-        <!-- Token + ERP Status -->
-        <div>
-          <div class="card" style="margin-bottom:1.25rem">
-            <div class="section-header">
-              <div class="section-header-icon shi-orange">
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
-              </div>
-              <h2>Token Atual</h2>
-            </div>
-            <div class="alert" id="alertToken"></div>
-            <div class="form-group">
-              <label>Chave de acesso</label>
-              <div style="display:flex;gap:.5rem">
-                <input type="text" id="inputToken" placeholder="Clique em Gerar Novo Token para criar" readonly style="font-family:'JetBrains Mono','Fira Code',monospace;flex:1;font-size:.82rem;background:#f8fafc;letter-spacing:.04em" />
-                <button class="btn btn-ghost" id="btnCopiarToken" title="Copiar token">📋</button>
-              </div>
-            </div>
-            <div style="display:flex;gap:.75rem;flex-wrap:wrap">
-              <button class="btn btn-primary" id="btnGerarToken">⚡ Gerar Novo Token</button>
-              <button class="btn btn-ghost" id="btnSalvarToken" style="display:none">Salvar</button>
-            </div>
-          </div>
+    <div class="sys-navgroup">
+      <span class="sys-navgroup-label">Integração Contábil</span>
+      <div class="sys-navgroup-items">
+        <button class="sys-tab sys-menu-item" onclick="sysGoTo('dominio')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          <span>Domínio</span>
+        </button>
+        <button class="sys-tab sys-menu-item" onclick="sysGoTo('docs')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          <span>Documentações</span>
+        </button>
+        <button class="sys-tab sys-menu-item" onclick="sysGoTo('log')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <span>Log do Sistema</span>
+        </button>
+      </div>
+    </div>
+  </div>
 
-          <div class="info-banner info-banner-yellow">
-            <span class="ib-icon">⚠️</span>
-            <div><strong>Atenção:</strong> Ao gerar um novo token, o token anterior será invalidado imediatamente. Atualize o ERP antes de gerar.</div>
-          </div>
+<div id="sys-panel-token" style="margin-top:var(--gap)">
 
+  <div class="sys-panel-header">
+    <div class="sys-panel-title">Token de Integração ERP</div>
+    <div class="sys-panel-sub">Gere e gerencie o token de acesso à API. Envie-o no header <code>x-token</code> em cada chamada.</div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);align-items:start">
+
+    <!-- ── Token Atual ──────────────────────────────────────────── -->
+    <div style="display:flex;flex-direction:column;gap:var(--gap)">
+      <div class="card pad">
+        <div class="card-head">
+          <span class="ci t-amber">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+          </span>
+          <h2 style="font-size:16px">Token Atual</h2>
         </div>
 
-        <!-- ERP Status -->
-        <div class="card" style="margin-bottom:0">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
-            <div class="section-header" style="margin-bottom:0">
-              <div class="section-header-icon shi-blue">
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-              </div>
-              <h2>Status da Conexão ERP</h2>
-            </div>
-            <button class="btn btn-ghost btn-sm" id="btnAtualizarErpStatus">↻ Atualizar</button>
-          </div>
-          <div class="erp-stat-grid">
-            <div class="erp-stat-card erp-sc-blue">
-              <div class="erp-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-              </div>
-              <div class="esv" id="erpStatStatus">—</div>
-              <div class="esl">Status</div>
-            </div>
-            <div class="erp-stat-card erp-sc-purple">
-              <div class="erp-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-              </div>
-              <div class="esv" id="erpStatTotal">—</div>
-              <div class="esl">Total de Chamadas</div>
-            </div>
-            <div class="erp-stat-card erp-sc-gray" style="grid-column:1/-1">
-              <div class="erp-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              </div>
-              <div class="esv" id="erpStatTs">—</div>
-              <div class="esl">Última Chamada</div>
-            </div>
-            <div class="erp-stat-card erp-sc-gray">
-              <div class="erp-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
-              </div>
-              <div class="esv" id="erpStatIp" style="font-family:monospace;font-size:.82rem">—</div>
-              <div class="esl">IP do ERP</div>
-            </div>
-            <div class="erp-stat-card erp-sc-orange">
-              <div class="erp-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-              </div>
-              <div class="esv" id="erpStatEndpoint">—</div>
-              <div class="esl">Endpoint</div>
-            </div>
-          </div>
+        <div class="alert" id="alertToken" style="display:none"></div>
 
-          <div style="margin-top:1.5rem;padding:1rem;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
-            <div style="font-size:.72rem;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.75rem">Exemplo de chamada</div>
-            <div class="code-block" style="margin:0;font-size:.75rem">
+        <label class="flbl">Chave de acesso</label>
+        <div style="display:flex;gap:.5rem">
+          <input type="text" id="inputToken" class="field" placeholder="Clique em Gerar Novo Token para criar" readonly style="font-family:var(--mono);flex:1;font-size:.82rem;letter-spacing:.04em" />
+          <button class="btn btn-ghost icon-btn" id="btnCopiarToken" title="Copiar token" style="width:42px">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+        </div>
+
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:14px">
+          <button class="btn" id="btnGerarToken">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Gerar Novo Token
+          </button>
+          <button class="btn btn-ghost" id="btnSalvarToken" style="display:none">Salvar</button>
+        </div>
+      </div>
+
+      <div class="note warn">
+        <span class="ni" style="color:var(--amber)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </span>
+        <div><b>Atenção:</b> ao gerar um novo token, o anterior será invalidado imediatamente. Atualize o ERP antes de gerar.</div>
+      </div>
+    </div>
+
+    <!-- ── Status ERP ───────────────────────────────────────────── -->
+    <div class="card pad">
+      <div class="card-head" style="justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:.6rem">
+          <span class="ci t-blue">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          </span>
+          <h2 style="font-size:16px">Status da Conexão ERP</h2>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="btnAtualizarErpStatus" title="Atualizar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.18-4.73"/></svg>
+          Atualizar
+        </button>
+      </div>
+
+      <div class="stats-mini" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="stat-mini">
+          <div class="ci t-blue" style="width:34px;height:34px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          </div>
+          <div class="val" id="erpStatStatus">—</div>
+          <div class="lbl">Status</div>
+        </div>
+        <div class="stat-mini">
+          <div class="ci t-violet" style="width:34px;height:34px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          </div>
+          <div class="val" id="erpStatTotal">—</div>
+          <div class="lbl">Total de Chamadas</div>
+        </div>
+        <div class="stat-mini" style="grid-column:1/-1">
+          <div class="ci" style="width:34px;height:34px;background:var(--surface-3);color:var(--text-2)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div class="val" id="erpStatTs" style="font-size:14px">—</div>
+          <div class="lbl">Última Chamada</div>
+        </div>
+        <div class="stat-mini">
+          <div class="ci" style="width:34px;height:34px;background:var(--surface-3);color:var(--text-2)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg>
+          </div>
+          <div class="val mono" id="erpStatIp" style="font-size:14px">—</div>
+          <div class="lbl">IP do ERP</div>
+        </div>
+        <div class="stat-mini">
+          <div class="ci t-amber" style="width:34px;height:34px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          </div>
+          <div class="val" id="erpStatEndpoint" style="font-size:14px">—</div>
+          <div class="lbl">Endpoint</div>
+        </div>
+      </div>
+
+      <div style="margin-top:18px;padding:14px;background:var(--surface-2);border-radius:10px;border:1px solid var(--border)">
+        <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Exemplo de chamada</div>
+        <div class="code-block" style="margin:0;font-size:12.5px">
 <span class="cb-method">POST</span> <span class="cb-path">/api/erp/venda</span>
 <span class="cb-header">x-token:</span> <span class="cb-string">seu_token_aqui</span>
 <span class="cb-header">Content-Type:</span> <span class="cb-string">application/json</span>
@@ -96,77 +149,69 @@
   <span class="cb-key">"telefone"</span>: <span class="cb-string">"11999990000"</span>,
   <span class="cb-key">"nome"</span>: <span class="cb-string">"João Silva"</span>
 }</div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- ── ZapDin PDV — Tokens de Máquina ─────────────────────────────── -->
-      <div style="margin-top:2rem">
-        <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:1rem">
-          <div style="width:3px;height:22px;background:var(--accent);border-radius:2px"></div>
-          <h2 style="font-size:1rem;font-weight:700;margin:0">📱 ZapDin PDV — Tokens de Máquina</h2>
-        </div>
-        <p style="font-size:.85rem;color:var(--text-mid);margin-bottom:1.25rem">
-          O ZapDin PDV roda na máquina do cliente (caixa/PDV) e autentica com um token próprio —
-          sem usuário/senha. Gere um token por caixa e coloque no <code>.env</code> do PDV.
-        </p>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;align-items:start">
-
-          <!-- Gerar token -->
-          <div class="card">
-            <div class="section-header">
-              <div class="section-header-icon shi-green">🖥️</div>
-              <h3>Gerar Token para um PDV</h3>
-            </div>
-            <div class="alert" id="alertPdvToken"></div>
-            <div class="form-group">
-              <label>Nome do caixa</label>
-              <input type="text" id="inputPdvNome" placeholder="Ex: Caixa 01, Loja Centro…" maxlength="50" />
-            </div>
-            <button class="btn btn-primary" id="btnGerarPdvToken">⚡ Gerar Token PDV</button>
-
-            <!-- Token gerado -->
-            <div id="pdvTokenGerado" style="display:none;margin-top:1.25rem;padding:1rem;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px">
-              <div style="font-size:.78rem;font-weight:700;color:#15803d;margin-bottom:.5rem">✅ Token gerado! Copie para o .env do PDV:</div>
-              <div style="display:flex;gap:.5rem;align-items:center">
-                <code id="pdvTokenValor" style="flex:1;font-size:.8rem;word-break:break-all;background:#dcfce7;padding:.4rem .6rem;border-radius:6px;color:#166534"></code>
-                <button class="btn btn-ghost btn-sm" onclick="copiarPdvToken()" title="Copiar">📋</button>
-              </div>
-              <div style="margin-top:.6rem;font-size:.75rem;color:#6b7280">
-                Cole no <code>.env</code> do PDV:<br>
-                <code id="pdvTokenEnvLine" style="color:#374151"></code>
-              </div>
-            </div>
-          </div>
-
-          <!-- Lista de tokens -->
-          <div class="card">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
-              <div class="section-header" style="margin-bottom:0">
-                <div class="section-header-icon shi-blue">📋</div>
-                <h3 style="margin:0">Tokens Ativos</h3>
-              </div>
-              <button class="btn btn-ghost btn-sm" onclick="tokenModule.init()">↻</button>
-            </div>
-            <div id="pdvTokensList">
-              <div style="text-align:center;color:var(--text-mid);font-size:.85rem;padding:1.5rem">Carregando…</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Como usar -->
-        <div class="info-banner" style="margin-top:1rem;background:#f0f9ff;border-color:#bae6fd">
-          <span class="ib-icon">ℹ️</span>
-          <div style="font-size:.83rem">
-            <strong>Como usar:</strong>
-            Gere um token → copie para o <code>.env</code> do PDV como <code>ZAPDIN_PDV_TOKEN=pdv_xxx</code> →
-            o PDV se autentica automaticamente. A chave <strong>PDV_API_KEY</strong> é diferente:
-            é a senha que o <em>ERP do cliente</em> usa para chamar o PDV localmente (você define qualquer valor).
-          </div>
-        </div>
       </div>
     </div>
-    </div><!-- /sys-panel-token -->
-    </div><!-- /page-token -->
+
+  </div><!-- /grid principal -->
+
+  <!-- ── ZapDin PDV — Tokens de Máquina (compacto) ─────────────── -->
+  <div class="card pad" style="margin-top:var(--gap)">
+    <div class="card-head" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;align-items:center;gap:.6rem">
+        <span class="ci t-green">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+        </span>
+        <h2 style="font-size:16px">ZapDin PDV — Tokens de Máquina</h2>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="tokenModule.init()" title="Recarregar tokens">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.18-4.73"/></svg>
+      </button>
+    </div>
+
+    <!-- Gerar token inline -->
+    <div class="usr-add-row" style="margin-top:4px">
+      <input type="text" id="inputPdvNome" class="field" placeholder="Nome do caixa (Ex: Caixa 01, Loja Centro…)" maxlength="50" />
+      <button class="btn" id="btnGerarPdvToken" style="flex:none;padding:0 16px">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Gerar Token PDV
+      </button>
+    </div>
+    <div class="alert" id="alertPdvToken" style="display:none;margin-top:.6rem"></div>
+
+    <!-- Token recém-gerado -->
+    <div id="pdvTokenGerado" class="note ok" style="display:none;margin-top:10px;flex-direction:column;align-items:stretch;gap:.5rem">
+      <div style="display:flex;align-items:center;gap:.4rem;font-weight:700;color:var(--primary-deep);font-size:12.5px">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Token gerado — copie pro <code>.env</code> do PDV:
+      </div>
+      <div style="display:flex;gap:.4rem;align-items:center">
+        <code id="pdvTokenValor" class="mono" style="flex:1;font-size:12px;word-break:break-all;background:var(--primary-soft);color:var(--primary-deep);padding:.35rem .55rem;border-radius:6px"></code>
+        <button class="btn btn-ghost btn-sm" onclick="copiarPdvToken()" title="Copiar" style="padding:.3rem .5rem">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </button>
+      </div>
+      <code id="pdvTokenEnvLine" class="mono" style="font-size:11.5px;color:var(--text-2);background:var(--surface-2);padding:.3rem .55rem;border-radius:6px"></code>
+    </div>
+
+    <!-- Lista compacta -->
+    <div class="usr-section-label" style="margin:18px 0 8px">Tokens ativos</div>
+    <div id="pdvTokensList">
+      <div style="text-align:center;color:var(--text-3);font-size:12.5px;padding:.75rem">Carregando…</div>
+    </div>
+
+    <!-- Como usar (collapsible compacto) -->
+    <details style="margin-top:14px">
+      <summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--text-3);letter-spacing:.04em;text-transform:uppercase;list-style:none;display:inline-flex;align-items:center;gap:6px">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        Como usar
+      </summary>
+      <div style="font-size:12.5px;line-height:1.55;color:var(--text-2);margin-top:8px;padding:10px 12px;background:var(--blue-bg);border-radius:8px">
+        Gere um token → copie pro <code>.env</code> do PDV como <code>ZAPDIN_PDV_TOKEN=pdv_xxx</code> →
+        PDV se autentica automaticamente. A chave <b>PDV_API_KEY</b> é diferente: é a senha que o
+        <em>ERP do cliente</em> usa pra chamar o PDV localmente (define qualquer valor).
+      </div>
+    </details>
+  </div>
+
+</div><!-- /sys-panel-token -->
+</div><!-- /page-token -->

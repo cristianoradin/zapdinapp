@@ -5,157 +5,132 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Avaliação de Atendimento — {{EMPRESA}}</title>
 <style>
+  :root {
+    --primary: {{PRIMARY_COLOR}};
+    --primary-strong: color-mix(in srgb, var(--primary) 100%, #000 16%);
+    --primary-deep: color-mix(in srgb, var(--primary) 100%, #000 34%);
+    --primary-soft: color-mix(in srgb, var(--primary) 14%, #fff);
+    --text: #1a1d23;
+    --text-2: #5b6b75;
+    --text-3: #93a1ab;
+    --border: #e4e6ea;
+  }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     min-height: 100dvh;
-    background: linear-gradient(145deg, #1a5c08 0%, #3d7f1f 40%, #7cdc44 100%);
+    background: linear-gradient(155deg, var(--primary-deep) 0%, var(--primary-strong) 50%, var(--primary) 100%);
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    padding: 1.5rem 1rem;
+    font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    padding: 1.5rem 1rem .75rem;
+    gap: 0;
   }
   .card {
     background: #fff;
-    border-radius: 24px;
-    padding: 2.25rem 2rem 2rem;
+    border-radius: 22px;
+    padding: 2rem 1.75rem 1.85rem;
     width: 100%;
-    max-width: 460px;
-    box-shadow: 0 20px 60px rgba(0,0,0,.25), 0 4px 16px rgba(0,0,0,.12);
+    max-width: 440px;
+    box-shadow: 0 22px 60px rgba(0,0,0,.28), 0 4px 16px rgba(0,0,0,.12);
     text-align: center;
     animation: fadeUp .4s ease both;
   }
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(24px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes popIn {
-    0%   { transform: scale(.5); opacity: 0; }
-    70%  { transform: scale(1.2); }
-    100% { transform: scale(1);   opacity: 1; }
-  }
-  .icon-wrap {
-    font-size: 3.5rem;
-    line-height: 1;
-    margin-bottom: 1rem;
-    display: block;
-  }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes popIn  { 0% { transform: scale(.5); opacity: 0; } 70% { transform: scale(1.2); } 100% { transform: scale(1); opacity: 1; } }
   .animate-in { animation: popIn .5s ease both .2s; }
+  .icon-wrap { font-size: 3.5rem; line-height: 1; margin-bottom: 1rem; display: block; }
   .empresa-name {
     display: inline-block;
-    background: linear-gradient(90deg, #3d7f1f, #7cdc44);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    font-size: 1.1rem;
-    font-weight: 800;
-    letter-spacing: .02em;
-    margin-bottom: .6rem;
-    padding: .25rem .75rem;
-    border: 2px solid #7cdc44;
+    color: var(--primary-deep);
+    background: var(--primary-soft);
+    font-size: .95rem;
+    font-weight: 700;
+    letter-spacing: .01em;
+    padding: .42rem 1.1rem;
+    border: 1.5px solid var(--primary);
     border-radius: 999px;
+    margin-bottom: 1.1rem;
   }
   h1 {
-    font-size: 1.35rem;
-    font-weight: 700;
-    color: #1a1d23;
-    margin-bottom: .4rem;
-    line-height: 1.3;
+    font-size: 1.55rem;
+    font-weight: 800;
+    color: var(--text);
+    margin-bottom: .45rem;
+    line-height: 1.25;
+    letter-spacing: -.01em;
   }
-  .vendedor {
-    font-size: .85rem;
-    color: #6b7280;
-    margin-bottom: .4rem;
-  }
-  .sub {
-    font-size: .88rem;
-    color: #6b7280;
-    line-height: 1.5;
-    margin-bottom: 1.5rem;
-  }
+  .vendedor { font-size: .9rem; color: var(--text-2); margin-bottom: .55rem; }
+  .vendedor strong { color: var(--text); }
+  .sub { font-size: .92rem; color: var(--text-2); line-height: 1.5; margin-bottom: 1.4rem; }
   .stars {
     display: flex;
     justify-content: center;
-    gap: .4rem;
-    margin-bottom: .4rem;
+    gap: .35rem;
+    margin-bottom: .55rem;
   }
   .star {
-    font-size: 2.6rem;
     background: none;
     border: none;
     cursor: pointer;
-    filter: grayscale(1) opacity(.35);
-    transition: filter .15s, transform .15s;
-    padding: .1rem .15rem;
+    padding: .15rem;
     border-radius: 8px;
+    transition: transform .15s;
+    color: #e4e6ea;
     line-height: 1;
   }
-  .star:hover, .star.active {
-    filter: grayscale(0) opacity(1);
-    transform: scale(1.18);
-  }
-  .star.active { transform: scale(1.22); }
+  .star svg { width: 42px; height: 42px; display: block; fill: currentColor; transition: color .15s, transform .15s; }
+  .star:hover svg { transform: scale(1.12); }
+  .star.active { color: var(--primary); }
+  .star.active svg { transform: scale(1.15); }
   .star-labels {
     display: flex;
     justify-content: space-between;
-    font-size: .68rem;
-    color: #9ca3af;
-    padding: 0 .25rem;
-    margin-bottom: .75rem;
+    font-size: .72rem;
+    color: var(--text-3);
+    padding: 0 .35rem;
+    margin-bottom: .9rem;
   }
-  .nota-label {
-    font-size: .88rem;
-    font-weight: 700;
-    color: #3d7f1f;
-    margin-bottom: .75rem;
-    min-height: 1.2em;
-  }
+  .nota-label { font-size: .92rem; font-weight: 700; color: var(--primary-deep); margin-bottom: .85rem; min-height: 1.2em; }
   textarea {
     width: 100%;
-    border: 1.5px solid #e4e6ea;
+    border: 1.5px solid var(--border);
     border-radius: 12px;
-    padding: .75rem 1rem;
-    font-size: .88rem;
+    padding: .85rem 1rem;
+    font-size: .9rem;
     font-family: inherit;
-    color: #1a1d23;
+    color: var(--text);
     resize: none;
     outline: none;
-    transition: border-color .15s;
+    transition: border-color .15s, background .15s;
     margin-bottom: 1rem;
-    background: #f9fafb;
+    background: #f6f8fa;
   }
-  textarea:focus { border-color: #7cdc44; background: #fff; }
+  textarea:focus { border-color: var(--primary); background: #fff; }
   .btn-send {
     width: 100%;
-    background: linear-gradient(90deg, #3d7f1f, #7cdc44);
+    background: linear-gradient(90deg, var(--primary-strong), var(--primary));
     color: #fff;
     border: none;
     border-radius: 14px;
-    padding: .9rem 1.5rem;
-    font-size: 1rem;
+    padding: .95rem 1.5rem;
+    font-size: 1.02rem;
     font-weight: 700;
     cursor: pointer;
-    transition: opacity .15s, transform .1s;
-    letter-spacing: .02em;
+    transition: opacity .15s, transform .1s, box-shadow .15s;
+    letter-spacing: .015em;
+    box-shadow: 0 8px 22px color-mix(in srgb, var(--primary) 35%, transparent);
   }
-  .btn-send:disabled { opacity: .4; cursor: not-allowed; }
-  .btn-send:not(:disabled):hover { opacity: .92; transform: translateY(-1px); }
+  .btn-send:disabled { opacity: .42; cursor: not-allowed; box-shadow: none; }
+  .btn-send:not(:disabled):hover { opacity: .94; transform: translateY(-1px); }
   .btn-send:not(:disabled):active { transform: translateY(0); }
-  .msg-erro {
-    color: #dc2626;
-    font-size: .82rem;
-    margin-top: .5rem;
-  }
-  .powered {
-    width: 100%;
-    text-align: center;
-    font-size: .7rem;
-    color: rgba(255,255,255,.55);
-    padding: 1rem 0 .5rem;
-  }
+  .msg-erro { color: var(--red); font-size: .85rem; margin-top: .55rem; }
+  .powered { font-size: .72rem; color: rgba(255,255,255,.6); padding: 1rem 0 .25rem; text-align: center; }
+  .powered-inner { font-size: .72rem; color: var(--text-3); margin-top: .9rem; }
 </style>
 </head>
-<body style="flex-direction:column;gap:0;padding-bottom:.5rem;">
+<body>
   {{BODY_HTML}}
   <div class="powered">Powered by ZapDin</div>
 <script>

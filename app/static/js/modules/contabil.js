@@ -196,8 +196,8 @@ window.ctbDashboard = (() => {
     tbody.innerHTML = docs.map(d => `
       <tr>
         <td><strong>${d.empresa_nome || '—'}</strong></td>
-        <td style="color:var(--text-mid);font-size:.78rem">${d.arquivo_nome || '—'}</td>
-        <td style="font-size:.78rem;color:var(--text-mid)">${_ctbFmt(d.created_at)}</td>
+        <td style="color:var(--text-3);font-size:.78rem">${d.arquivo_nome || '—'}</td>
+        <td style="font-size:.78rem;color:var(--text-3)">${_ctbFmt(d.created_at)}</td>
         <td>${_ctbStatusChip(d.status)}</td>
         <td style="text-align:right;white-space:nowrap">
           <div style="display:inline-flex;gap:.25rem">
@@ -265,12 +265,12 @@ window.ctbEmpresas = (() => {
     if (!el) return;
     if (!lista.length) {
       el.innerHTML = `
-        <div style="text-align:center;padding:3rem 1rem;color:var(--text-mid)">
-          <div style="width:56px;height:56px;border-radius:16px;background:var(--accent-soft);
-            border:1.5px solid var(--accent-mid);display:flex;align-items:center;
+        <div style="text-align:center;padding:3rem 1rem;color:var(--text-3)">
+          <div style="width:56px;height:56px;border-radius:16px;background:var(--primary-soft);
+            border:1.5px solid color-mix(in srgb,var(--primary) 35%,transparent);display:flex;align-items:center;
             justify-content:center;margin:0 auto 1rem">
             <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24"
-              fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              fill="none" stroke="var(--primary-deep)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
             </svg>
           </div>
@@ -414,7 +414,13 @@ window.ctbEmpresas = (() => {
   }
 
   async function excluir(id, nome) {
-    if (!confirm(`Excluir "${nome}"? Esta ação também remove todos os documentos.`)) return;
+    const ok = await window.showConfirm({
+      title: `Excluir "${nome}"?`,
+      body: 'Esta ação também remove todos os documentos. Não poderá ser desfeita.',
+      okLabel: 'Excluir',
+      type: 'danger',
+    });
+    if (!ok) return;
     const res = await fetch(`/api/contabil/empresas/${id}`, { method: 'DELETE' });
     if (res.ok || res.status === 204) {
       _ctbAlert('alertCtbEmpLista', `Empresa "${nome}" excluída.`, 'success');
@@ -598,9 +604,9 @@ window.ctbArquivos = (() => {
     }
     tbody.innerHTML = docs.map(d => `
       <tr>
-        <td style="font-size:.78rem;color:var(--text-mid)">${d.arquivo_nome || '—'}</td>
+        <td style="font-size:.78rem;color:var(--text-3)">${d.arquivo_nome || '—'}</td>
         <td style="font-size:.8rem">${d.emitente_nome || '—'}</td>
-        <td style="font-family:monospace;font-size:.72rem;color:var(--text-mid)">
+        <td style="font-family:monospace;font-size:.72rem;color:var(--text-3)">
           ${d.numero_nf ? `NF ${d.numero_nf}` : '—'}
         </td>
         <td style="font-weight:600">${_ctbFmtBRL(d.valor_total)}</td>
@@ -694,7 +700,7 @@ window.ctbManual = (() => {
           </div>`;
         }
       } else {
-        wrap.innerHTML = `<span style="color:#888;font-size:.85rem">Arquivo não disponível</span>`;
+        wrap.innerHTML = `<span style="color:var(--text-3);font-size:.85rem">Arquivo não disponível</span>`;
       }
 
       // Popula a partir dos dados OCR ou manual

@@ -13,10 +13,10 @@
     const dot  = document.getElementById('dominio-status-dot');
     const text = document.getElementById('dominio-status-text');
     if (!dot || !text) return;
-    const colors = { ok: '#22c55e', error: '#ef4444', warn: '#f59e0b', idle: '#e5e7eb' };
+    const colors = { ok: '#22c55e', error: 'var(--red)', warn: '#f59e0b', idle: '#e5e7eb' };
     dot.style.background = colors[type] || colors.idle;
     text.textContent = msg;
-    text.style.color = type === 'error' ? 'var(--red)' : 'var(--text-muted)';
+    text.style.color = type === 'error' ? 'var(--red)' : 'var(--text-3)';
   }
 
   function _alert(msg, type) {
@@ -181,7 +181,7 @@
       }
       const statusLabel = {
         sent:    '<span style="color:#22c55e;font-weight:600">✓ Enviado</span>',
-        error:   '<span style="color:#ef4444;font-weight:600">✗ Erro</span>',
+        error:   '<span style="color:var(--red);font-weight:600">✗ Erro</span>',
         pending: '<span style="color:#f59e0b">⌛ Pendente</span>',
       };
       tbody.innerHTML = logs.map(l => `<tr>
@@ -189,9 +189,9 @@
         <td style="font-size:.82rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(l.chave_nfe || '')}">
           ${esc(l.chave_nfe ? l.chave_nfe.slice(0, 24) + '…' : l.nome_arquivo || '—')}
         </td>
-        <td><span style="font-size:.78rem;text-transform:uppercase;font-weight:600;color:var(--accent)">${esc(l.tipo_doc || '—')}</span></td>
+        <td><span style="font-size:.78rem;text-transform:uppercase;font-weight:600;color:var(--primary-deep)">${esc(l.tipo_doc || '—')}</span></td>
         <td>${statusLabel[l.status] || esc(l.status)}</td>
-        <td style="font-size:.78rem;color:var(--text-muted)">${esc(l.resposta || '—')}</td>
+        <td style="font-size:.78rem;color:var(--text-3)">${esc(l.resposta || '—')}</td>
       </tr>`).join('');
     } catch (_) {
       // silencia

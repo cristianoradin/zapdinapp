@@ -33,10 +33,8 @@ window.campanhaModule = (() => {
     const isContatos = tab === 'contatos';
     document.getElementById('tabPanelContatos').style.display  = isContatos ? '' : 'none';
     document.getElementById('tabPanelGrupos').style.display    = isContatos ? 'none' : '';
-    document.getElementById('tabBtnContatos').style.borderBottomColor = isContatos ? 'var(--accent)' : 'transparent';
-    document.getElementById('tabBtnContatos').style.color      = isContatos ? 'var(--accent)' : 'var(--text-mid)';
-    document.getElementById('tabBtnGrupos').style.borderBottomColor   = isContatos ? 'transparent' : 'var(--accent)';
-    document.getElementById('tabBtnGrupos').style.color        = isContatos ? 'var(--text-mid)' : 'var(--accent)';
+    document.getElementById('tabBtnContatos').classList.toggle('on', isContatos);
+    document.getElementById('tabBtnGrupos').classList.toggle('on', !isContatos);
     if (!isContatos) loadGrupos();
   }
 
@@ -51,17 +49,17 @@ window.campanhaModule = (() => {
     _gruposData = await res.json();
     const div = document.getElementById('listaGrupos');
     if (!_gruposData.length) {
-      div.innerHTML = '<div style="text-align:center;padding:2.5rem;color:var(--text-mid)">Nenhum grupo criado. Clique em <strong>Novo Grupo</strong> para começar.</div>';
+      div.innerHTML = '<div style="text-align:center;padding:2.5rem;color:var(--text-2)">Nenhum grupo criado. Clique em <strong>Novo Grupo</strong> para começar.</div>';
       return;
     }
-    div.innerHTML = `<table><thead><tr><th>Nome</th><th style="width:100px;text-align:center">Contatos</th><th style="width:120px;text-align:right">Ações</th></tr></thead><tbody>
+    div.innerHTML = `<table class="table"><thead><tr><th>Nome</th><th style="width:100px;text-align:center">Contatos</th><th style="width:140px;text-align:right">Ações</th></tr></thead><tbody>
       ${_gruposData.map(g => `
         <tr>
-          <td><span style="font-weight:600;cursor:pointer;color:var(--accent)" onclick="selecionarGrupo(${g.id},'${escHtml(g.nome)}')">${escHtml(g.nome)}</span></td>
-          <td style="text-align:center"><span class="chip chip-green" style="font-size:.72rem">${g.total}</span></td>
+          <td><span style="font-weight:700;cursor:pointer;color:var(--primary-deep)" onclick="selecionarGrupo(${g.id},'${escHtml(g.nome)}')">📁 ${escHtml(g.nome)}</span></td>
+          <td style="text-align:center"><span class="badge ok">${g.total}</span></td>
           <td style="text-align:right;white-space:nowrap">
-            <button class="btn btn-ghost btn-sm" onclick="selecionarGrupo(${g.id},'${escHtml(g.nome)}')">Gerenciar</button>
-            <button class="btn btn-ghost btn-sm btn-icon" onclick="deletarGrupo(${g.id},'${escHtml(g.nome)}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+            <button class="btn ghost sm" onclick="selecionarGrupo(${g.id},'${escHtml(g.nome)}')">Gerenciar</button>
+            <button class="icon-btn" style="width:32px;height:32px;color:var(--red)" onclick="deletarGrupo(${g.id},'${escHtml(g.nome)}')">🗑</button>
           </td>
         </tr>`).join('')}
     </tbody></table>`;
@@ -76,20 +74,20 @@ window.campanhaModule = (() => {
 
   async function _carregarContatosGrupo(id) {
     const div = document.getElementById('tbodyGrupoContatos');
-    div.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text-mid)">Carregando…</div>';
+    div.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text-2)">Carregando…</div>';
     const res = await fetch(`/api/campanha/grupos/${id}/contatos`);
     const lista = res.ok ? await res.json() : [];
     if (!lista.length) {
-      div.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-mid)">Nenhum contato neste grupo. Clique em <strong>Adicionar Contatos</strong>.</div>';
+      div.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-2)">Nenhum contato neste grupo. Clique em <strong>Adicionar Contatos</strong>.</div>';
       return;
     }
-    div.innerHTML = `<table><thead><tr><th>Telefone</th><th>Nome</th><th style="width:60px;text-align:center">Remover</th></tr></thead><tbody>
+    div.innerHTML = `<table class="table"><thead><tr><th>Telefone</th><th>Nome</th><th style="width:60px;text-align:center">Remover</th></tr></thead><tbody>
       ${lista.map(c => `
         <tr>
-          <td style="font-family:monospace;font-size:.85rem">${_fmtPhone(c.phone)}</td>
-          <td>${escHtml(c.nome || '—')}</td>
+          <td class="mono">${_fmtPhone(c.phone)}</td>
+          <td style="font-weight:600">${escHtml(c.nome || '—')}</td>
           <td style="text-align:center">
-            <button class="btn btn-ghost btn-sm btn-icon" onclick="removerDoGrupo(${c.id})"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            <button class="icon-btn" style="width:32px;height:32px;color:var(--red)" onclick="removerDoGrupo(${c.id})">✕</button>
           </td>
         </tr>`).join('')}
     </tbody></table>`;
@@ -114,16 +112,16 @@ window.campanhaModule = (() => {
 
   // ── Novo Grupo ───────────────────────────────────────────────────────────
   let _editGrupoId = null;
-  document.getElementById('btnNovoGrupo').addEventListener('click', () => {
+  document.getElementById('btnNovoGrupo')?.addEventListener('click', () => {
     _editGrupoId = null;
     document.getElementById('modalGrupoContatoTitulo').textContent = 'Novo Grupo';
     document.getElementById('inpGrupoNome').value = '';
     document.getElementById('modalGrupoContato').classList.add('open');
   });
-  document.getElementById('btnCancelarGrupo').addEventListener('click', () => {
+  document.getElementById('btnCancelarGrupo')?.addEventListener('click', () => {
     document.getElementById('modalGrupoContato').classList.remove('open');
   });
-  document.getElementById('btnSalvarGrupo').addEventListener('click', async () => {
+  document.getElementById('btnSalvarGrupo')?.addEventListener('click', async () => {
     const nome = document.getElementById('inpGrupoNome').value.trim();
     if (!nome) return;
     const method = _editGrupoId ? 'PUT' : 'POST';
@@ -138,9 +136,9 @@ window.campanhaModule = (() => {
   });
 
   // ── Adicionar contatos ao grupo ──────────────────────────────────────────
-  document.getElementById('btnAddContatosGrupo').addEventListener('click', async () => {
+  document.getElementById('btnAddContatosGrupo')?.addEventListener('click', async () => {
     const div = document.getElementById('listaAddContatos');
-    div.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-mid)">Carregando…</div>';
+    div.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-2)">Carregando…</div>';
     document.getElementById('searchAddContatos').value = '';
     document.getElementById('modalAddContatosGrupo').classList.add('open');
     const r1 = await fetch('/api/campanha/contatos');
@@ -155,18 +153,18 @@ window.campanhaModule = (() => {
   function _renderAddContatos(lista) {
     const div = document.getElementById('listaAddContatos');
     if (!lista.length) {
-      div.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-mid)">Todos os contatos já estão no grupo.</div>';
+      div.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-2)">Todos os contatos já estão no grupo.</div>';
       return;
     }
     div.innerHTML = lista.map(c => `
       <label style="display:flex;align-items:center;gap:.625rem;padding:.4rem .5rem;border-radius:6px;cursor:pointer" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''">
-        <input type="checkbox" class="add-grupo-cb" data-id="${c.id}" style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0" />
+        <input type="checkbox" class="add-grupo-cb" data-id="${c.id}" style="width:15px;height:15px;accent-color:var(--primary-deep);cursor:pointer;flex-shrink:0" />
         <span style="font-weight:500;font-size:.875rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(c.nome || '—')}</span>
-        <span style="font-size:.78rem;color:var(--text-mid);flex-shrink:0">${_fmtPhone(c.phone)}</span>
+        <span style="font-size:.78rem;color:var(--text-2);flex-shrink:0">${_fmtPhone(c.phone)}</span>
       </label>`).join('');
   }
 
-  document.getElementById('searchAddContatos').addEventListener('input', function() {
+  document.getElementById('searchAddContatos')?.addEventListener('input', function() {
     const q = this.value.toLowerCase();
     _renderAddContatos(_allContatosParaGrupo.filter(c =>
       (c.nome || '').toLowerCase().includes(q) || String(c.phone).includes(q)
@@ -189,11 +187,11 @@ window.campanhaModule = (() => {
     document.getElementById('modalPickGrupo').classList.add('open');
   }
 
-  document.getElementById('btnCancelarPickGrupo').addEventListener('click', () => {
+  document.getElementById('btnCancelarPickGrupo')?.addEventListener('click', () => {
     document.getElementById('modalPickGrupo').classList.remove('open');
   });
 
-  document.getElementById('btnConfirmarPickGrupo').addEventListener('click', async () => {
+  document.getElementById('btnConfirmarPickGrupo')?.addEventListener('click', async () => {
     const ids = [...document.querySelectorAll('.cb-contato:checked')].map(cb => Number(cb.dataset.id));
     if (!ids.length) { document.getElementById('modalPickGrupo').classList.remove('open'); return; }
 
@@ -221,11 +219,11 @@ window.campanhaModule = (() => {
     }
   });
 
-  document.getElementById('btnCancelarAddContatos').addEventListener('click', () => {
+  document.getElementById('btnCancelarAddContatos')?.addEventListener('click', () => {
     document.getElementById('modalAddContatosGrupo').classList.remove('open');
   });
 
-  document.getElementById('btnConfirmarAddContatos').addEventListener('click', async () => {
+  document.getElementById('btnConfirmarAddContatos')?.addEventListener('click', async () => {
     const ids = [...document.querySelectorAll('.add-grupo-cb:checked')].map(cb => Number(cb.dataset.id));
     if (!ids.length) { _alert('alertContatos', 'Selecione ao menos um contato.', 'error'); return; }
     const res = await _apiFetch('POST', `/api/campanha/grupos/${_grupoSelecionadoId}/contatos`, { contato_ids: ids });
@@ -236,8 +234,112 @@ window.campanhaModule = (() => {
     }
   });
 
+  async function _salvarContato() {
+    const raw  = document.getElementById('inpContatoPhone').value.trim();
+    const nome = document.getElementById('inpContatoNome').value.trim();
+    if (!raw) { _alert('alertContatos', 'Informe o telefone.', 'error'); return; }
+    const phone = _normPhone(raw);
+    if (phone.replace(/\D/g,'').length < 12) {
+      _alert('alertContatos', 'Número inválido — informe DDD + número (mínimo 10 dígitos).', 'error'); return;
+    }
+    const res = await _apiFetch('POST', '/api/campanha/contatos', { phone, nome });
+    document.getElementById('modalContato').classList.remove('open');
+    if (res?.ok) { _alert('alertContatos', 'Contato salvo!'); loadContatos(); }
+    else _alert('alertContatos', 'Erro ao salvar contato.', 'error');
+  }
+
+  async function _onCsvSelected(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const text = await file.text();
+    const normalized = text.split('\n').map(line => {
+      const parts = line.trim().split(',');
+      if (!parts[0]) return line;
+      parts[0] = _normPhone(parts[0].trim());
+      return parts.join(',');
+    }).join('\n');
+    const fd = new FormData();
+    fd.append('file', new Blob([normalized], { type: 'text/csv' }), file.name);
+    const res = await fetch('/api/campanha/contatos/importar', { method: 'POST', body: fd });
+    const data = await res.json();
+    e.target.value = '';
+    if (data.ok) {
+      _alert('alertContatos', `Importados: ${data.importados} — Erros: ${data.erros}`);
+      loadContatos();
+    } else _alert('alertContatos', 'Erro ao importar.', 'error');
+  }
+
+  async function _salvarGrupo() {
+    const nome = document.getElementById('inpGrupoNome').value.trim();
+    if (!nome) return;
+    const method = _editGrupoId ? 'PUT' : 'POST';
+    const path = _editGrupoId ? `/api/campanha/grupos/${_editGrupoId}` : '/api/campanha/grupos';
+    const res = await _apiFetch(method, path, { nome });
+    if (res?.ok !== false) {
+      document.getElementById('modalGrupoContato').classList.remove('open');
+      loadGrupos();
+    } else {
+      _alert('alertContatos', res?.detail || 'Erro ao salvar grupo.', 'error');
+    }
+  }
+
+  async function _abrirAddContatosGrupo() {
+    const div = document.getElementById('listaAddContatos');
+    div.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-3)">Carregando…</div>';
+    document.getElementById('searchAddContatos').value = '';
+    document.getElementById('modalAddContatosGrupo').classList.add('open');
+    const r1 = await fetch('/api/campanha/contatos');
+    const todos = r1.ok ? await r1.json() : [];
+    const r2 = await fetch(`/api/campanha/grupos/${_grupoSelecionadoId}/contatos`);
+    const noGrupo = r2.ok ? await r2.json() : [];
+    const noGrupoIds = new Set(noGrupo.map(c => c.id));
+    _allContatosParaGrupo = todos.filter(c => !noGrupoIds.has(c.id) && c.ativo !== false);
+    _renderAddContatos(_allContatosParaGrupo);
+  }
+
+  let _contatosBound = false;
+  function _bindContatosEvents() {
+    if (_contatosBound) return;
+    const elSearch = document.getElementById('searchContatos');
+    if (!elSearch) return;
+    _contatosBound = true;
+    elSearch.addEventListener('input', () => loadContatos());
+    document.getElementById('btnNovoContato')?.addEventListener('click', () => {
+      document.getElementById('inpContatoPhone').value = '';
+      document.getElementById('inpContatoNome').value = '';
+      document.getElementById('modalContato').classList.add('open');
+      setTimeout(() => document.getElementById('inpContatoPhone').focus(), 100);
+    });
+    document.getElementById('btnCancelarContato')?.addEventListener('click', () => {
+      document.getElementById('modalContato').classList.remove('open');
+    });
+    document.getElementById('btnSalvarContato')?.addEventListener('click', () => {
+      _salvarContato();
+    });
+    document.getElementById('btnImportarCsv')?.addEventListener('click', () => {
+      document.getElementById('csvInput').click();
+    });
+    document.getElementById('csvInput')?.addEventListener('change', _onCsvSelected);
+    document.getElementById('cbSelectAllContatos')?.addEventListener('change', function () {
+      document.querySelectorAll('.cb-contato').forEach(cb => cb.checked = this.checked);
+      _atualizarActionBar();
+    });
+    document.getElementById('btnNovoGrupo')?.addEventListener('click', () => {
+      _editGrupoId = null;
+      document.getElementById('modalGrupoContatoTitulo').textContent = 'Novo Grupo';
+      document.getElementById('inpGrupoNome').value = '';
+      document.getElementById('modalGrupoContato').classList.add('open');
+    });
+    document.getElementById('btnCancelarGrupo')?.addEventListener('click', () => {
+      document.getElementById('modalGrupoContato').classList.remove('open');
+    });
+    document.getElementById('btnSalvarGrupo')?.addEventListener('click', _salvarGrupo);
+    document.getElementById('btnAddContatosGrupo')?.addEventListener('click', _abrirAddContatosGrupo);
+  }
+
   async function loadContatos() {
-    const q = document.getElementById('searchContatos').value || '';
+    _bindContatosEvents();
+    const q = (document.getElementById('searchContatos')?.value) || '';
     const res = await fetch('/api/campanha/contatos?q=' + encodeURIComponent(q));
     if (!res.ok) return;
     _contatosData = await res.json();
@@ -247,31 +349,27 @@ window.campanhaModule = (() => {
   function renderContatos(lista) {
     const tbody = document.getElementById('tbodyContatos');
     if (!lista.length) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2.5rem;color:var(--text-mid)">Nenhum contato cadastrado. Clique em <strong>Novo Contato</strong> ou importe um CSV.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2.5rem;color:var(--text-2)">Nenhum contato cadastrado. Clique em <strong>Novo Contato</strong> ou importe um CSV.</td></tr>';
       document.getElementById('cbSelectAllContatos').checked = false;
       _atualizarActionBar();
       return;
     }
     tbody.innerHTML = lista.map(c => {
-      const badge = c.origem === 'erp'
-        ? `<span style="background:#dcfce7;color:#15803d;font-size:.68rem;font-weight:700;padding:.15rem .4rem;border-radius:5px;letter-spacing:.03em">ERP</span>`
-        : `<span style="background:var(--surface2);color:var(--text-mid);font-size:.68rem;font-weight:600;padding:.15rem .4rem;border-radius:5px">Manual</span>`;
+      const fonteBadge = c.origem === 'erp'
+        ? `<span class="badge ok" style="font-family:var(--mono);font-size:11px">ERP</span>`
+        : `<span style="color:var(--text-3);font-size:13px">Manual</span>`;
       const gruposPills = c.grupos
-        ? c.grupos.split(', ').map(g =>
-            `<span style="display:inline-flex;align-items:center;gap:.2rem;background:#f0f7eb;color:#3d7f1f;border:1px solid #d4edba;font-size:.67rem;font-weight:600;padding:.12rem .45rem;border-radius:20px;white-space:nowrap">📁 ${escHtml(g)}</span>`
-          ).join(' ')
-        : `<span style="color:var(--text-light);font-size:.78rem">—</span>`;
+        ? c.grupos.split(', ').map(g => `<span class="badge ok">📁 ${escHtml(g)}</span>`).join(' ')
+        : `<span style="color:var(--text-3);font-size:13px">—</span>`;
       return `
       <tr>
-        <td style="text-align:center"><input type="checkbox" class="cb-contato" data-id="${c.id}" style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer" onchange="_atualizarActionBar()"></td>
-        <td style="font-family:monospace;font-size:.85rem">${_fmtPhone(c.phone)}</td>
-        <td>${escHtml(c.nome || '—')}</td>
-        <td><div style="display:flex;flex-wrap:wrap;gap:.25rem">${gruposPills}</div></td>
-        <td style="text-align:center">${badge}</td>
-        <td style="text-align:center">
-          <button class="btn btn-ghost btn-sm btn-icon" onclick="deletarContato(${c.id})" title="Excluir" style="color:var(--red)">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-          </button>
+        <td style="text-align:center"><input type="checkbox" class="cb-contato" data-id="${c.id}" style="width:15px;height:15px;accent-color:var(--primary);cursor:pointer" onchange="_atualizarActionBar()"></td>
+        <td class="mono">${_fmtPhone(c.phone)}</td>
+        <td style="font-weight:600">${escHtml(c.nome || '—')}</td>
+        <td><div style="display:flex;flex-wrap:wrap;gap:6px">${gruposPills}</div></td>
+        <td style="text-align:center">${fonteBadge}</td>
+        <td style="text-align:right">
+          <button class="icon-btn" style="width:32px;height:32px;color:var(--red);margin-left:auto" onclick="deletarContato(${c.id})" title="Excluir">🗑</button>
         </td>
       </tr>`;
     }).join('');
@@ -296,7 +394,7 @@ window.campanhaModule = (() => {
     _atualizarActionBar();
   }
 
-  document.getElementById('cbSelectAllContatos').addEventListener('change', function() {
+  document.getElementById('cbSelectAllContatos')?.addEventListener('change', function() {
     document.querySelectorAll('.cb-contato').forEach(cb => cb.checked = this.checked);
     _atualizarActionBar();
   });
@@ -316,19 +414,19 @@ window.campanhaModule = (() => {
     return `+55 ${d}`;
   }
 
-  document.getElementById('searchContatos').addEventListener('input', () => loadContatos());
+  document.getElementById('searchContatos')?.addEventListener('input', () => loadContatos());
 
   // Modal novo contato
-  document.getElementById('btnNovoContato').addEventListener('click', () => {
+  document.getElementById('btnNovoContato')?.addEventListener('click', () => {
     document.getElementById('inpContatoPhone').value = '';
     document.getElementById('inpContatoNome').value = '';
     document.getElementById('modalContato').classList.add('open');
     setTimeout(() => document.getElementById('inpContatoPhone').focus(), 100);
   });
-  document.getElementById('btnCancelarContato').addEventListener('click', () => {
+  document.getElementById('btnCancelarContato')?.addEventListener('click', () => {
     document.getElementById('modalContato').classList.remove('open');
   });
-  document.getElementById('btnSalvarContato').addEventListener('click', async () => {
+  document.getElementById('btnSalvarContato')?.addEventListener('click', async () => {
     const raw  = document.getElementById('inpContatoPhone').value.trim();
     const nome = document.getElementById('inpContatoNome').value.trim();
     if (!raw) { _alert('alertContatos', 'Informe o telefone.', 'error'); return; }
@@ -350,10 +448,10 @@ window.campanhaModule = (() => {
   }
 
   // Importar CSV — adiciona 55 automaticamente se não tiver
-  document.getElementById('btnImportarCsv').addEventListener('click', () => {
+  document.getElementById('btnImportarCsv')?.addEventListener('click', () => {
     document.getElementById('csvInput').click();
   });
-  document.getElementById('csvInput').addEventListener('change', async (e) => {
+  document.getElementById('csvInput')?.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     // Normaliza o CSV antes de enviar: garante prefixo 55
@@ -398,7 +496,79 @@ window.campanhaModule = (() => {
     _updateCampPreview();
   }
 
+  let _novaCampBound = false;
+  function _bindNovaCampanhaEvents() {
+    if (_novaCampBound) return;
+    const inpImg = document.getElementById('inpCampImagem');
+    if (!inpImg) return;
+    _novaCampBound = true;
+
+    inpImg.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        _campImagemDataUrl = ev.target.result;
+        document.getElementById('campImagemEmpty').style.display = 'none';
+        document.getElementById('campImagemPreview').style.display = 'block';
+        document.getElementById('campImagemThumb').src = ev.target.result;
+        document.getElementById('campPrevImagemImg').src = ev.target.result;
+        document.getElementById('campImagemNome').textContent = file.name + ' (' + (file.size > 1048576 ? (file.size/1048576).toFixed(1)+'MB' : (file.size/1024).toFixed(0)+'KB') + ')';
+        _updateCampPreview();
+      };
+      reader.readAsDataURL(file);
+    });
+
+    document.getElementById('inpCampMensagem')?.addEventListener('input', _updateCampPreview);
+
+    document.getElementById('btnCriarCampanha')?.addEventListener('click', async () => {
+      const nome = document.getElementById('inpCampNome').value.trim();
+      const mensagem = document.getElementById('inpCampMensagem').value.trim();
+      const tipo = _campImagemDataUrl ? 'file' : 'text';
+      if (!nome) { _alert('alertCampanha', 'Informe o nome da campanha.', 'error'); return; }
+      if (!mensagem && !_campImagemDataUrl) { _alert('alertCampanha', 'Informe a mensagem ou adicione uma imagem.', 'error'); return; }
+      const agendamento = document.querySelector('input[name="campAgendamento"]:checked').value;
+      let agendado_em = null;
+      if (agendamento === 'agendar') {
+        const data = document.getElementById('inpCampData').value;
+        const hora = document.getElementById('inpCampHora').value;
+        if (!data || !hora) { _alert('alertCampanha', 'Informe data e hora para o agendamento.', 'error'); return; }
+        agendado_em = new Date(`${data}T${hora}:00`).toISOString();
+      }
+      const btnCriar = document.getElementById('btnCriarCampanha');
+      btnCriar.disabled = true;
+      btnCriar.textContent = 'Criando…';
+      const res = await _apiFetch('POST', '/api/campanha', { nome, tipo, mensagem, agendado_em });
+      if (!res.ok) {
+        _alert('alertCampanha', 'Erro ao criar campanha.', 'error');
+        btnCriar.disabled = false;
+        btnCriar.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Criar Campanha';
+        return;
+      }
+      _campanhaCriadaId = res.id;
+      if (_campImagemDataUrl) {
+        try {
+          btnCriar.textContent = 'Enviando imagem…';
+          const resp = await fetch(_campImagemDataUrl);
+          const blob = await resp.blob();
+          const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg','jpg');
+          const fd = new FormData();
+          fd.append('file', blob, `imagem.${ext}`);
+          await fetch(`/api/campanha/${_campanhaCriadaId}/arquivo`, { method: 'POST', body: fd });
+        } catch(e) { /* ignora erro de upload silenciosamente */ }
+      }
+      const msg = agendado_em
+        ? `Campanha "${nome}" agendada para ${new Date(agendado_em).toLocaleString('pt-BR')}!`
+        : `Campanha "${nome}" criada com sucesso! Vá em Gerenciar Campanhas para iniciar o disparo.`;
+      _alert('alertCampanha', msg);
+      btnCriar.disabled = false;
+      btnCriar.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Criar Campanha';
+      setTimeout(() => showPage('dm-historico'), 1500);
+    });
+  }
+
   function initNovaCampanha() {
+    _bindNovaCampanhaEvents();
     // Reset form
     document.getElementById('inpCampNome').value = '';
     document.getElementById('inpCampMensagem').value = '';
@@ -424,9 +594,15 @@ window.campanhaModule = (() => {
   }
 
   function _setAgendamento(val) {
-    document.querySelectorAll('.agend-card').forEach(c => c.classList.remove('selected'));
+    document.querySelectorAll('.agend-card').forEach(c => {
+      c.classList.remove('selected'); c.classList.remove('on');
+      const chk = c.querySelector('.choice-chk'); if (chk) chk.style.display = 'none';
+    });
     const target = document.querySelector(`.agend-card[data-agend="${val}"]`);
-    if (target) target.classList.add('selected');
+    if (target) {
+      target.classList.add('selected'); target.classList.add('on');
+      const chk = target.querySelector('.choice-chk'); if (chk) chk.style.display = '';
+    }
     const radio = document.querySelector(`input[name="campAgendamento"][value="${val}"]`);
     if (radio) radio.checked = true;
     document.getElementById('secAgendamento').style.display = (val === 'agendar') ? 'block' : 'none';
@@ -480,7 +656,7 @@ window.campanhaModule = (() => {
     _updateCampPreview();
   }
 
-  document.getElementById('inpCampImagem').addEventListener('change', (e) => {
+  document.getElementById('inpCampImagem')?.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
@@ -496,9 +672,9 @@ window.campanhaModule = (() => {
     reader.readAsDataURL(file);
   });
 
-  document.getElementById('inpCampMensagem').addEventListener('input', _updateCampPreview);
+  document.getElementById('inpCampMensagem')?.addEventListener('input', _updateCampPreview);
 
-  document.getElementById('btnCriarCampanha').addEventListener('click', async () => {
+  document.getElementById('btnCriarCampanha')?.addEventListener('click', async () => {
     const nome = document.getElementById('inpCampNome').value.trim();
     const mensagem = document.getElementById('inpCampMensagem').value.trim();
     // tipo automático: file se tiver imagem, text caso contrário
@@ -622,8 +798,8 @@ window.campanhaModule = (() => {
     document.getElementById('dsub-duracao').textContent   = 'por campanha concluída';
 
     // Cores do design system
-    const GREEN  = '#3d7f1f';
-    const RED    = '#dc2626';
+    const GREEN  = 'var(--primary-deep)';
+    const RED    = 'var(--red)';
     const BLUE   = '#3b82f6';
     const YELLOW = '#f59e0b';
     const GRAY   = '#e5e7eb';
@@ -753,7 +929,7 @@ window.campanhaModule = (() => {
             <div style="font-size:.68rem;font-weight:400">${succPct}% ok</div>
           </div>
         </div>`;
-      }).join('') || '<div style="text-align:center;padding:2rem;color:var(--text-mid)">Nenhuma campanha ainda.</div>';
+      }).join('') || '<div style="text-align:center;padding:2rem;color:var(--text-2)">Nenhuma campanha ainda.</div>';
     }
 
     // ── Top contatos ─────────────────────────────────────────────────────────
@@ -776,7 +952,7 @@ window.campanhaModule = (() => {
             <div style="font-size:.68rem;font-weight:400">${c.total_campanhas} camp.</div>
           </div>
         </div>`;
-      }).join('') || '<div style="text-align:center;padding:2rem;color:var(--text-mid)">Nenhum dado ainda.</div>';
+      }).join('') || '<div style="text-align:center;padding:2rem;color:var(--text-2)">Nenhum dado ainda.</div>';
     }
 
     // ── Barras horizontais campanhas: enviados vs falhas ─────────────────────
@@ -814,58 +990,51 @@ window.campanhaModule = (() => {
   async function loadCampanhasEnviadas() {
     const div = document.getElementById('listaCampanhasEnviadas');
     if (!div) return;
-    div.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text-mid)">Carregando…</div>';
+    div.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text-2)">Carregando…</div>';
     try {
       const res = await fetch('/api/campanha?status=done');
-      if (!res.ok) { div.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text-mid)">Erro ao carregar.</div>'; return; }
+      if (!res.ok) { div.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text-2)">Erro ao carregar.</div>'; return; }
       const lista = await res.json();
       if (!lista.length) {
-        div.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text-mid)">Nenhuma campanha concluída ainda.</div>';
+        div.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text-2)">Nenhuma campanha concluída ainda.</div>';
         return;
       }
       div.innerHTML = lista.map(c => {
-        const dt       = c.created_at ? new Date(c.created_at).toLocaleDateString('pt-BR') : '—';
-        const doneAt   = c.done_at ? new Date(c.done_at).toLocaleString('pt-BR') : '—';
-        const tipoChip = c.tipo === 'file'
-          ? '<span class="chip chip-purple" style="font-size:.72rem">📎 Arquivo</span>'
-          : '<span class="chip chip-blue" style="font-size:.72rem">💬 Texto</span>';
+        const dt     = c.created_at ? new Date(c.created_at).toLocaleDateString('pt-BR') : '—';
+        const doneAt = c.done_at ? new Date(c.done_at).toLocaleString('pt-BR') : '—';
+        const tipoBadge = c.tipo === 'file'
+          ? '<span class="badge info">📎 Arquivo</span>'
+          : '<span class="badge info">💬 Texto</span>';
         const msg = c.mensagem
-          ? `<div style="margin-top:.5rem;font-size:.8rem;color:var(--text-mid);font-style:italic">"${escHtml(c.mensagem.substring(0,100))}${c.mensagem.length>100?'…':''}"</div>`
+          ? `<div style="font-size:13px;color:var(--text-2);font-style:italic;margin-top:8px">"${escHtml(c.mensagem.substring(0,120))}${c.mensagem.length>120?'…':''}"</div>`
           : '';
-        const pct = c.total > 0 ? Math.round((c.enviados / c.total) * 100) : 0;
         return `
-        <div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid #22c55e;border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:.75rem;box-shadow:var(--shadow-sm)">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap">
+        <div class="camp-card">
+          <div style="display:flex;align-items:flex-start;gap:12px">
             <div style="flex:1;min-width:0">
-              <div style="display:flex;align-items:center;gap:.625rem;flex-wrap:wrap;margin-bottom:.3rem">
-                <span style="font-weight:700;font-size:.9375rem">${escHtml(c.nome)}</span>
-                ${tipoChip}
-                <span class="chip chip-blue" style="font-size:.72rem">✅ Concluída</span>
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                <b style="font-size:16px">${escHtml(c.nome)}</b>
+                ${tipoBadge}
+                <span class="badge ok">✅ Concluída</span>
               </div>
-              <div style="font-size:.78rem;color:var(--text-mid)">
-                Criada em ${dt} &nbsp;·&nbsp; Concluída em ${doneAt}
-                &nbsp;·&nbsp; Total: <strong>${c.total}</strong>
-                &nbsp;·&nbsp; Enviados: <strong style="color:var(--accent)">${c.enviados}</strong>
-                &nbsp;·&nbsp; Erros: <strong style="color:var(--red)">${c.erros}</strong>
+              <div style="font-size:12.5px;color:var(--text-3);margin-top:5px">
+                Criada em ${dt} · Concluída em ${doneAt} ·
+                Total: <b style="color:var(--text-2)">${c.total}</b> ·
+                Enviados: <b style="color:var(--primary-deep)">${c.enviados}</b> ·
+                Erros: <b style="color:var(--red)">${c.erros}</b>
               </div>
               ${msg}
             </div>
-            <div style="display:flex;gap:.4rem;flex-shrink:0">
-              <button class="btn btn-ghost btn-sm" onclick="deletarCampanha(${c.id})" style="color:var(--red);border-color:#fecaca;display:inline-flex;align-items:center;gap:.3rem" title="Excluir">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>Excluir
-              </button>
+            <div style="display:flex;gap:8px;flex:none">
+              <button class="btn sm" onclick="iniciarCampanha(${c.id})">▶ Iniciar</button>
+              <button class="btn ghost sm" onclick="deletarCampanha(${c.id})" style="color:var(--red)">🗑 Excluir</button>
             </div>
           </div>
-          <div style="display:flex;align-items:center;gap:.75rem;margin-top:.875rem">
-            <div style="flex:1;height:7px;background:var(--border);border-radius:4px;overflow:hidden">
-              <div style="height:100%;width:${pct}%;background:#22c55e;border-radius:4px"></div>
-            </div>
-            <span style="font-size:.78rem;color:var(--text-mid);white-space:nowrap;font-weight:600;min-width:80px;text-align:right">${c.enviados}/${c.total} (${pct}%)</span>
-          </div>
+          ${_progBar(c.enviados, c.total)}
         </div>`;
       }).join('');
     } catch(e) {
-      div.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text-mid)">Erro ao carregar campanhas enviadas.</div>';
+      div.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text-2)">Erro ao carregar campanhas enviadas.</div>';
     }
   }
 
@@ -889,7 +1058,7 @@ window.campanhaModule = (() => {
           ? (ago < 5 ? 'Último envio há menos de 5s' : `Último envio há ${ago}s`)
           : 'Aguardando itens na fila…';
       } else {
-        dot.style.background = '#ef4444';
+        dot.style.background = 'var(--red)';
         lbl.textContent = 'Worker parado — clique em Reiniciar';
         det.textContent = w.last_error || 'Nenhuma atividade registrada';
       }
@@ -901,7 +1070,7 @@ window.campanhaModule = (() => {
       const fmt = obj => {
         const q = obj.queued || 0;
         const f = obj.failed || 0;
-        let s = q > 0 ? `<span style="color:var(--accent);font-weight:700">${q} fila</span>` : '0';
+        let s = q > 0 ? `<span style="color:var(--primary-deep);font-weight:700">${q} fila</span>` : '0';
         if (f > 0) s += ` <span style="color:var(--red);font-size:.7rem">${f} erro</span>`;
         return s;
       };
@@ -911,7 +1080,7 @@ window.campanhaModule = (() => {
     } catch {}
   }
 
-  document.getElementById('btnRestartWorker').addEventListener('click', async () => {
+  document.getElementById('btnRestartWorker')?.addEventListener('click', async () => {
     const btn = document.getElementById('btnRestartWorker');
     btn.disabled = true;
     btn.textContent = 'Reiniciando…';
@@ -928,58 +1097,55 @@ window.campanhaModule = (() => {
 
   function _progBar(env, total) {
     const pct = total > 0 ? Math.round((env / total) * 100) : 0;
-    const barColor = pct === 100 ? '#22c55e' : 'var(--accent)';
     return `
-      <div style="display:flex;align-items:center;gap:.75rem;margin-top:.875rem">
-        <div style="flex:1;height:7px;background:var(--border);border-radius:4px;overflow:hidden">
-          <div style="height:100%;width:${pct}%;background:${barColor};border-radius:4px;transition:width .5s ease"></div>
-        </div>
-        <span style="font-size:.78rem;color:var(--text-mid);white-space:nowrap;font-weight:600;min-width:80px;text-align:right">${env}/${total} (${pct}%)</span>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:12px">
+        <div class="bar" style="flex:1"><i style="width:${pct}%"></i></div>
+        <span style="font-size:13px;font-weight:700;color:var(--text-2);flex:none">${env}/${total} (${pct}%)</span>
       </div>`;
   }
 
-  const _chipClass  = { draft:'chip-gray', scheduled:'chip-purple', running:'chip-green', paused:'chip-yellow', done:'chip-blue' };
+  const _badgeClass  = { draft:'queue', scheduled:'info', running:'info', paused:'queue', done:'ok' };
   const _statusLabel = { draft:'Rascunho', scheduled:'⏰ Agendada', running:'Disparando', paused:'Pausada', done:'Concluída' };
 
   function renderCampanhas(lista) {
     const div = document.getElementById('listaCampanhas');
     if (!lista.length) {
-      div.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text-mid)">Nenhuma campanha criada. <a href="#" onclick="showPage(\'dm-campanha\');return false" style="color:var(--accent);font-weight:600">Criar primeira campanha →</a></div>';
+      div.innerHTML = '<div class="empty-box"><div style="color:var(--text-3)">Nenhuma campanha criada. <a href="#" onclick="showPage(\'dm-campanha\');return false" style="color:var(--primary-deep);font-weight:600">Criar primeira campanha →</a></div></div>';
       return;
     }
     div.innerHTML = lista.map(c => {
-      const chip = _chipClass[c.status] || 'chip-gray';
+      const stCls = _badgeClass[c.status] || 'queue';
       const lbl  = _statusLabel[c.status] || c.status;
-      const tipoChip = c.tipo === 'file'
-        ? '<span class="chip chip-purple" style="font-size:.72rem">📎 Arquivo</span>'
-        : '<span class="chip chip-blue" style="font-size:.72rem">💬 Texto</span>';
+      const tipoBadge = c.tipo === 'file'
+        ? '<span class="badge info">📎 Arquivo</span>'
+        : '<span class="badge info">💬 Texto</span>';
       const dt = c.created_at ? new Date(c.created_at).toLocaleDateString('pt-BR') : '—';
-      const msg = c.mensagem ? `<div style="margin-top:.5rem;font-size:.8rem;color:var(--text-mid);font-style:italic">"${escHtml(c.mensagem.substring(0,80))}${c.mensagem.length>80?'…':''}"</div>` : '';
+      const msg = c.mensagem ? `<div style="font-size:13px;color:var(--text-2);font-style:italic;margin-top:8px">"${escHtml(c.mensagem.substring(0,120))}${c.mensagem.length>120?'…':''}"</div>` : '';
       const agendadoInfo = c.agendado_em && c.status === 'scheduled'
-        ? `<div style="margin-top:.4rem;font-size:.78rem;color:#7c3aed;display:flex;align-items:center;gap:.3rem">
-             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-             Agendada para ${new Date(c.agendado_em).toLocaleString('pt-BR')}
-           </div>`
+        ? `<div style="font-size:12.5px;color:var(--violet);margin-top:6px">🕐 Agendada para ${new Date(c.agendado_em).toLocaleString('pt-BR')}</div>`
         : '';
+      const acoes = `
+        ${c.tipo === 'file' ? `<button class="btn ghost sm" onclick="abrirModalArquivos(${c.id},'${escHtml(c.nome)}')">📎 Arquivos</button>` : ''}
+        ${(c.status === 'draft' || c.status === 'scheduled' || c.status === 'done' || c.status === 'paused') ? `<button class="btn sm" onclick="iniciarCampanha(${c.id})">▶ Iniciar</button>` : ''}
+        ${c.status === 'running' ? `<button class="btn amber sm" onclick="pausarCampanha(${c.id})">⏸ Pausar</button>` : ''}
+        <button class="btn ghost sm" onclick="deletarCampanha(${c.id})" style="color:var(--red)">🗑 Excluir</button>
+      `;
       return `
-      <div data-camp-id="${c.id}" data-camp-nome="${escHtml(c.nome)}" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:.75rem;box-shadow:var(--shadow-sm)">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap">
+      <div class="camp-card" data-camp-id="${c.id}" data-camp-nome="${escHtml(c.nome)}">
+        <div style="display:flex;align-items:flex-start;gap:12px">
           <div style="flex:1;min-width:0">
-            <div style="display:flex;align-items:center;gap:.625rem;flex-wrap:wrap;margin-bottom:.3rem">
-              <span style="font-weight:700;font-size:.9375rem;letter-spacing:-.01em">${escHtml(c.nome)}</span>
-              ${tipoChip}
-              <span class="chip ${chip}" style="font-size:.72rem">${lbl}</span>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <b style="font-size:16px">${escHtml(c.nome)}</b>
+              ${tipoBadge}
+              <span class="badge ${stCls}">${lbl}</span>
             </div>
-            <div style="font-size:.78rem;color:var(--text-mid)">Criada em ${dt} &nbsp;·&nbsp; Total: <strong>${c.total}</strong> &nbsp;·&nbsp; Enviados: <strong style="color:var(--accent)">${c.enviados}</strong> &nbsp;·&nbsp; Erros: <strong style="color:var(--red)">${c.erros}</strong></div>
+            <div style="font-size:12.5px;color:var(--text-3);margin-top:5px">
+              Criada em ${dt} · Total: <b style="color:var(--text-2)">${c.total}</b> · Enviados: <b style="color:var(--primary-deep)">${c.enviados}</b> · Erros: <b style="color:var(--red)">${c.erros}</b>
+            </div>
             ${msg}
             ${agendadoInfo}
           </div>
-          <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;flex-shrink:0">
-            ${c.tipo === 'file' ? `<button class="btn btn-ghost btn-sm" onclick="abrirModalArquivos(${c.id},'${escHtml(c.nome)}')" style="display:inline-flex;align-items:center;gap:.3rem"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>Arquivos</button>` : ''}
-            ${c.status === 'draft' || c.status === 'scheduled' || c.status === 'done' || c.status === 'paused' ? `<button class="btn btn-primary btn-sm" onclick="iniciarCampanha(${c.id})" style="display:inline-flex;align-items:center;gap:.3rem"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>Iniciar</button>` : ''}
-            ${c.status === 'running' ? `<button class="btn btn-ghost btn-sm" onclick="pausarCampanha(${c.id})" style="border-color:#f59e0b;color:#b45309;display:inline-flex;align-items:center;gap:.3rem"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>Pausar</button>` : ''}
-            <button class="btn btn-ghost btn-sm" onclick="deletarCampanha(${c.id})" style="color:var(--red);border-color:#fecaca;display:inline-flex;align-items:center;gap:.3rem" title="Excluir campanha"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>Excluir</button>
-          </div>
+          <div style="display:flex;gap:8px;flex:none;flex-wrap:wrap;justify-content:flex-end">${acoes}</div>
         </div>
         ${_progBar(c.enviados, c.total)}
       </div>`;
@@ -1022,7 +1188,58 @@ window.campanhaModule = (() => {
       grupos.map(g => `<option value="${g.id}">${escHtml(g.nome)} (${g.total} contatos)</option>`).join('');
   }
 
+  let _selContatosBound = false;
+  function _bindSelContatosEvents() {
+    if (_selContatosBound) return;
+    const modal = document.getElementById('modalSelecionarContatos');
+    if (!modal) return;
+    _selContatosBound = true;
+
+    document.getElementById('searchSelContatos')?.addEventListener('input', function () {
+      const q = this.value.trim().toLowerCase();
+      const filtered = _selContatosAll.filter(c =>
+        (c.nome || '').toLowerCase().includes(q) ||
+        (c.phone || '').includes(q)
+      );
+      _renderSelContatos(filtered);
+    });
+    document.getElementById('btnSelecionarTodos')?.addEventListener('click', () => {
+      document.querySelectorAll('.sel-contato-cb').forEach(cb => cb.checked = true);
+      document.getElementById('selContatosCount').textContent =
+        document.querySelectorAll('.sel-contato-cb').length;
+    });
+    document.getElementById('btnDesmarcarTodos')?.addEventListener('click', () => {
+      document.querySelectorAll('.sel-contato-cb').forEach(cb => cb.checked = false);
+      document.getElementById('selContatosCount').textContent = '0';
+    });
+    document.getElementById('btnCancelarSelContatos')?.addEventListener('click', () => {
+      modal.classList.remove('open');
+    });
+    document.getElementById('btnConfirmarIniciar')?.addEventListener('click', async () => {
+      let payload = { modo: _selModo };
+      if (_selModo === 'grupo') {
+        const grupoId = parseInt(document.getElementById('selGrupoId').value);
+        if (!grupoId) { await window.showInfo('Selecione um grupo.', { type: 'warning' }); return; }
+        const opt = document.getElementById('selGrupoId').selectedOptions[0];
+        payload.grupo_id = grupoId;
+        payload.grupo_nome = opt ? opt.textContent : '';
+      } else if (_selModo === 'individual') {
+        const ids = Array.from(document.querySelectorAll('.sel-contato-cb:checked')).map(cb => parseInt(cb.value));
+        if (!ids.length) { await window.showInfo('Selecione ao menos um contato.', { type: 'warning' }); return; }
+        payload.contatos_ids = ids;
+      }
+      const res = await _apiFetch('POST', `/api/campanha/${_selCampanhaId}/iniciar`, payload);
+      if (res?.ok) {
+        modal.classList.remove('open');
+        loadCampanhas();
+      } else {
+        await window.showInfo(res?.detail || 'Erro ao iniciar campanha.', { type: 'danger', title: 'Erro' });
+      }
+    });
+  }
+
   async function iniciarCampanha(id) {
+    _bindSelContatosEvents();
     _selCampanhaId = id;
     const campEl = document.querySelector(`[data-camp-id="${id}"]`);
     const campNome = campEl ? campEl.dataset.campNome : '';
@@ -1037,7 +1254,7 @@ window.campanhaModule = (() => {
 
   async function _carregarSelContatos() {
     const div = document.getElementById('listaSelContatos');
-    div.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-mid)">Carregando…</div>';
+    div.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-2)">Carregando…</div>';
     try {
       const r = await fetch('/api/campanha/contatos');
       const lista = await r.json();
@@ -1055,7 +1272,7 @@ window.campanhaModule = (() => {
     totalEl.textContent = lista.length;
 
     if (!lista.length) {
-      div.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-mid)">Nenhum contato encontrado.</div>';
+      div.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-2)">Nenhum contato encontrado.</div>';
       countEl.textContent = '0';
       return;
     }
@@ -1063,12 +1280,12 @@ window.campanhaModule = (() => {
     div.innerHTML = lista.map(c => `
       <label style="display:flex;align-items:center;gap:.625rem;padding:.4rem .5rem;border-radius:6px;cursor:pointer;transition:background .15s" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''">
         <input type="checkbox" class="sel-contato-cb" data-id="${c.id}" checked
-          style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0"
+          style="width:15px;height:15px;accent-color:var(--primary-deep);cursor:pointer;flex-shrink:0"
           onchange="document.getElementById('selContatosCount').textContent=document.querySelectorAll('.sel-contato-cb:checked').length" />
         <span style="font-weight:500;font-size:.875rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
           ${escHtml(c.nome || '—')}
         </span>
-        <span style="font-size:.78rem;color:var(--text-mid);flex-shrink:0">${_fmtPhone(c.phone)}</span>
+        <span style="font-size:.78rem;color:var(--text-2);flex-shrink:0">${_fmtPhone(c.phone)}</span>
       </label>
     `).join('');
 
@@ -1077,7 +1294,7 @@ window.campanhaModule = (() => {
   }
 
   // Filtrar conforme busca
-  document.getElementById('searchSelContatos').addEventListener('input', function () {
+  document.getElementById('searchSelContatos')?.addEventListener('input', function () {
     const q = this.value.toLowerCase();
     const filtrado = _selContatosAll.filter(c =>
       (c.nome || '').toLowerCase().includes(q) || String(c.phone).includes(q)
@@ -1085,22 +1302,22 @@ window.campanhaModule = (() => {
     _renderSelContatos(filtrado);
   });
 
-  document.getElementById('btnSelecionarTodos').addEventListener('click', () => {
+  document.getElementById('btnSelecionarTodos')?.addEventListener('click', () => {
     document.querySelectorAll('.sel-contato-cb').forEach(cb => { cb.checked = true; });
     document.getElementById('selContatosCount').textContent =
       document.querySelectorAll('.sel-contato-cb').length;
   });
 
-  document.getElementById('btnDesmarcarTodos').addEventListener('click', () => {
+  document.getElementById('btnDesmarcarTodos')?.addEventListener('click', () => {
     document.querySelectorAll('.sel-contato-cb').forEach(cb => { cb.checked = false; });
     document.getElementById('selContatosCount').textContent = '0';
   });
 
-  document.getElementById('btnCancelarSelContatos').addEventListener('click', () => {
+  document.getElementById('btnCancelarSelContatos')?.addEventListener('click', () => {
     document.getElementById('modalSelecionarContatos').classList.remove('open');
   });
 
-  document.getElementById('btnConfirmarIniciar').addEventListener('click', async () => {
+  document.getElementById('btnConfirmarIniciar')?.addEventListener('click', async () => {
     let payload = {};
     let descricao = '';
 
@@ -1162,25 +1379,25 @@ window.campanhaModule = (() => {
     const lista = await res.json();
     const div = document.getElementById('modalCampArqLista');
     if (!lista.length) {
-      div.innerHTML = '<div style="text-align:center;color:var(--text-mid);padding:1rem;font-size:.875rem">Nenhum arquivo adicionado.</div>';
+      div.innerHTML = '<div style="text-align:center;color:var(--text-2);padding:1rem;font-size:.875rem">Nenhum arquivo adicionado.</div>';
       return;
     }
     div.innerHTML = lista.map(a => `
-      <div style="display:flex;align-items:center;gap:.625rem;padding:.5rem .75rem;background:var(--surface2);border:1px solid var(--border-soft);border-radius:8px;font-size:.85rem">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+      <div style="display:flex;align-items:center;gap:.625rem;padding:.5rem .75rem;background:var(--surface-2);border:1px solid var(--border-soft);border-radius:8px;font-size:.85rem">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary-deep)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
         <span style="flex:1;font-weight:500">${escHtml(a.nome_original)}</span>
-        <button class="btn btn-ghost btn-sm" onclick="deletarArqModal(${a.id})" style="color:var(--red);border-color:#fecaca;padding:.2rem .5rem" title="Remover">
+        <button class="btn btn-ghost btn-sm" onclick="deletarArqModal(${a.id})" style="color:var(--red);border-color:color-mix(in srgb,var(--red) 30%,transparent);padding:.2rem .5rem" title="Remover">
           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
         </button>
       </div>
     `).join('');
   }
 
-  document.getElementById('btnModalAddArq').addEventListener('click', () => {
+  document.getElementById('btnModalAddArq')?.addEventListener('click', () => {
     document.getElementById('inpModalCampArquivo').click();
   });
 
-  document.getElementById('inpModalCampArquivo').addEventListener('change', async (e) => {
+  document.getElementById('inpModalCampArquivo')?.addEventListener('change', async (e) => {
     for (const file of e.target.files) {
       const fd = new FormData();
       fd.append('file', file);
@@ -1195,7 +1412,7 @@ window.campanhaModule = (() => {
     recarregarModalArquivos();
   }
 
-  document.getElementById('btnFecharModalArq').addEventListener('click', () => {
+  document.getElementById('btnFecharModalArq')?.addEventListener('click', () => {
     document.getElementById('modalCampArq').classList.remove('open');
     loadCampanhas();
   });

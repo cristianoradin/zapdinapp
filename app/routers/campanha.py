@@ -294,8 +294,11 @@ async def upload_campanha_arquivo(
     ext = os.path.splitext(file.filename or "")[-1]
     nome_arquivo = f"camp_{uuid.uuid4().hex}{ext}"
     content = await file.read()
-    with open(os.path.join(UPLOAD_DIR, nome_arquivo), "wb") as f:
-        f.write(content)
+    import asyncio as _aio
+    def _write_blocking():
+        with open(os.path.join(UPLOAD_DIR, nome_arquivo), "wb") as f:
+            f.write(content)
+    await _aio.to_thread(_write_blocking)
 
     await repo.add_arquivo(campanha_id, file.filename, nome_arquivo)
     return {"ok": True, "nome_original": file.filename, "nome_arquivo": nome_arquivo}

@@ -1,140 +1,234 @@
 <div class="page" id="page-telegram">
 
+  <!-- Group tabs -->
+  <div class="wa-tabs cols-4">
+    <button class="wa-tab" onclick="navigate('whatsapp')">
+      <span class="wa-tab-ic"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></span>
+      <span class="wa-tab-label">Conectar WhatsApp</span>
+      <span class="wa-tab-go"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+    </button>
+    <button class="wa-tab" onclick="navigate('mensagem')">
+      <span class="wa-tab-ic"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
+      <span class="wa-tab-label">Configurar Mensagem</span>
+      <span class="wa-tab-go"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+    </button>
+    <button class="wa-tab" onclick="navigate('config-envio')">
+      <span class="wa-tab-ic"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></span>
+      <span class="wa-tab-label">Configurações de Envio</span>
+      <span class="wa-tab-go"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+    </button>
+    <button class="wa-tab on" onclick="navigate('telegram')">
+      <span class="wa-tab-ic"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></span>
+      <span class="wa-tab-label">Telegram</span>
+      <span class="wa-tab-go"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span>
+    </button>
+  </div>
 
-      <div style="display:grid;grid-template-columns:1fr 340px;gap:1.25rem;align-items:start">
+  <div style="max-width:940px;margin:0 auto;display:flex;flex-direction:column;gap:var(--gap)">
 
-        <!-- Config + Alertas -->
+    <!-- Configuração do Bot -->
+    <div class="card pad">
+      <div class="card-head">
+        <span class="ci t-blue">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </span>
+        <h2>Configuração do Bot</h2>
+        <span class="grow"></span>
+        <button class="help-link" onclick="document.getElementById('tg-howto-overlay').classList.add('open')" title="Como configurar?">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Como configurar?
+        </button>
+      </div>
+
+      <div id="alertTelegram" style="margin-bottom:1rem"></div>
+
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:16px">
         <div>
-          <div class="card" style="margin-bottom:1.25rem">
-            <div class="section-header">
-              <div class="section-header-icon shi-blue">
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
-              </div>
-              <h2>Configuração do Bot</h2>
-            </div>
-            <div class="alert" id="alertTelegram"></div>
+          <label class="flbl">Bot Token</label>
+          <input type="password" class="field" id="tgBotToken" placeholder="123456789:AABBccDD..." autocomplete="off">
+          <div class="fhint">Obtenha em <b>@BotFather</b></div>
+        </div>
+        <div>
+          <label class="flbl">Chat ID</label>
+          <input type="text" class="field" id="tgChatId" placeholder="-1001234567890">
+          <div class="fhint">Use <b>@userinfobot</b> para descobrir</div>
+        </div>
+      </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem">
-              <div class="form-group" style="margin-bottom:0">
-                <label>Bot Token</label>
-                <input type="password" id="tgBotToken" placeholder="123456789:AABBccDD..." autocomplete="off" />
-                <div style="font-size:.75rem;color:var(--text-mid);margin-top:.35rem">Obtenha em <strong style="color:var(--accent)">@BotFather</strong></div>
-              </div>
-              <div class="form-group" style="margin-bottom:0">
-                <label>Chat ID</label>
-                <input type="text" id="tgChatId" placeholder="-1001234567890" />
-                <div style="font-size:.75rem;color:var(--text-mid);margin-top:.35rem">Use <strong style="color:var(--accent)">@userinfobot</strong> para descobrir</div>
-              </div>
-            </div>
+      <div style="display:flex;gap:12px;margin-top:18px;flex-wrap:wrap">
+        <button class="btn" id="btnSalvarTelegram">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Salvar Configuração
+        </button>
+        <button class="btn ghost" id="btnTestarTelegram">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          Testar Conexão
+        </button>
+        <button class="btn ghost" id="btnRelatorioParcial">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          Enviar Relatório Agora
+        </button>
+      </div>
 
-            <div style="display:flex;gap:.75rem;flex-wrap:wrap">
-              <button class="btn btn-primary" id="btnSalvarTelegram" style="display:inline-flex;align-items:center;gap:.4rem">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                Salvar Configuração
-              </button>
-              <button class="btn btn-ghost" id="btnTestarTelegram" style="display:inline-flex;align-items:center;gap:.4rem">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                Testar Conexão
-              </button>
-              <button class="btn btn-ghost" id="btnRelatorioParcial" style="display:inline-flex;align-items:center;gap:.4rem">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-                Enviar Relatório Agora
-              </button>
-            </div>
-            <div id="tgStatus" style="margin-top:1rem;padding:.65rem 1rem;border-radius:8px;font-size:.85rem;display:none"></div>
-          </div>
+      <div id="tgStatus" style="display:none;margin-top:16px;padding:.65rem 1rem;border-radius:8px;font-size:.85rem"></div>
+    </div>
 
-          <!-- Alertas -->
-          <div class="card">
-            <div class="section-header">
-              <div class="section-header-icon shi-red">
-                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-              </div>
-              <h2>Alertas Automáticos</h2>
-            </div>
-            <div style="display:grid;gap:.6rem">
-              <div class="tg-alert-card tg-ac-red">
-                <div class="tg-alert-icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                </div>
-                <div class="tg-alert-text">
-                  <strong>Falha no envio</strong>
-                  <span>Notificação imediata quando uma mensagem ou arquivo falhar</span>
-                </div>
-              </div>
-              <div class="tg-alert-card tg-ac-orange">
-                <div class="tg-alert-icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
-                </div>
-                <div class="tg-alert-text">
-                  <strong>Sessão desconectada</strong>
-                  <span>Alerta quando um número cair e precisar escanear o QR novamente</span>
-                </div>
-              </div>
-              <div class="tg-alert-card tg-ac-yellow">
-                <div class="tg-alert-icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                </div>
-                <div class="tg-alert-text">
-                  <strong>Erro crítico na API</strong>
-                  <span>Alerta quando o serviço interno travar ou crashar</span>
-                </div>
-              </div>
-              <div class="tg-alert-card tg-ac-blue">
-                <div class="tg-alert-icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-                </div>
-                <div class="tg-alert-text">
-                  <strong>Relatório a cada 3 horas</strong>
-                  <span>Status das sessões, mensagens enviadas, arquivos e erros</span>
-                </div>
-              </div>
-            </div>
-          </div>
+    <!-- Alertas Automáticos (botão) -->
+    <button class="alerts-card-btn" onclick="document.getElementById('tg-alerts-overlay').classList.add('open');tgRefreshAlertCount()">
+      <span class="ci t-red" style="width:42px;height:42px;flex:none">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </span>
+      <span style="flex:1;text-align:left">
+        <span style="display:block;font-weight:750;font-size:16px">Alertas Automáticos</span>
+        <span style="display:block;font-size:13px;color:var(--text-2)">Escolha o que você quer ser alertado no Telegram</span>
+      </span>
+      <span class="badge ok" style="flex:none" id="tgAlertCountBadge">6 de 6 ativos</span>
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-3);flex:none"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+
+  </div>
+
+  <!-- ── MODAL ALERTAS AUTOMÁTICOS ───────────────────────────────── -->
+  <div class="modal-backdrop" id="tg-alerts-overlay"  onclick="if(event.target===this)this.classList.remove('open')">
+    <div class="modal" style="max-width:560px;width:100%">
+      <div class="modal-head plain">
+        <span style="display:flex;align-items:center;gap:12px">
+          <span class="ci t-red" style="width:40px;height:40px">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          </span>
+          <span>
+            <span style="display:block;font-size:18px;font-weight:800">Alertas Automáticos</span>
+            <span style="font-size:12.5px;color:var(--text-3)">Marque tudo que você quer ser alertado no Telegram</span>
+          </span>
+        </span>
+        <button class="icon-btn" style="width:34px;height:34px" onclick="document.getElementById('tg-alerts-overlay').classList.remove('open')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="alert-row" data-alert-key="falha_envio">
+          <span class="ci t-red" style="width:36px;height:36px"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg></span>
+          <div style="flex:1"><div style="font-weight:700">Falha no envio</div><div style="font-size:13px;color:var(--text-2)">Notificação imediata quando uma mensagem ou arquivo falhar</div></div>
+          <button class="sw" data-on="true" onclick="tgToggleAlert(this)"><span></span></button>
+        </div>
+        <div class="alert-row" data-alert-key="sessao_desconectada">
+          <span class="ci t-amber" style="width:36px;height:36px"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></span>
+          <div style="flex:1"><div style="font-weight:700">Sessão desconectada</div><div style="font-size:13px;color:var(--text-2)">Alerta quando um número cair e precisar escanear o QR novamente</div></div>
+          <button class="sw" data-on="true" onclick="tgToggleAlert(this)"><span></span></button>
+        </div>
+        <div class="alert-row" data-alert-key="erro_critico">
+          <span class="ci t-amber" style="width:36px;height:36px"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg></span>
+          <div style="flex:1"><div style="font-weight:700">Erro crítico na API</div><div style="font-size:13px;color:var(--text-2)">Alerta quando o serviço interno travar ou crashar</div></div>
+          <button class="sw" data-on="true" onclick="tgToggleAlert(this)"><span></span></button>
+        </div>
+        <div class="alert-row" data-alert-key="relatorio_3h">
+          <span class="ci t-blue" style="width:36px;height:36px"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
+          <div style="flex:1"><div style="font-weight:700">Relatório a cada 3 horas</div><div style="font-size:13px;color:var(--text-2)">Status das sessões, mensagens enviadas, arquivos e erros</div></div>
+          <button class="sw" data-on="true" onclick="tgToggleAlert(this)"><span></span></button>
+        </div>
+        <div class="alert-row" data-alert-key="avaliacao_negativa">
+          <span class="ci t-star" style="width:36px;height:36px"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+          <div style="flex:1"><div style="font-weight:700">Avaliação negativa (1–3★)</div><div style="font-size:13px;color:var(--text-2)">Avise quando um cliente der uma nota baixa no PDV</div></div>
+          <button class="sw" data-on="true" onclick="tgToggleAlert(this)"><span></span></button>
+        </div>
+        <div class="alert-row" data-alert-key="campanha_concluida">
+          <span class="ci t-green" style="width:36px;height:36px"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></span>
+          <div style="flex:1"><div style="font-weight:700">Campanha concluída</div><div style="font-size:13px;color:var(--text-2)">Resumo ao terminar o disparo de uma campanha</div></div>
+          <button class="sw" data-on="true" onclick="tgToggleAlert(this)"><span></span></button>
         </div>
 
-        <!-- Como configurar -->
-        <div class="card" style="margin-bottom:0">
-          <div class="section-header">
-            <div class="section-header-icon shi-teal">
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            </div>
-            <h3>Como configurar</h3>
-          </div>
-          <div class="step-list">
-            <div class="step-item">
-              <div class="step-num">1</div>
-              <div class="step-body">Abra o Telegram e busque <strong style="color:var(--accent)">@BotFather</strong></div>
-            </div>
-            <div class="step-item">
-              <div class="step-num">2</div>
-              <div class="step-body">Envie <code style="background:var(--surface2);padding:.1rem .3rem;border-radius:4px;color:var(--accent)">/newbot</code> e siga as instruções</div>
-            </div>
-            <div class="step-item">
-              <div class="step-num">3</div>
-              <div class="step-body">Copie o <strong>Token</strong> gerado e cole no campo ao lado</div>
-            </div>
-            <div class="step-item">
-              <div class="step-num">4</div>
-              <div class="step-body">Adicione o bot ao grupo/canal desejado e envie uma mensagem</div>
-            </div>
-            <div class="step-item">
-              <div class="step-num">5</div>
-              <div class="step-body">Use <strong style="color:var(--accent)">@userinfobot</strong> para descobrir o <strong>Chat ID</strong></div>
-            </div>
-            <div class="step-item">
-              <div class="step-num">6</div>
-              <div class="step-body">Cole o Chat ID, salve e clique em <strong>Testar Conexão</strong></div>
-            </div>
-          </div>
-
-          <div class="info-banner info-banner-blue" style="margin-top:1rem;margin-bottom:0">
-            <span class="ib-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            </span>
-            <div>O bot só consegue enviar mensagens em grupos onde foi adicionado como membro.</div>
-          </div>
+        <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+          <button class="btn ghost sm" onclick="tgAlertAll(true)">Marcar todos</button>
+          <button class="btn ghost sm" onclick="tgAlertAll(false)">Desmarcar todos</button>
+          <button class="btn sm" style="margin-left:auto" onclick="document.getElementById('tg-alerts-overlay').classList.remove('open')">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Salvar Alertas
+          </button>
         </div>
-
       </div>
     </div>
+  </div>
+
+  <!-- ── MODAL COMO CONFIGURAR ──────────────────────────────────── -->
+  <div class="modal-backdrop" id="tg-howto-overlay"  onclick="if(event.target===this)this.classList.remove('open')">
+    <div class="modal" style="max-width:500px;width:100%">
+      <div class="modal-head plain">
+        <span style="display:flex;align-items:center;gap:12px">
+          <span class="ci t-blue" style="width:40px;height:40px">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </span>
+          <span>
+            <span style="display:block;font-size:18px;font-weight:800">Como configurar</span>
+            <span style="font-size:12.5px;color:var(--text-3)">6 passos para criar e vincular o bot</span>
+          </span>
+        </span>
+        <button class="icon-btn" style="width:34px;height:34px" onclick="document.getElementById('tg-howto-overlay').classList.remove('open')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="howto-step"><span class="howto-n">1</span><span>Abra o Telegram e busque <b>@BotFather</b></span></div>
+          <div class="howto-step"><span class="howto-n">2</span><span>Envie <code style="font-family:var(--mono);background:var(--surface-3);padding:1px 6px;border-radius:5px;font-size:12px">/newbot</code> e siga as instruções</span></div>
+          <div class="howto-step"><span class="howto-n">3</span><span>Copie o <b>Token</b> gerado e cole no campo ao lado</span></div>
+          <div class="howto-step"><span class="howto-n">4</span><span>Adicione o bot ao grupo/canal desejado e envie uma mensagem</span></div>
+          <div class="howto-step"><span class="howto-n">5</span><span>Use <b>@userinfobot</b> para descobrir o <b>Chat ID</b></span></div>
+          <div class="howto-step"><span class="howto-n">6</span><span>Cole o Chat ID, salve e clique em <b>Testar Conexão</b></span></div>
+        </div>
+        <button class="btn" style="width:100%;margin-top:16px" onclick="document.getElementById('tg-howto-overlay').classList.remove('open')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Entendi
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function _tgSaveAlerts() {
+      const state = {};
+      document.querySelectorAll('#tg-alerts-overlay .alert-row').forEach(row => {
+        const k = row.dataset.alertKey;
+        const sw = row.querySelector('.sw');
+        if (k && sw) state[k] = sw.dataset.on === 'true';
+      });
+      try {
+        await fetch('/api/config', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ telegram_alerts: JSON.stringify(state) }),
+        });
+      } catch {}
+    }
+    async function _tgLoadAlerts() {
+      try {
+        const r = await fetch('/api/config');
+        const cfg = r.ok ? await r.json() : {};
+        const raw = cfg.telegram_alerts;
+        if (!raw) return;
+        const state = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        document.querySelectorAll('#tg-alerts-overlay .alert-row').forEach(row => {
+          const k = row.dataset.alertKey;
+          const sw = row.querySelector('.sw');
+          if (k && sw && k in state) sw.dataset.on = state[k] ? 'true' : 'false';
+        });
+        tgRefreshAlertCount();
+      } catch {}
+    }
+    window.tgToggleAlert = function(btn) {
+      const on = btn.dataset.on === 'true';
+      btn.dataset.on = on ? 'false' : 'true';
+      tgRefreshAlertCount();
+      _tgSaveAlerts();
+    };
+    window.tgAlertAll = function(state) {
+      document.querySelectorAll('#tg-alerts-overlay .alert-row .sw').forEach(sw => sw.dataset.on = state ? 'true' : 'false');
+      tgRefreshAlertCount();
+      _tgSaveAlerts();
+    };
+    window.tgRefreshAlertCount = function() {
+      const all = document.querySelectorAll('#tg-alerts-overlay .alert-row .sw');
+      const on = Array.from(all).filter(s => s.dataset.on === 'true').length;
+      const badge = document.getElementById('tgAlertCountBadge');
+      if (badge) badge.textContent = `${on} de ${all.length} ativos`;
+    };
+    // Load saved state once
+    _tgLoadAlerts();
+  </script>
+
+</div>
