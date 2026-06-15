@@ -110,3 +110,16 @@ async def test_agent_version_no_update():
     assert resp.status_code == 200
     d = resp.json()
     assert d["update_available"] is False
+
+
+@pytest.mark.asyncio
+async def test_agent_version_bootstrap_allowlist(monkeypatch):
+    """Versão legada listada em AGENT_BOOTSTRAP_VERSIONS recebe update_available=True
+    (resgate one-time do poller); versão fora da lista continua False."""
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "agent_bootstrap_versions", "0.2.24")
+    async with AsyncClient(transport=ASGITransport(app=asgi_app), base_url="http://test") as ac:
+        listed = (await ac.get("/api/agents/version", params={"current": "0.2.24"})).json()
+        other = (await ac.get("/api/agents/version", params={"current": "0.2.23"})).json()
+    assert listed["update_available"] is True
+    assert other["update_available"] is False

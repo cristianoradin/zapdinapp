@@ -65,6 +65,11 @@ class Settings(BaseSettings):
 
     public_url: str = "http://localhost:4000"
 
+    # Bootstrap one-time: versões de agente (CSV) autorizadas a auto-atualizar via
+    # poller LEGADO (<=0.2.24). Vazio = push-only puro. Usado só pra resgatar agentes
+    # antigos que não têm o comando WS "update_now". Limpar após o resgate.
+    agent_bootstrap_versions: str = ""
+
     # Backend de WhatsApp: "playwright" (padrão) ou "evolution"
     wa_backend: str = "playwright"
 

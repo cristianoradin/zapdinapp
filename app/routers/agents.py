@@ -196,15 +196,23 @@ async def agent_version(request: Request, current: Optional[str] = None):
             except Exception: parts.append(0)
         return tuple(parts)
 
-    # AUTO-UPDATE DESLIGADO: update agora é PUSH-ONLY (admin manda pelo monitor).
-    # update_available sempre False → agentes legados (0.2.x com update_loop)
-    # param de se auto-atualizar em loop. Versão nova chega via comando WS "update_now".
-    download_url_abs = _absolute_download_url(request)
+    # AUTO-UPDATE DESLIGADO por padrão: update é PUSH-ONLY (comando WS "update_now").
+    # EXCEÇÃO bootstrap: versões legadas listadas em AGENT_BOOTSTRAP_VERSIONS (sem o
+    # handler update_now) recebem update_available=True UMA vez pra se resgatarem via
+    # poller. Após chegarem em AGENT_LATEST_VERSION (que não tem poller), param sozinhas.
+    bootstrap = {v.strip() for v in (settings.agent_bootstrap_versions or "").split(",") if v.strip()}
+    cur = current or ""
+    update_available = bool(
+        cur in bootstrap and _ver_tuple(cur) < _ver_tuple(AGENT_LATEST_VERSION)
+    )
+    # Agente remoto baixa da URL pública (não localhost).
+    base = (settings.public_url or "").rstrip("/")
+    download_url_abs = (base + AGENT_DOWNLOAD_URL) if base else _absolute_download_url(request)
     return {
         "latest": AGENT_LATEST_VERSION,
         "download_url": download_url_abs,
-        "current": current or "",
-        "update_available": False,
+        "current": cur,
+        "update_available": update_available,
     }
 
 
@@ -412,7 +420,10 @@ async def admin_push_update(
     if not agent_bridge.has_agent(empresa_id):
         raise HTTPException(409, "Agente não está conectado — não dá pra enviar update agora.")
     from ..main import sio
-    dl_url = _absolute_download_url(request)
+    # O agente está num posto remoto: precisa baixar da URL PÚBLICA do servidor,
+    # não de request.base_url (que vira localhost quando o monitor chama internamente).
+    base = (settings.public_url or "").rstrip("/")
+    dl_url = (base + AGENT_DOWNLOAD_URL) if base else _absolute_download_url(request)
     try:
         res = await sio.call(
             "update_now",
