@@ -126,9 +126,13 @@ async def send_command(sio, empresa_id: int, command: str, payload: dict,
             timeout=timeout,
         )
     except asyncio.TimeoutError:
-        raise RuntimeError(f"Timeout no comando '{command}' para agente empresa={empresa_id}")
+        raise RuntimeError(f"Timeout ({timeout:.0f}s) no comando '{command}' — agente empresa={empresa_id} não respondeu a tempo")
     except Exception as exc:
-        raise RuntimeError(f"Erro no comando '{command}': {exc}")
+        # socketio.exceptions.TimeoutError NÃO é asyncio.TimeoutError e tem str() vazio.
+        import socketio as _sio_mod
+        if isinstance(exc, getattr(_sio_mod.exceptions, "TimeoutError", ())):
+            raise RuntimeError(f"Timeout ({timeout:.0f}s) no comando '{command}' — agente empresa={empresa_id} não respondeu a tempo")
+        raise RuntimeError(f"Erro no comando '{command}': {type(exc).__name__}: {exc}")
 
     if not isinstance(result, dict):
         return {"ok": False, "error": "Resposta inválida do agente"}

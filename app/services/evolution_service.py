@@ -830,7 +830,9 @@ class EvoManager:
                 "delay_ms": int(composing_delay * 1000) if composing_delay > 0 else 0,
             }
             try:
-                resp = await _ab.send_command(_sio, empresa_id, "send_text", payload_agent)
+                # 90s: o agente pode levar ~30s só abrindo o chat + achando o
+                # composer. Default 30s estourava antes e mascarava o erro real.
+                resp = await _ab.send_command(_sio, empresa_id, "send_text", payload_agent, timeout=90.0)
                 if resp.get("ok"):
                     try:
                         from . import telegram_service
