@@ -83,7 +83,7 @@ async def _read_version() -> str:
         return "1.0.0"
 
 
-def _wa_info_for_empresa(empresa_id: int) -> dict:
+async def _wa_info_for_empresa(empresa_id: int) -> dict:
     """
     Retorna o status atual do WhatsApp para uma empresa específica.
 
@@ -113,29 +113,42 @@ def _wa_info_for_empresa(empresa_id: int) -> dict:
 
         # Coleta os status únicos de todas as sessões da empresa
         statuses = {s.status for s in sessions.values()}
-        logger.debug("[reporter] empresa=%s sessões=%s", empresa_id, statuses or "nenhuma")
-
-        # Prioridade: connected > qr_code > disconnected
-        if "connected" in statuses:
-            # Pega o número da primeira sessão conectada que tenha phone preenchido
-            phone = next(
-                (s.phone for s in sessions.values() if s.status == "connected" and s.phone),
-                None,
-            )
-            return {"wa_status": "connected", "wa_phone": phone}
-
-        if "qr_code" in statuses:
-            # Aguardando leitura do QR code pelo usuário
-            return {"wa_status": "qr_code", "wa_phone": None}
-
-        if statuses:
-            # Há sessões mas nenhuma conectada nem em QR
-            return {"wa_status": "disconnected", "wa_phone": None}
-
+        # Número da primeira sessão conectada com phone preenchido (memória)
+        phone = next(
+            (s.phone for s in sessions.values() if s.status == "connected" and s.phone),
+            None,
+        )
     except Exception as exc:
-        logger.warning("[reporter] _wa_info_for_empresa(%s) erro: %s", empresa_id, exc)
+        logger.warning("[reporter] _wa_info_for_empresa(%s) memória erro: %s", empresa_id, exc)
+        statuses, phone = set(), None
 
-    # Padrão seguro: sem sessões ou erro inesperado → desconectado
+    # Fallback / fonte de verdade pro MODO AGENTE: o manager em memória não é
+    # atualizado quando a conexão é via agent_bridge (QR/phone gravados só no DB
+    # sessoes_wa por refresh-phone). Consulta o DB e mescla.
+    try:
+        from ..core.database import get_db_direct
+        async with get_db_direct() as db:
+            async with db.execute(
+                "SELECT status, phone FROM sessoes_wa WHERE empresa_id=?", (empresa_id,)
+            ) as cur:
+                for r in await cur.fetchall():
+                    st = (r["status"] or "").strip()
+                    if st:
+                        statuses.add(st)
+                    if st == "connected" and r["phone"] and not phone:
+                        phone = r["phone"]
+    except Exception as exc:
+        logger.debug("[reporter] _wa_info_for_empresa(%s) DB erro: %s", empresa_id, exc)
+
+    logger.debug("[reporter] empresa=%s sessões=%s phone=%s", empresa_id, statuses or "nenhuma", phone)
+
+    # Prioridade: connected > qr_code > disconnected
+    if "connected" in statuses:
+        return {"wa_status": "connected", "wa_phone": phone}
+    if "qr_code" in statuses:
+        return {"wa_status": "qr_code", "wa_phone": None}
+    if statuses:
+        return {"wa_status": "disconnected", "wa_phone": None}
     return {"wa_status": "disconnected", "wa_phone": None}
 
 
@@ -195,7 +208,7 @@ async def _send_heartbeat() -> None:
             if not token:
                 continue  # empresa sem token não pode se identificar — pula
 
-            wa_info = _wa_info_for_empresa(emp.get("id", 0))
+            wa_info = await _wa_info_for_empresa(emp.get("id", 0))
             agents_list = _agents_for_empresa(emp.get("id", 0))
 
             # Coleta logs acumulados desde o último heartbeat para enviar ao Monitor
