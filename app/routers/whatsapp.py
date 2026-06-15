@@ -19,6 +19,27 @@ else:
 
 router = APIRouter(prefix="/api/sessoes", tags=["whatsapp"])
 
+_MODOS_VALIDOS = {"servidor", "local", "agente"}
+
+
+def _modo_from_url(evo_url: str | None) -> str:
+    """Deriva o modo de conexão a partir da evolution_url da sessão."""
+    u = (evo_url or "").strip().lower()
+    if not u:
+        return "servidor"
+    if u.startswith("agent://"):
+        return "agente"
+    return "local"
+
+
+async def _modos_permitidos(db, empresa_id: int) -> list[str]:
+    """Lista de modos permitidos pra empresa (definido pelo Monitor admin)."""
+    async with db.execute("SELECT modos_conexao FROM empresas WHERE id=?", (empresa_id,)) as cur:
+        row = await cur.fetchone()
+    raw = (row["modos_conexao"] if row else "") or "servidor,local,agente"
+    modos = [m.strip() for m in raw.split(",") if m.strip() in _MODOS_VALIDOS]
+    return modos or ["servidor"]
+
 
 class SessaoCreate(BaseModel):
     nome: str
@@ -55,6 +76,16 @@ async def create_sessao(
     evo_url = (body.evolution_url or "").strip() or None
     if evo_url and not evo_url.lower().startswith(("http://", "https://", "agent://")):
         raise HTTPException(status_code=422, detail="URL inválida. Use http://, https:// ou agent://")
+    # Enforce modos permitidos no BACKEND (não confia só no frontend que esconde radios).
+    # Ex: empresa restrita a "agente" não pode criar sessão "servidor" (evo_url=None).
+    modo = _modo_from_url(evo_url)
+    permitidos = await _modos_permitidos(db, empresa_id)
+    if modo not in permitidos:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Modo de conexão '{modo}' não permitido para esta empresa. "
+                   f"Permitidos: {', '.join(permitidos)}.",
+        )
     await db.execute(
         "INSERT INTO sessoes_wa (empresa_id, id, nome, status, evolution_url) "
         "VALUES (?, ?, ?, 'disconnected', ?)",
@@ -94,16 +125,7 @@ async def live_status(user: dict = Depends(get_current_user)):
 async def modos_permitidos(db=Depends(get_db), user: dict = Depends(get_current_user)):
     """Retorna lista de modos permitidos pra empresa (gerenciado pelo Monitor admin)."""
     empresa_id = user["empresa_id"]
-    async with db.execute("SELECT modos_conexao FROM empresas WHERE id=?", (empresa_id,)) as cur:
-        row = await cur.fetchone()
-    raw = (row["modos_conexao"] if row else "") or "servidor,local,agente"
-    modos = [m.strip() for m in raw.split(",") if m.strip()]
-    # Sanitiza: aceita só valores conhecidos
-    allowed = {"servidor", "local", "agente"}
-    modos = [m for m in modos if m in allowed]
-    if not modos:
-        modos = ["servidor"]
-    return {"modos": modos}
+    return {"modos": await _modos_permitidos(db, empresa_id)}
 
 
 @router.post("/refresh-phone/{sessao_id}")
@@ -150,6 +172,16 @@ async def get_qr(sessao_id: str, db=Depends(get_db), user: dict = Depends(get_cu
     ) as cur:
         sess_row = await cur.fetchone()
     sess_url = (sess_row["evolution_url"] if sess_row else "") or ""
+    # Enforce modo permitido também na conexão (sessão antiga "servidor" não pode
+    # conectar se a empresa hoje só permite "agente").
+    modo = _modo_from_url(sess_url)
+    permitidos = await _modos_permitidos(db, empresa_id)
+    if modo not in permitidos:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Modo '{modo}' não permitido para esta empresa. "
+                   f"Permitidos: {', '.join(permitidos)}. Recrie a sessão no modo correto.",
+        )
     is_agent_mode = sess_url.strip().lower().startswith("agent://")
 
     # Branch agent_bridge: só ativa se sessão configurada em "Agente (atravessa NAT)"
