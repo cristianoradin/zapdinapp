@@ -279,15 +279,16 @@ class SelecionarEmpresaRequest(BaseModel):
     empresa_id: int
 
 
-async def _empresas_do_monitor(username: str, password: str) -> list[dict]:
-    """Consulta o Monitor: valida credencial e retorna empresas vinculadas ao usuário.
-    Retorna lista de dicts {nome, cnpj, token}. Lança HTTPException em 401/erro."""
+async def _empresas_do_monitor(username_or_email: str, password: str) -> tuple[list[dict], str, dict]:
+    """Consulta o Monitor: valida credencial (aceita email ou username) e retorna empresas.
+    Retorna (lista_empresas, username_real, extra_dict). Lança HTTPException em 401/erro.
+    `extra_dict` carrega flags como must_change_password + reset_token."""
     monitor_url = settings.monitor_url.rstrip("/")
     try:
         http = get_http_client()
         r = await http.post(
             f"{monitor_url}/api/auth/empresas-do-usuario",
-            json={"username": username, "password": password},
+            json={"username": username_or_email, "password": password},
         )
     except Exception as exc:
         logger.error("[login-multi] Erro ao contatar Monitor: %s", exc)
@@ -298,7 +299,12 @@ async def _empresas_do_monitor(username: str, password: str) -> list[dict]:
         raise HTTPException(status_code=429, detail="Muitas tentativas. Aguarde 1 minuto.")
     if r.status_code != 200:
         raise HTTPException(status_code=502, detail=f"Erro no servidor de autenticação ({r.status_code}).")
-    return (r.json() or {}).get("empresas", []) or []
+    data = r.json() or {}
+    extra = {
+        "must_change_password": bool(data.get("must_change_password")),
+        "reset_token": data.get("reset_token"),
+    }
+    return (data.get("empresas", []) or [], data.get("username", username_or_email), extra)
 
 
 async def _resolver_empresas_locais(db, monitor_empresas: list[dict]) -> list[dict]:
@@ -324,21 +330,48 @@ async def _resolver_empresas_locais(db, monitor_empresas: list[dict]) -> list[di
     return out
 
 
+async def _buscar_menus_monitor(username: str, emp_token: str):
+    """Busca menus permitidos do monitor (clientes.menus ∩ usuarios.menus). None = todos."""
+    monitor_url = settings.monitor_url.rstrip("/")
+    try:
+        http = get_http_client()
+        mr = await http.get(
+            f"{monitor_url}/api/auth/usuario-menus/{username}",
+            params={"client_token": emp_token},
+        )
+        if mr.status_code == 200:
+            return mr.json().get("menus")
+    except Exception as exc:
+        logger.debug("[login-multi] menus do monitor falhou: %s", exc)
+    return None
+
+
 async def _emitir_cookie_empresa(db, response, username: str, empresa_id: int) -> str:
     """Cria/acha o usuário local na empresa e emite o cookie de sessão. Retorna nome da empresa."""
-    async with db.execute("SELECT nome FROM empresas WHERE id = ?", (empresa_id,)) as cur:
+    async with db.execute("SELECT nome, token FROM empresas WHERE id = ?", (empresa_id,)) as cur:
         emp = await cur.fetchone()
     empresa_nome = emp["nome"] if emp else ""
+    emp_token = emp["token"] if emp else ""
+
+    # Busca menus do monitor e grava em usuarios.menus (é o que o /me + sidebar usam)
+    menus_from_monitor = await _buscar_menus_monitor(username, emp_token)
+    menus_json = json.dumps(menus_from_monitor) if menus_from_monitor is not None else None
+
     async with db.execute(
         "SELECT id FROM usuarios WHERE username = ? AND empresa_id = ?", (username, empresa_id)
     ) as cur:
         u = await cur.fetchone()
     if u:
         local_uid = u["id"]
+        await db.execute(
+            "UPDATE usuarios SET menus = ? WHERE id = ? AND empresa_id = ?",
+            (menus_json, local_uid, empresa_id),
+        )
+        await db.commit()
     else:
         cur2 = await db.execute(
-            "INSERT INTO usuarios (empresa_id, username, password_hash) VALUES (?, ?, ?) RETURNING id",
-            (empresa_id, username, MONITOR_AUTH_SENTINEL),
+            "INSERT INTO usuarios (empresa_id, username, password_hash, menus) VALUES (?, ?, ?, ?) RETURNING id",
+            (empresa_id, username, MONITOR_AUTH_SENTINEL, menus_json),
         )
         await db.commit()
         local_uid = cur2.lastrowid or 0
@@ -356,12 +389,22 @@ async def login_empresas(body: LoginMultiRequest, request: Request, response: Re
     - 0 empresas → 403
     - 1 empresa  → loga direto (emite cookie)
     - N empresas → retorna lista (sem cookie); cliente chama /selecionar-empresa"""
-    username = body.username.strip().lower()
+    raw = body.username.strip().lower()
     ip = client_ip(request)
     if not _login_limiter.is_allowed(ip):
         raise HTTPException(status_code=429, detail="Muitas tentativas. Aguarde 1 minuto.")
 
-    monitor_emps = await _empresas_do_monitor(username, body.password)
+    monitor_emps, username, extra = await _empresas_do_monitor(raw, body.password)
+
+    # Força reset antes de continuar
+    if extra.get("must_change_password") and extra.get("reset_token"):
+        return {
+            "ok": False,
+            "must_change_password": True,
+            "username": username,
+            "reset_token": extra["reset_token"],
+        }
+
     locais = await _resolver_empresas_locais(db, monitor_emps)
 
     if not locais:
@@ -379,12 +422,12 @@ async def login_empresas(body: LoginMultiRequest, request: Request, response: Re
 async def selecionar_empresa(body: SelecionarEmpresaRequest, request: Request, response: Response, db=Depends(get_db)):
     """Etapa 2: revalida credencial + vínculo da empresa escolhida e emite o cookie.
     Anti-burla: re-checa no Monitor que o usuário tem acesso à empresa pedida."""
-    username = body.username.strip().lower()
+    raw = body.username.strip().lower()
     ip = client_ip(request)
     if not _login_limiter.is_allowed(ip):
         raise HTTPException(status_code=429, detail="Muitas tentativas. Aguarde 1 minuto.")
 
-    monitor_emps = await _empresas_do_monitor(username, body.password)
+    monitor_emps, username, _extra = await _empresas_do_monitor(raw, body.password)
     locais = await _resolver_empresas_locais(db, monitor_emps)
     permitido = any(e["empresa_id"] == body.empresa_id for e in locais)
     if not permitido:
@@ -395,6 +438,59 @@ async def selecionar_empresa(body: SelecionarEmpresaRequest, request: Request, r
     await log_event(empresa_id=body.empresa_id, nivel="info", modulo="auth", acao="login_ok",
                     mensagem=f"Login (empresa selecionada): {username}")
     return {"ok": True, "username": username, "empresa": empresa_nome}
+
+
+class RecuperarSenhaProxy(BaseModel):
+    email: str
+
+class RedefinirSenhaProxy(BaseModel):
+    token: str
+    nova_senha: str
+
+
+@router.post("/recuperar-senha")
+async def recuperar_senha_proxy(body: RecuperarSenhaProxy):
+    """Proxy pro Monitor — gera token + envia e-mail."""
+    monitor_url = settings.monitor_url.rstrip("/")
+    try:
+        http = get_http_client()
+        r = await http.post(f"{monitor_url}/api/auth/recuperar-senha", json={"email": body.email})
+    except Exception as exc:
+        logger.error("[reset-proxy] erro: %s", exc)
+        raise HTTPException(status_code=503, detail="Não foi possível conectar ao servidor de autenticação.")
+    if r.status_code != 200:
+        try:
+            d = r.json()
+            raise HTTPException(status_code=r.status_code, detail=d.get("detail") or "Erro.")
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=r.status_code, detail="Erro no servidor de autenticação.")
+    return {"ok": True}
+
+
+@router.post("/redefinir-senha")
+async def redefinir_senha_proxy(body: RedefinirSenhaProxy):
+    """Proxy pro Monitor — valida token + atualiza senha."""
+    monitor_url = settings.monitor_url.rstrip("/")
+    try:
+        http = get_http_client()
+        r = await http.post(
+            f"{monitor_url}/api/auth/redefinir-senha",
+            json={"token": body.token, "nova_senha": body.nova_senha},
+        )
+    except Exception as exc:
+        logger.error("[reset-proxy] erro: %s", exc)
+        raise HTTPException(status_code=503, detail="Não foi possível conectar ao servidor de autenticação.")
+    if r.status_code != 200:
+        try:
+            d = r.json()
+            raise HTTPException(status_code=r.status_code, detail=d.get("detail") or "Erro.")
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=r.status_code, detail="Erro no servidor de autenticação.")
+    return {"ok": True}
 
 
 @router.post("/logout")

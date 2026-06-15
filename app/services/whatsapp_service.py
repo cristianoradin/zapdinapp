@@ -1098,13 +1098,22 @@ class WhatsAppManager:
         return await sess.send_file(phone, file_path, caption or filename)
 
     def schedule_status_check(
-        self, arquivo_id: int, session_id: str, empresa_id: int, phone: str
+        self, arquivo_id: int, session_id: str, empresa_id: int, phone: str,
+        table: str = "arquivos",
     ) -> None:
-        self._pending_checks[arquivo_id] = {
+        """Agenda polling de delivered/read.
+
+        `table`: 'arquivos' | 'mensagens' | 'campanha_envios'.
+        Chave usa prefixo pra evitar colisão de IDs entre tabelas.
+        """
+        key = f"{table}:{arquivo_id}"
+        self._pending_checks[key] = {
             "key": self._key(empresa_id, session_id),
             "phone": phone,
             "last_status": "sent",
             "first_check": time.time(),
+            "table": table,
+            "row_id": arquivo_id,
         }
 
     async def _status_checker_loop(self) -> None:
@@ -1117,11 +1126,12 @@ class WhatsAppManager:
             if not self._pending_checks:
                 continue
 
-            ids_to_remove: List[int] = []
-            for arquivo_id, info in list(self._pending_checks.items()):
+            ALLOWED_TABLES = {"arquivos", "mensagens", "campanha_envios"}
+            keys_to_remove: List[str] = []
+            for pkey, info in list(self._pending_checks.items()):
                 # Remove entradas muito antigas
                 if time.time() - info["first_check"] > MAX_AGE:
-                    ids_to_remove.append(arquivo_id)
+                    keys_to_remove.append(pkey)
                     continue
 
                 sess = self._sessions.get(info["key"])
@@ -1138,29 +1148,36 @@ class WhatsAppManager:
 
                 info["last_status"] = new_status
                 now = datetime.now()
+                table = info.get("table", "arquivos")
+                row_id = info.get("row_id")
+
+                if table not in ALLOWED_TABLES or row_id is None:
+                    logger.warning("Polling: tabela inválida %s — pulando", table)
+                    keys_to_remove.append(pkey)
+                    continue
 
                 try:
                     async with get_db_direct() as db:
                         if new_status == "delivered":
                             await db.execute(
-                                "UPDATE arquivos SET status='delivered', delivered_at=? WHERE id=?",
-                                (now, arquivo_id),
+                                f"UPDATE {table} SET status='delivered', delivered_at=? WHERE id=?",
+                                (now, row_id),
                             )
                         elif new_status == "read":
                             await db.execute(
-                                "UPDATE arquivos SET status='read', read_at=? WHERE id=?",
-                                (now, arquivo_id),
+                                f"UPDATE {table} SET status='read', read_at=? WHERE id=?",
+                                (now, row_id),
                             )
                         await db.commit()
-                    logger.info("Arquivo %s status atualizado para %s", arquivo_id, new_status)
+                    logger.info("%s %s status atualizado para %s", table, row_id, new_status)
                 except Exception as exc:
-                    logger.error("Erro ao atualizar status do arquivo %s: %s", arquivo_id, exc)
+                    logger.error("Erro ao atualizar status %s %s: %s", table, row_id, exc)
 
                 if new_status == "read":
-                    ids_to_remove.append(arquivo_id)
+                    keys_to_remove.append(pkey)
 
-            for aid in ids_to_remove:
-                self._pending_checks.pop(aid, None)
+            for k in keys_to_remove:
+                self._pending_checks.pop(k, None)
 
 
 wa_manager = WhatsAppManager()

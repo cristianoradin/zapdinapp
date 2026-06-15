@@ -179,7 +179,7 @@ async def add_grupo_contatos(grupo_id: int, body: GrupoContatosIn, db=Depends(ge
     grupo = await repo.get_grupo(_eid(user), grupo_id)
     if not grupo:
         raise HTTPException(404, "Grupo não encontrado")
-    added = await repo.add_contatos_ao_grupo(grupo_id, body.contato_ids)
+    added = await repo.add_contatos_ao_grupo(grupo_id, body.contato_ids, _eid(user))
     return {"ok": True, "adicionados": added}
 
 
@@ -266,6 +266,10 @@ async def create_campanha(body: CampanhaIn, db=Depends(get_db), user=Depends(get
 @router.delete("/{campanha_id}")
 async def delete_campanha(campanha_id: int, db=Depends(get_db), user=Depends(get_current_user)):
     repo = CampanhaRepository(db)
+    # Valida posse ANTES de apagar envios/arquivos (isolation multi-tenant)
+    camp = await repo.get(_eid(user), campanha_id)
+    if not camp:
+        raise HTTPException(status_code=404, detail="Campanha não encontrada.")
     await repo.delete_envios(campanha_id)
     nomes_arq = await repo.delete_todos_arquivos(campanha_id)
     for nome in nomes_arq:
@@ -368,10 +372,13 @@ async def iniciar_campanha(
 @router.post("/{campanha_id}/pausar")
 async def pausar_campanha(campanha_id: int, db=Depends(get_db), user=Depends(get_current_user)):
     repo = CampanhaRepository(db)
+    # Valida posse ANTES de pausar (isolation multi-tenant)
+    camp = await repo.get(_eid(user), campanha_id)
+    if not camp:
+        raise HTTPException(404, "Campanha não encontrada")
     await repo.pausar_envios(campanha_id)
     # Se todos os envios já foram processados, marcar como done em vez de paused
-    camp = await repo.get(_eid(user), campanha_id)
-    if camp and camp["total"] > 0 and camp["enviados"] >= camp["total"]:
+    if camp["total"] > 0 and camp["enviados"] >= camp["total"]:
         await repo.update_status(campanha_id, "done")
     else:
         await repo.update_status(campanha_id, "paused")

@@ -216,7 +216,7 @@ async def _gerar_sufixo_avaliacao(db, empresa_id: int, telefone: str, nome: str,
     ) as cur2:
         cfg_url = await cur2.fetchone()
     url_base = cfg_url["value"] if cfg_url else settings.public_url
-    link_aval = await _encurtar_url(f"{url_base}/avaliacao?t={token_aval}")
+    link_aval = f"{url_base}/avaliacao?t={token_aval}"
 
     await db.execute(
         """INSERT INTO avaliacoes (empresa_id, token, phone, nome_cliente, vendedor, valor)

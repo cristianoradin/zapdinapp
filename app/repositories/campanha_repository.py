@@ -11,25 +11,28 @@ class CampanhaRepository(BaseRepository):
     # ── Campanhas ─────────────────────────────────────────────────────────────
 
     async def list(self, empresa_id: int, status: Optional[str] = None) -> list:
+        # Subqueries entregues/visualizadas — espelha polling em campanha_envios
+        base_cols = (
+            "c.id, c.nome, c.tipo, c.mensagem, c.status, c.total, c.enviados, c.erros, "
+            "c.created_at, c.started_at, c.done_at, c.agendado_em, "
+            "COALESCE((SELECT COUNT(*) FROM campanha_envios ce WHERE ce.campanha_id=c.id AND ce.status IN ('delivered','read')),0) AS entregues, "
+            "COALESCE((SELECT COUNT(*) FROM campanha_envios ce WHERE ce.campanha_id=c.id AND ce.status='read'),0) AS visualizadas "
+        )
         if status:
             # "done" inclui também pausadas que finalizaram (done_at definido)
             if status == "done":
                 return await self._fetchall(
-                    "SELECT id, nome, tipo, mensagem, status, total, enviados, erros, "
-                    "created_at, started_at, done_at, agendado_em "
-                    "FROM campanhas WHERE empresa_id=? AND (status='done' OR (status='paused' AND done_at IS NOT NULL)) ORDER BY id DESC",
+                    f"SELECT {base_cols} FROM campanhas c "
+                    "WHERE c.empresa_id=? AND (c.status='done' OR (c.status='paused' AND c.done_at IS NOT NULL)) "
+                    "ORDER BY c.id DESC",
                     (empresa_id,),
                 )
             return await self._fetchall(
-                "SELECT id, nome, tipo, mensagem, status, total, enviados, erros, "
-                "created_at, started_at, done_at, agendado_em "
-                "FROM campanhas WHERE empresa_id=? AND status=? ORDER BY id DESC",
+                f"SELECT {base_cols} FROM campanhas c WHERE c.empresa_id=? AND c.status=? ORDER BY c.id DESC",
                 (empresa_id, status),
             )
         return await self._fetchall(
-            "SELECT id, nome, tipo, mensagem, status, total, enviados, erros, "
-            "created_at, started_at, done_at, agendado_em "
-            "FROM campanhas WHERE empresa_id=? ORDER BY id DESC",
+            f"SELECT {base_cols} FROM campanhas c WHERE c.empresa_id=? ORDER BY c.id DESC",
             (empresa_id,),
         )
 

@@ -1,0 +1,79 @@
+<div class="page" id="page-download">
+
+  <div class="card pad" style="max-width:880px;margin:0 auto">
+    <div class="card-head">
+      <span class="ci t-green">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </span>
+      <h2>Download — ZapDin Agent</h2>
+    </div>
+
+    <p style="color:var(--text-2);font-size:14px;line-height:1.6;margin-top:8px">
+      Instalador Windows do <b>ZapDin Agent</b> — software que roda na máquina do posto e conecta WhatsApp Web local ao painel ZapDin em nuvem.
+    </p>
+
+    <!-- Download principal -->
+    <div style="background:linear-gradient(135deg,var(--primary-soft),var(--surface));border:1px solid var(--primary);border-radius:14px;padding:24px;margin:20px 0;text-align:center">
+      <div style="display:flex;justify-content:center;margin-bottom:14px">
+        <span style="width:64px;height:64px;border-radius:50%;background:var(--primary);color:white;display:inline-flex;align-items:center;justify-content:center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </span>
+      </div>
+      <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px">ZapDin Agent <span id="dlAgentVersion" style="color:var(--primary-deep)">v—</span></div>
+      <div style="font-size:13px;color:var(--text-3);margin-bottom:18px">Windows 10/11 x64 · ~15 MB · Single-exe install</div>
+      <div style="display:flex;flex-direction:column;gap:10px;align-items:center">
+        <a id="dlAgentPersonalizado" href="/api/agents/install-script.bat" class="btn lg" style="text-decoration:none;display:inline-flex;align-items:center;gap:10px;font-size:15px;padding:12px 28px;background:var(--primary)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Baixar instalador personalizado (recomendado)
+        </a>
+        <div style="font-size:12px;color:var(--text-3);max-width:480px;text-align:center">
+          Token desta empresa <b>já vem embutido</b>. Cliente só executa o arquivo .bat (Administrador) — sem digitar nada. Instalação silenciosa.
+        </div>
+        <a id="dlAgentBtn" href="/api/agents/download" class="btn ghost sm" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;margin-top:8px">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Baixar .exe genérico (precisa colar token manual)
+        </a>
+      </div>
+    </div>
+
+    <!-- Como instalar -->
+    <h3 style="margin-top:24px;margin-bottom:12px;font-size:15px">Como instalar</h3>
+    <ol style="color:var(--text-2);font-size:14px;line-height:1.8;padding-left:22px">
+      <li>Baixe o instalador <code>ZapDinAgentSetup.exe</code></li>
+      <li><b>Execute como Administrador</b> (botão direito → "Executar como administrador")</li>
+      <li>Cole o <b>Token de Ativação</b> da empresa (gerado em <i>Sistema → Token API</i>)</li>
+      <li>Aguarde o download do Chromium (~3 min na primeira vez)</li>
+      <li>O serviço <code>ZapDinAgent</code> sobe automaticamente — pronto</li>
+    </ol>
+
+    <!-- Como funciona -->
+    <h3 style="margin-top:24px;margin-bottom:12px;font-size:15px">Como funciona</h3>
+    <div style="background:var(--surface-2);border-radius:10px;padding:14px 18px;color:var(--text-2);font-size:13.5px;line-height:1.7">
+      <div style="margin-bottom:6px"><b>1.</b> Cliente acessa o painel ZapDin via navegador (rodando na nuvem)</div>
+      <div style="margin-bottom:6px"><b>2.</b> Painel envia comandos → Agent local recebe via WebSocket seguro</div>
+      <div style="margin-bottom:6px"><b>3.</b> Agent controla WhatsApp Web no Chromium local (posto do cliente)</div>
+      <div><b>4.</b> Cada empresa só vê seus próprios dados (multi-tenant por token)</div>
+    </div>
+
+    <!-- Auto-update -->
+    <h3 style="margin-top:24px;margin-bottom:12px;font-size:15px">Atualizações automáticas</h3>
+    <p style="color:var(--text-2);font-size:14px;line-height:1.6">
+      O ZapDin Agent verifica novas versões a cada 6 horas e atualiza sozinho. Não é preciso reinstalar.
+    </p>
+
+    <!-- Requisitos -->
+    <h3 style="margin-top:24px;margin-bottom:12px;font-size:15px">Requisitos</h3>
+    <ul style="color:var(--text-2);font-size:14px;line-height:1.7;padding-left:22px">
+      <li>Windows 10/11 x64</li>
+      <li>~1 GB de espaço em disco</li>
+      <li>Conexão com internet (download inicial do Chromium)</li>
+      <li>Permissão de Administrador (instalar serviço Windows)</li>
+    </ul>
+
+    <!-- SHA -->
+    <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border);font-size:12px;color:var(--text-3)">
+      Versão atual: <span id="dlAgentVersionFooter" class="mono">—</span> ·
+      <a id="dlReleaseLink" href="#" target="_blank" style="color:var(--primary-deep)">Notas da versão →</a>
+    </div>
+  </div>
+</div>

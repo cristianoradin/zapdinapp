@@ -41,4 +41,21 @@
       <div style="color:var(--text-3);text-align:center;padding:2rem">Carregando…</div>
     </div>
   </div>
+
+  <!-- Modal de visualização do envio -->
+  <div id="arqViewModal" class="arq-modal" style="display:none" onclick="if(event.target===this)arquivoModule.closeView()">
+    <div class="arq-modal-box">
+      <div class="arq-modal-head">
+        <h3 id="arqViewTitle" style="margin:0;font-size:16px;font-weight:700">Detalhes do envio</h3>
+        <span class="grow"></span>
+        <a id="arqViewDownload" href="#" target="_blank" class="btn ghost sm" style="display:none">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Baixar
+        </a>
+        <button class="btn ghost sm" onclick="arquivoModule.closeView()" style="margin-left:8px">Fechar</button>
+      </div>
+      <div id="arqViewMeta" class="arq-modal-meta"></div>
+      <div id="arqViewBody" class="arq-modal-body"></div>
+    </div>
+  </div>
 </div>

@@ -233,7 +233,7 @@ async def _loop() -> None:
         if _bv_check_counter >= 30:
             _bv_check_counter = 0
             try:
-                from ..routers.contabil import processar_boasvindas_pendentes
+                from .contabil_service import processar_boasvindas_pendentes
                 _bv_enviados = await processar_boasvindas_pendentes(wa_manager, get_db_direct)
                 if _bv_enviados:
                     logger.info("[worker] Boas-vindas pendentes: %s enviadas", _bv_enviados)
@@ -241,6 +241,30 @@ async def _loop() -> None:
                 logger.debug("[worker] processar_boasvindas_pendentes: %s", bv_exc)
 
         await asyncio.sleep(0.2 if dispatched else 1.0)
+
+
+# ── Round-robin por empresa (fairness multi-tenant) ──────────────────────────
+# Sem isso: empresa com 10k itens com IDs menores monopoliza a fila, e pior —
+# empresa bloqueada (fora de horário / sem sessão / limite diário) travava a
+# fila GLOBAL com return False. Agora cada rodada tenta a próxima empresa
+# elegível na rotação; bloqueio de uma empresa não afeta as outras.
+_rr_ptrs: dict = {"msg": -1, "arq": -1, "camp": -1}
+
+
+def _rotate(empresas: list, key: str) -> list:
+    """Reordena lista de empresa_ids começando após o último servido."""
+    if not empresas:
+        return []
+    last = _rr_ptrs.get(key, -1)
+    after = [e for e in empresas if e > last]
+    before = [e for e in empresas if e <= last]
+    return after + before
+
+
+async def _empresas_queued(get_db_direct, sql: str) -> list:
+    async with get_db_direct() as db:
+        async with db.execute(sql) as cur:
+            return [r["empresa_id"] for r in await cur.fetchall()]
 
 
 async def _process_next(wa_manager, settings, get_db_direct) -> bool:
@@ -282,30 +306,32 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
             except Exception as exc:
                 logger.warning("[worker] Erro ao auto-iniciar campanha agendada %s: %s", camp["id"], exc)
 
-    # ── Mensagens de texto ────────────────────────────────────────────────────
-    async with get_db_direct() as db:
-        async with db.execute(
-            "SELECT id, empresa_id, destinatario, nome_destinatario, mensagem FROM mensagens "
-            "WHERE status='queued' ORDER BY id LIMIT 1"
-        ) as cur:
-            msg = await cur.fetchone()
+    # ── Mensagens de texto (round-robin por empresa) ──────────────────────────
+    empresas_msg = await _empresas_queued(
+        get_db_direct,
+        "SELECT DISTINCT empresa_id FROM mensagens WHERE status='queued' ORDER BY empresa_id",
+    )
+    for empresa_id in _rotate(empresas_msg, "msg"):
+        async with get_db_direct() as db:
+            async with db.execute(
+                "SELECT id, empresa_id, destinatario, nome_destinatario, mensagem FROM mensagens "
+                "WHERE status='queued' AND empresa_id=? ORDER BY id LIMIT 1",
+                (empresa_id,),
+            ) as cur:
+                msg = await cur.fetchone()
+        if not msg:
+            continue
 
-    if msg:
-        empresa_id = msg["empresa_id"]
         cfg = await _load_cfg(empresa_id, get_db_direct)
 
         if not _within_hours(cfg):
-            return False
+            continue  # só esta empresa fora do horário — tenta a próxima
 
         delay_min    = _cfg_float(cfg, "wa_delay_min", settings.dispatch_min_delay)
         delay_max    = _cfg_float(cfg, "wa_delay_max", settings.dispatch_max_delay)
         daily_limit  = _cfg_int(cfg, "wa_daily_limit", 0)
         spintax_on   = cfg.get("wa_spintax",    "1") not in ("0", "false", "")
         composing_on = cfg.get("wa_composing",  "1") not in ("0", "false", "")
-
-        delay = random.uniform(delay_min, delay_max)
-        logger.info("Queue: mensagem %s (empresa %s) → delay %.1fs", msg["id"], empresa_id, delay)
-        await asyncio.sleep(delay)
 
         sessao_id = wa_manager.pick_session(empresa_id)
         if not sessao_id:
@@ -320,7 +346,7 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
                 asyncio.create_task(telegram_service.notify_queue_blocked(1))
             except Exception:
                 pass
-            return False
+            continue  # empresa sem sessão não trava as outras
 
         # Checa limite diário
         if daily_limit > 0:
@@ -331,7 +357,12 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
                     "Queue: sessão %s empresa %s atingiu limite diário (%d) — envios pausados até meia-noite",
                     sessao_id, empresa_id, daily_limit,
                 )
-                return False
+                continue  # limite só desta empresa
+
+        _rr_ptrs["msg"] = empresa_id
+        delay = random.uniform(delay_min, delay_max)
+        logger.info("Queue: mensagem %s (empresa %s) → delay %.1fs", msg["id"], empresa_id, delay)
+        await asyncio.sleep(delay)
 
         texto = process_spintax(msg["mensagem"]) if spintax_on else msg["mensagem"]
         c_delay = _composing_delay(texto) if composing_on else 0.0
@@ -357,32 +388,35 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
                            mensagem=f"Mensagem enviada: {msg['destinatario']}")
             nome = msg["nome_destinatario"] if "nome_destinatario" in msg.keys() else ""
             asyncio.create_task(_notify_monitor_numero(msg["destinatario"], nome or "", settings))
+            wa_manager.schedule_status_check(msg["id"], sessao_id, empresa_id, msg["destinatario"], table="mensagens")
         return True
 
-    # ── Arquivos ──────────────────────────────────────────────────────────────
-    async with get_db_direct() as db:
-        async with db.execute(
-            "SELECT id, empresa_id, destinatario, nome_destinatario, nome_arquivo, nome_original, caption "
-            "FROM arquivos WHERE status='queued' ORDER BY id LIMIT 1"
-        ) as cur:
-            arq = await cur.fetchone()
+    # ── Arquivos (round-robin por empresa) ────────────────────────────────────
+    empresas_arq = await _empresas_queued(
+        get_db_direct,
+        "SELECT DISTINCT empresa_id FROM arquivos WHERE status='queued' ORDER BY empresa_id",
+    )
+    for empresa_id in _rotate(empresas_arq, "arq"):
+        async with get_db_direct() as db:
+            async with db.execute(
+                "SELECT id, empresa_id, destinatario, nome_destinatario, nome_arquivo, nome_original, caption "
+                "FROM arquivos WHERE status='queued' AND empresa_id=? ORDER BY id LIMIT 1",
+                (empresa_id,),
+            ) as cur:
+                arq = await cur.fetchone()
+        if not arq:
+            continue
 
-    if arq:
-        empresa_id = arq["empresa_id"]
         cfg = await _load_cfg(empresa_id, get_db_direct)
 
         if not _within_hours(cfg):
-            return False
+            continue
 
         delay_min    = _cfg_float(cfg, "wa_delay_min", settings.dispatch_min_delay)
         delay_max    = _cfg_float(cfg, "wa_delay_max", settings.dispatch_max_delay)
         daily_limit  = _cfg_int(cfg, "wa_daily_limit", 0)
         spintax_on   = cfg.get("wa_spintax",   "1") not in ("0", "false", "")
         composing_on = cfg.get("wa_composing", "1") not in ("0", "false", "")
-
-        delay = random.uniform(delay_min, delay_max)
-        logger.info("Queue: arquivo %s (empresa %s) → delay %.1fs", arq["id"], empresa_id, delay)
-        await asyncio.sleep(delay)
 
         sessao_id = wa_manager.pick_session(empresa_id)
         if not sessao_id:
@@ -391,13 +425,12 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
                 "Verifique se o WhatsApp está conectado no painel.",
                 empresa_id, arq["id"],
             )
-            # Alerta Telegram (throttled a cada 30min)
             try:
                 from . import telegram_service
                 asyncio.create_task(telegram_service.notify_queue_blocked(1))
             except Exception:
                 pass
-            return False
+            continue
 
         # Checa limite diário
         if daily_limit > 0:
@@ -408,7 +441,12 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
                     "Queue: sessão %s empresa %s atingiu limite diário (%d) — envios pausados até meia-noite",
                     sessao_id, empresa_id, daily_limit,
                 )
-                return False
+                continue
+
+        _rr_ptrs["arq"] = empresa_id
+        delay = random.uniform(delay_min, delay_max)
+        logger.info("Queue: arquivo %s (empresa %s) → delay %.1fs", arq["id"], empresa_id, delay)
+        await asyncio.sleep(delay)
 
         # Modo só-texto: arquivo vazio = enviar apenas a caption como mensagem
         nome_file_db = arq["nome_arquivo"] or ""
@@ -473,34 +511,38 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
             wa_manager.schedule_status_check(arq["id"], sessao_id, empresa_id, arq["destinatario"])
         return True
 
-    # ── Campanha Envios ───────────────────────────────────────────────────────
-    async with get_db_direct() as db:
-        async with db.execute(
-            "SELECT ce.id, ce.campanha_id, ce.empresa_id, ce.phone, ce.nome, "
-            "       c.tipo, c.mensagem "
-            "FROM campanha_envios ce "
-            "JOIN campanhas c ON c.id = ce.campanha_id "
-            "WHERE ce.status='queued' AND c.status='running' "
-            "ORDER BY ce.id LIMIT 1"
-        ) as cur:
-            env = await cur.fetchone()
+    # ── Campanha Envios (round-robin por empresa) ─────────────────────────────
+    empresas_camp = await _empresas_queued(
+        get_db_direct,
+        "SELECT DISTINCT ce.empresa_id FROM campanha_envios ce "
+        "JOIN campanhas c ON c.id = ce.campanha_id "
+        "WHERE ce.status='queued' AND c.status='running' ORDER BY ce.empresa_id",
+    )
+    for empresa_id in _rotate(empresas_camp, "camp"):
+        async with get_db_direct() as db:
+            async with db.execute(
+                "SELECT ce.id, ce.campanha_id, ce.empresa_id, ce.phone, ce.nome, "
+                "       c.tipo, c.mensagem "
+                "FROM campanha_envios ce "
+                "JOIN campanhas c ON c.id = ce.campanha_id "
+                "WHERE ce.status='queued' AND c.status='running' AND ce.empresa_id=? "
+                "ORDER BY ce.id LIMIT 1",
+                (empresa_id,),
+            ) as cur:
+                env = await cur.fetchone()
+        if not env:
+            continue
 
-    if env:
-        empresa_id = env["empresa_id"]
         campanha_id = env["campanha_id"]
         cfg = await _load_cfg(empresa_id, get_db_direct)
 
         if not _within_hours(cfg):
-            return False
+            continue
 
         delay_min    = _cfg_float(cfg, "wa_delay_min", settings.dispatch_min_delay)
         delay_max    = _cfg_float(cfg, "wa_delay_max", settings.dispatch_max_delay)
         spintax_on   = cfg.get("wa_spintax",   "1") not in ("0", "false", "")
         composing_on = cfg.get("wa_composing", "1") not in ("0", "false", "")
-
-        delay = random.uniform(delay_min, delay_max)
-        logger.info("Queue: campanha_envio %s campanha %s → delay %.1fs", env["id"], campanha_id, delay)
-        await asyncio.sleep(delay)
 
         sessao_id = wa_manager.pick_session(empresa_id)
         if not sessao_id:
@@ -509,7 +551,12 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
                 asyncio.create_task(telegram_service.notify_queue_blocked(1))
             except Exception:
                 pass
-            return False
+            continue
+
+        _rr_ptrs["camp"] = empresa_id
+        delay = random.uniform(delay_min, delay_max)
+        logger.info("Queue: campanha_envio %s campanha %s → delay %.1fs", env["id"], campanha_id, delay)
+        await asyncio.sleep(delay)
 
         tipo = env["tipo"]
         ok = False
@@ -583,6 +630,7 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
         logger.info("Queue: campanha_envio %s → %s", env["id"], st)
         if ok:
             asyncio.create_task(_notify_monitor_numero(env["phone"], env["nome"] or "", settings))
+            wa_manager.schedule_status_check(env["id"], sessao_id, empresa_id, env["phone"], table="campanha_envios")
         return True
 
     return False

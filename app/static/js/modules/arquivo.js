@@ -84,7 +84,7 @@ window.arquivoModule = (() => {
           ${dtLabel}
         </span>
         ${_statusChip(a)}
-        <button class="btn ghost sm" style="height:32px">
+        <button class="btn ghost sm" style="height:32px" onclick="arquivoModule.view(${a.id})">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           Ver
         </button>
@@ -105,6 +105,91 @@ window.arquivoModule = (() => {
     document.getElementById('btnRefreshArquivos').addEventListener('click', load);
   }
 
+  function _esc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function _renderBody(meta) {
+    const body = document.getElementById('arqViewBody');
+    const dl = document.getElementById('arqViewDownload');
+    const hasFile = meta.has_file;
+    const caption = meta.caption || '';
+
+    let html = '';
+    if (caption) {
+      html += `<div class="arq-msg">${_esc(caption).replace(/\n/g,'<br>')}</div>`;
+    }
+
+    if (hasFile) {
+      dl.style.display = '';
+      dl.href = `/api/arquivos/${meta.id}/download`;
+      dl.download = meta.nome_original || 'arquivo';
+      const mime = meta.mime || '';
+      const url = `/api/arquivos/${meta.id}/download`;
+      if (mime.startsWith('image/')) {
+        html += `<img src="${url}" alt="${_esc(meta.nome_original)}" style="max-width:100%;border-radius:8px;display:block;margin:0 auto">`;
+      } else if (mime === 'application/pdf') {
+        html += `<iframe src="${url}" style="width:100%;height:70vh;border:0;border-radius:8px"></iframe>`;
+      } else if (mime.startsWith('text/')) {
+        html += `<iframe src="${url}" style="width:100%;height:50vh;border:1px solid var(--border);border-radius:8px;background:#fff"></iframe>`;
+      } else {
+        html += `<div class="arq-fallback">
+          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <div><b>${_esc(meta.nome_original || 'arquivo')}</b></div>
+          <div style="font-size:13px;color:var(--text-3)">Preview indisponível para este tipo (${_esc(mime)}). Use o botão Baixar.</div>
+        </div>`;
+      }
+    } else {
+      dl.style.display = 'none';
+      if (!caption) {
+        html += `<div class="arq-fallback" style="color:var(--text-3)">Envio sem conteúdo registrado.</div>`;
+      }
+    }
+    body.innerHTML = html;
+  }
+
+  async function view(id) {
+    const modal = document.getElementById('arqViewModal');
+    const meta = document.getElementById('arqViewMeta');
+    const body = document.getElementById('arqViewBody');
+    const title = document.getElementById('arqViewTitle');
+    modal.style.display = 'flex';
+    title.textContent = 'Carregando…';
+    meta.innerHTML = '';
+    body.innerHTML = '<div style="color:var(--text-3);text-align:center;padding:2rem">Carregando…</div>';
+    try {
+      const res = await fetch(`/api/arquivos/${id}`);
+      if (!res.ok) {
+        body.innerHTML = `<div class="arq-fallback" style="color:var(--red)">Erro ${res.status}: ${await res.text()}</div>`;
+        return;
+      }
+      const m = await res.json();
+      title.textContent = m.has_file
+        ? (m.nome_original || `Envio #${m.id}`)
+        : `Mensagem enviada — ${m.destinatario || ''}`;
+      const items = [
+        ['Destinatário', `${_esc(m.nome_destinatario || '—')} <span style="color:var(--text-3)">${_esc(m.destinatario || '')}</span>`],
+        ['Status', _statusChip(m)],
+        ['Criado', _fmtTs(m.created_at)],
+      ];
+      if (m.sent_at)      items.push(['Enviado', _fmtTs(m.sent_at)]);
+      if (m.delivered_at) items.push(['Entregue', _fmtTs(m.delivered_at)]);
+      if (m.read_at)      items.push(['Visualizado', _fmtTs(m.read_at)]);
+      if (m.has_file && m.tamanho) items.push(['Tamanho', `${(m.tamanho/1024).toFixed(1)} KB`]);
+      meta.innerHTML = items.map(([k,v]) => `<div><span class="k">${k}:</span> <span class="v">${v}</span></div>`).join('');
+      _renderBody(m);
+    } catch (e) {
+      body.innerHTML = `<div class="arq-fallback" style="color:var(--red)">Falha ao carregar: ${_esc(e.message)}</div>`;
+    }
+  }
+
+  function closeView() {
+    const modal = document.getElementById('arqViewModal');
+    if (modal) modal.style.display = 'none';
+    const body = document.getElementById('arqViewBody');
+    if (body) body.innerHTML = '';
+  }
+
   function init() {
     if (!_initialized) {
       _registerEvents();
@@ -113,5 +198,5 @@ window.arquivoModule = (() => {
     load();
   }
 
-  return { init, stopTimer };
+  return { init, stopTimer, view, closeView };
 })();

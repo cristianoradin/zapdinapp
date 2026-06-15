@@ -315,7 +315,72 @@
   // Refresh ao abrir painel
   document.addEventListener('sys-panel-activated', (e) => {
     if (e.detail === 'token-ia') _iacRefresh();
+    else if (e.detail === 'download') _initDownload();
+    else if (e.detail === 'changelog') _initChangelog();
   });
+
+  async function _initDownload() {
+    try {
+      const r = await fetch('/api/agents/version?current=0.0.0');
+      if (!r.ok) return;
+      const d = await r.json();
+      const v = d.latest || '—';
+      const set = (id, t) => { const el = document.getElementById(id); if (el) el.textContent = t; };
+      set('dlAgentVersion', 'v' + v);
+      set('dlAgentVersionFooter', 'v' + v);
+    } catch { /* silent */ }
+  }
+
+  async function _initChangelog() {
+    if (window._changelogData) {
+      _renderChangelog();
+      return;
+    }
+    try {
+      const r = await fetch('/api/changelog');
+      if (!r.ok) return;
+      window._changelogData = await r.json();
+      window._changelogCurrentTab = 'app';
+      _renderChangelog();
+    } catch { /* silent */ }
+  }
+
+  function _esc(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+  function _renderChangelog() {
+    const data = window._changelogData;
+    if (!data) return;
+    const tab = window._changelogCurrentTab || 'app';
+    const versions = tab === 'app' ? (data.versions || []) : (data.agent_versions || []);
+    const list = document.getElementById('changelogLista');
+    if (!list) return;
+    if (!versions.length) {
+      list.innerHTML = '<div style="color:var(--text-3);text-align:center;padding:2rem">Sem versões cadastradas.</div>';
+      return;
+    }
+    list.innerHTML = versions.map((v, idx) => {
+      const badge = idx === 0 ? '<span class="badge ok" style="margin-left:8px">atual</span>' : '';
+      const notes = (v.notes || []).map(n => `<li>${_esc(n)}</li>`).join('');
+      const title = v.title ? `<div style="font-size:14px;color:var(--text-2);margin-top:4px">${_esc(v.title)}</div>` : '';
+      return `
+      <div style="border-left:3px solid var(--primary);padding:14px 18px;margin-bottom:14px;background:var(--surface-2);border-radius:8px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <b style="font-size:16px;color:var(--primary-deep)">v${_esc(v.version)}</b>${badge}
+          <span style="font-size:12.5px;color:var(--text-3);margin-left:auto">${_esc(v.date)}</span>
+        </div>
+        ${title}
+        <ul style="margin:10px 0 0 0;padding-left:22px;font-size:13.5px;color:var(--text-2);line-height:1.6">${notes}</ul>
+      </div>`;
+    }).join('');
+  }
+
+  // Tab switcher do changelog
+  window.changelogTab = function (which, btn) {
+    document.querySelectorAll('#changelogTabs button').forEach(b => b.classList.remove('on'));
+    if (btn) btn.classList.add('on');
+    window._changelogCurrentTab = which;
+    _renderChangelog();
+  };
 
   // ── Configuração inline: abre painel Chatbot dentro da Central de IA ────
   const _iacTitles = {

@@ -124,13 +124,16 @@ class ContatoRepository(BaseRepository):
             (grupo_id, empresa_id),
         )
 
-    async def add_contatos_ao_grupo(self, grupo_id: int, contato_ids: list[int]) -> int:
+    async def add_contatos_ao_grupo(self, grupo_id: int, contato_ids: list[int], empresa_id: int) -> int:
         added = 0
         for cid in contato_ids:
             try:
+                # SELECT-guard: só insere se o contato for da MESMA empresa (isolation)
                 await self._execute_no_commit(
-                    "INSERT INTO grupo_contatos (grupo_id, contato_id) VALUES (?,?) ON CONFLICT DO NOTHING",
-                    (grupo_id, cid),
+                    "INSERT INTO grupo_contatos (grupo_id, contato_id) "
+                    "SELECT ?, c.id FROM contatos c WHERE c.id=? AND c.empresa_id=? "
+                    "ON CONFLICT DO NOTHING",
+                    (grupo_id, cid, empresa_id),
                 )
                 added += 1
             except Exception:

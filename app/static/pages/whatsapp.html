@@ -53,11 +53,11 @@
           </button>
         </div>
 
-        <!-- Avançado: onde roda a Evolution API -->
-        <details id="sessaoModoDetails" style="margin-top:14px">
+        <!-- Modo de conexão (sempre visível) -->
+        <details id="sessaoModoDetails" style="margin-top:14px" open>
           <summary class="adv-toggle" style="list-style:none;cursor:pointer">
             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-            <span style="font-weight:700">Avançado: onde roda a Evolution API</span>
+            <span style="font-weight:700">Modo de conexão WhatsApp</span>
             <span class="adv-current" id="sessaoModoBadge">🌐 Servidor (padrão)</span>
             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:auto"><polyline points="9 18 15 12 9 6"/></svg>
           </summary>
@@ -76,7 +76,7 @@
               <label class="adv-radio">
                 <input type="radio" name="sessaoModo" value="agente">
                 <span class="adv-dot"></span>
-                <span>🛰️ Agente (atravessa NAT)</span>
+                <span>🛰️ ZapDinAgent (ponte WhatsApp local)</span>
               </label>
             </div>
             <div id="sessaoUrlWrap" style="display:none;margin-top:16px">
@@ -89,7 +89,14 @@
                 <span class="ni">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a8 8 0 0 1 8 8v1a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4v-1a8 8 0 0 1 8-8z"/></svg>
                 </span>
-                <div>O agente local faz o túnel via WebSocket persistente — atravessa NAT/firewall. Instale o ZapDinAgent no posto.</div>
+                <div>O <b>ZapDinAgent</b> (serviço Windows) faz o túnel via WebSocket — abre WhatsApp Web no Chromium do posto. <u>Não confundir com ConectDesk</u> (acesso remoto, produto distinto).</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+                <button type="button" class="btn ghost sm" id="btnTestarAgent" onclick="testarAgent()">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                  Testar comunicação
+                </button>
+                <span id="testarAgentStatus" style="font-size:.85rem;color:var(--text-3)"></span>
               </div>
             </div>
           </div>

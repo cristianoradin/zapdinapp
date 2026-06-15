@@ -735,7 +735,10 @@ function initHome() {
 }
 
 // Inicializa conector visual no item já ativo ao carregar
+// (_updateNavConnector é opcional — feature de conector visual removida)
 window.addEventListener('load', () => {
   const activeItem = document.querySelector('.nav-item.active');
-  if (activeItem) _updateNavConnector(activeItem);
+  if (activeItem && typeof window._updateNavConnector === 'function') {
+    window._updateNavConnector(activeItem);
+  }
 });

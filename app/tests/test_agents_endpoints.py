@@ -85,3 +85,28 @@ async def test_agents_all_with_valid_token():
     assert "seconds_since_last_seen" in data["agents"][0]
 
 
+
+
+@pytest.mark.asyncio
+async def test_agent_version_auto_update_desligado():
+    """Auto-update é push-only: update_available SEMPRE False (mesmo current antigo).
+    Evita o loop de auto-update que derrubava o agente a cada ~60s."""
+    async with AsyncClient(transport=ASGITransport(app=asgi_app), base_url="http://test") as ac:
+        resp = await ac.get("/api/agents/version", params={"current": "0.1.0"})
+    assert resp.status_code == 200
+    d = resp.json()
+    assert d["latest"]
+    assert d["download_url"].startswith(("http://", "https://"))
+    assert "ZapDinAgentSetup" in d["download_url"]
+    assert d["update_available"] is False  # push-only
+
+
+@pytest.mark.asyncio
+async def test_agent_version_no_update():
+    """current >= latest → update_available=False (sempre, push-only)"""
+    from app.routers.agents import AGENT_LATEST_VERSION
+    async with AsyncClient(transport=ASGITransport(app=asgi_app), base_url="http://test") as ac:
+        resp = await ac.get("/api/agents/version", params={"current": AGENT_LATEST_VERSION})
+    assert resp.status_code == 200
+    d = resp.json()
+    assert d["update_available"] is False

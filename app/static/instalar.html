@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Instalação ZapDin — __EMPRESA_NOME__</title>
+<link rel="icon" type="image/png" href="/logo/favicon.png">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent: #3d7f1f; --accent-light: #7cdc44;
+    --bg: #f4f6f9; --surface: #fff; --border: #e4e6ea;
+    --text: #1a1d23; --text-muted: #6b7280;
+    --grad: linear-gradient(90deg, #3d7f1f 0%, #7cdc44 50%, #3b82f6 100%);
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:Inter,system-ui,sans-serif; background:var(--bg); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; color:var(--text); }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:38px; max-width:560px; width:100%; box-shadow:0 10px 40px rgba(0,0,0,.07); }
+  h1 { margin:0 0 4px; font-size:1.45rem; }
+  h1 .zap { color:var(--accent); }
+  p.sub { color:var(--text-muted); font-size:.92rem; margin:0 0 26px; }
+  .step { display:flex; gap:14px; padding:15px 0; border-bottom:1px solid var(--border); align-items:flex-start; }
+  .step:last-of-type { border-bottom:none; }
+  .step-ico { width:34px; height:34px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:.95rem; font-weight:700; background:#eef1f5; color:var(--text-muted); transition:.2s; }
+  .step.done .step-ico { background:#dcfce7; color:#15803d; }
+  .step.active .step-ico { background:var(--accent); color:#fff; animation:pulse 1.6s infinite; }
+  @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(61,127,31,.35)} 50%{box-shadow:0 0 0 8px rgba(61,127,31,0)} }
+  .step-body { flex:1; }
+  .step-title { font-weight:600; font-size:.95rem; }
+  .step-sub { font-size:.8rem; color:var(--text-muted); margin-top:2px; }
+  .btn { display:inline-block; margin-top:10px; padding:12px 22px; border:none; border-radius:11px; background:var(--grad); color:#fff; font-weight:700; font-size:.95rem; cursor:pointer; text-decoration:none; }
+  .btn[disabled] { opacity:.5; cursor:default; }
+  #qrBox { text-align:center; margin-top:12px; display:none; }
+  #qrBox img { width:230px; height:230px; border:8px solid #fff; border-radius:12px; box-shadow:0 4px 18px rgba(0,0,0,.12); }
+  #qrHint { font-size:.78rem; color:var(--text-muted); margin-top:8px; }
+  .success { display:none; text-align:center; padding:18px 0 4px; }
+  .success .big { font-size:3rem; }
+  .success h2 { color:#15803d; margin:.4rem 0; }
+  .footer { text-align:center; color:#9aa1ab; font-size:11.5px; margin-top:20px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Bem-vindo ao <span class="zap">ZapDin</span></h1>
+  <p class="sub">Instalação para <strong>__EMPRESA_NOME__</strong> — siga os 3 passos abaixo.</p>
+
+  <div class="step done" id="step1">
+    <div class="step-ico">1</div>
+    <div class="step-body">
+      <div class="step-title">Baixar e executar o instalador</div>
+      <div class="step-sub">Duplo clique no arquivo baixado. Aceite o aviso de Administrador. Leva 2 a 4 minutos.</div>
+      <a class="btn" id="btnDownload" href="/api/kit/__KIT_TOKEN__/installer.bat">⬇️ Baixar instalador</a>
+    </div>
+  </div>
+
+  <div class="step" id="step2">
+    <div class="step-ico">2</div>
+    <div class="step-body">
+      <div class="step-title">Aguardando o agente conectar…</div>
+      <div class="step-sub" id="step2sub">Após a instalação terminar, este passo completa sozinho. Mantenha esta página aberta.</div>
+    </div>
+  </div>
+
+  <div class="step" id="step3">
+    <div class="step-ico">3</div>
+    <div class="step-body">
+      <div class="step-title">Conectar o WhatsApp</div>
+      <div class="step-sub" id="step3sub">Abra o WhatsApp no celular → Configurações → Aparelhos conectados → Conectar aparelho.</div>
+      <div id="qrBox">
+        <img id="qrImg" alt="QR Code">
+        <div id="qrHint">Escaneie com o WhatsApp do número que fará os envios. O código se renova sozinho.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="success" id="successBox">
+    <div class="big">🎉</div>
+    <h2>Tudo pronto!</h2>
+    <p>WhatsApp conectado: <strong id="okPhone"></strong></p>
+    <p style="font-size:.85rem;color:var(--text-muted)">Você já pode acessar seu painel ZapDin.</p>
+    <a class="btn" href="/login">Entrar no painel →</a>
+  </div>
+
+  <div class="footer">ZapDin © 2026 — Se precisar de ajuda, fale com o suporte.</div>
+</div>
+
+<script>
+  const KIT = '__KIT_TOKEN__';
+  let qrTimer = null;
+
+  function setStep(el, state) {  // state: '', 'active', 'done'
+    el.classList.remove('active', 'done');
+    if (state) el.classList.add(state);
+    const ico = el.querySelector('.step-ico');
+    if (state === 'done') ico.textContent = '✓';
+  }
+
+  async function poll() {
+    try {
+      const r = await fetch(`/api/kit/${KIT}/status`);
+      if (r.status === 410) { location.reload(); return; }
+      if (!r.ok) return;
+      const s = await r.json();
+
+      const s2 = document.getElementById('step2');
+      const s3 = document.getElementById('step3');
+
+      if (s.completed || s.wa_status === 'connected') {
+        setStep(s2, 'done'); setStep(s3, 'done');
+        document.getElementById('qrBox').style.display = 'none';
+        document.getElementById('okPhone').textContent = s.wa_phone || 'número conectado';
+        document.getElementById('successBox').style.display = 'block';
+        if (qrTimer) { clearInterval(qrTimer); qrTimer = null; }
+        return;
+      }
+
+      if (s.agent_connected) {
+        setStep(s2, 'done');
+        setStep(s3, 'active');
+        document.getElementById('step2sub').textContent = 'Agente conectado ao servidor ✓';
+        if (!qrTimer) { fetchQr(); qrTimer = setInterval(fetchQr, 20000); }
+      } else {
+        setStep(s2, 'active');
+      }
+    } catch (e) { /* rede oscilou — tenta de novo no próximo tick */ }
+  }
+
+  async function fetchQr() {
+    try {
+      const r = await fetch(`/api/kit/${KIT}/qr`);
+      if (r.status === 410) { poll(); return; }
+      if (!r.ok) return;
+      const d = await r.json();
+      if (d.connected) { poll(); return; }
+      if (d.qr) {
+        const img = document.getElementById('qrImg');
+        img.src = d.qr.startsWith('data:') ? d.qr
+          : 'https://api.qrserver.com/v1/create-qr-code/?size=460x460&data=' + encodeURIComponent(d.qr);
+        document.getElementById('qrBox').style.display = 'block';
+      }
+    } catch (e) { /* tenta de novo */ }
+  }
+
+  poll();
+  setInterval(poll, 5000);
+</script>
+</body>
+</html>

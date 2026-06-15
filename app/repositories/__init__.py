@@ -7,6 +7,7 @@ from .contato_repository import ContatoRepository
 from .campanha_repository import CampanhaRepository
 from .avaliacao_repository import AvaliacaoRepository
 from .config_repository import ConfigRepository
+from .contabil_repository import ContabilRepository
 
 __all__ = [
     "MensagemRepository",
@@ -14,4 +15,5 @@ __all__ = [
     "CampanhaRepository",
     "AvaliacaoRepository",
     "ConfigRepository",
+    "ContabilRepository",
 ]

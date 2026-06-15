@@ -94,8 +94,9 @@ window.tokenModule = (() => {
   // ── Eventos ──────────────────────────────────────────────────────────────────
 
   function _registerEvents() {
-    // Gerar token PDV
-    document.getElementById('btnGerarPdvToken').addEventListener('click', async () => {
+    // PDV removido da tela (uso experimental). Listener só registra se existir.
+    const btnPdv = document.getElementById('btnGerarPdvToken');
+    if (btnPdv) btnPdv.addEventListener('click', async () => {
       const nome = document.getElementById('inputPdvNome').value.trim();
       if (!nome) {
         _alert('alertPdvToken', 'Informe o nome do caixa antes de gerar.', 'error');
@@ -153,7 +154,7 @@ window.tokenModule = (() => {
       _initialized = true;
     }
     loadToken();
-    loadPdvTokens();
+    loadPdvTokens();  // no-op se a seção PDV não existir na tela (guard interno)
   }
 
   return { init };

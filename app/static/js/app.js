@@ -51,8 +51,6 @@
   const pages = {
     home:             'Home',
     dashboard:        'Gestão de Envios',
-    home:             'Home',
-    dashboard:        'Gestão de Envios',
     arquivo:          'Gestão de Arquivos',
     avaliacoes:       'Gestão de Avaliação',
     mensagem:         'Configurar Mensagem',
@@ -307,10 +305,17 @@
         if (_mainMenuKeys.includes('sistema')) {
           const sysSubs = allowedMenus.filter(k => k.startsWith('sistema:')).map(k => k.split(':')[1]);
           if (sysSubs.length > 0) {
-            ['token-ia','usuarios','token','dominio','docs','log'].forEach(key => {
-              const el = document.querySelector(`#page-sistema .sys-menu-item[data-panel="${key}"]`);
-              if (el) el.style.display = sysSubs.includes(key) ? '' : 'none';
+            // Descobre os data-panel REAIS na tela (evita lista hardcoded incompleta/errada).
+            document.querySelectorAll('#page-sistema .sys-menu-item[data-panel]').forEach(el => {
+              const key = el.dataset.panel;
+              el.style.display = sysSubs.includes(key) ? '' : 'none';
             });
+            // Se o painel ativo ficou oculto, ativa o primeiro visível
+            const sysActive = document.querySelector('#page-sistema .sys-menu-item.active[data-panel]');
+            if (sysActive && sysActive.style.display === 'none') {
+              const firstSys = document.querySelector('#page-sistema .sys-menu-item[data-panel]:not([style*="none"])');
+              if (firstSys) firstSys.click();
+            }
             // Oculta sidebar-section labels que ficaram sem itens
             document.querySelectorAll('#page-sistema .sys-sidebar-section').forEach(section => {
               let next = section.nextElementSibling;
@@ -509,10 +514,86 @@
     else if (page === 'ia-central') { iaCentral.init(); }
   }
 
+  // Tab switcher (used by changelog.html)
+  window.changelogTab = function(which, btn) {
+    document.querySelectorAll('#changelogTabs button').forEach(b => b.classList.remove('on'));
+    if (btn) btn.classList.add('on');
+    window._changelogCurrentTab = which;
+    _renderChangelog();
+  };
+
+  function _esc(s) {
+    return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  }
+
+  function _renderChangelog() {
+    const data = window._changelogData;
+    if (!data) return;
+    const tab = window._changelogCurrentTab || 'app';
+    const versions = tab === 'app' ? (data.versions || []) : (data.agent_versions || []);
+    const list = document.getElementById('changelogLista');
+    if (!list) return;
+    if (!versions.length) {
+      list.innerHTML = '<div style="color:var(--text-3);text-align:center;padding:2rem">Sem versões cadastradas.</div>';
+      return;
+    }
+    list.innerHTML = versions.map((v, idx) => {
+      const isLatest = idx === 0;
+      const badge = isLatest ? '<span class="badge ok" style="margin-left:8px">atual</span>' : '';
+      const notes = (v.notes || []).map(n => `<li>${_esc(n)}</li>`).join('');
+      const title = v.title ? `<div style="font-size:14px;color:var(--text-2);margin-top:4px">${_esc(v.title)}</div>` : '';
+      return `
+      <div class="cl-version" style="border-left:3px solid var(--primary);padding:14px 18px;margin-bottom:14px;background:var(--surface-2);border-radius:8px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <b style="font-size:16px;color:var(--primary-deep)">v${_esc(v.version)}</b>
+          ${badge}
+          <span style="font-size:12.5px;color:var(--text-3);margin-left:auto">${_esc(v.date)}</span>
+        </div>
+        ${title}
+        <ul style="margin:10px 0 0 0;padding-left:22px;font-size:13.5px;color:var(--text-2);line-height:1.6">${notes}</ul>
+      </div>`;
+    }).join('');
+  }
+
+  async function initChangelogPage() {
+    try {
+      const r = await fetch('/api/changelog');
+      if (!r.ok) return;
+      window._changelogData = await r.json();
+      window._changelogCurrentTab = 'app';
+      _renderChangelog();
+    } catch (_) { /* silent */ }
+  }
+
+  async function initDownloadPage() {
+    try {
+      const r = await fetch('/api/agents/version?current=0.0.0');
+      if (!r.ok) return;
+      const d = await r.json();
+      const v = d.latest || '—';
+      const setText = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+      setText('dlAgentVersion', 'v' + v);
+      setText('dlAgentVersionFooter', 'v' + v);
+      const link = document.getElementById('dlReleaseLink');
+      if (link) link.href = `https://github.com/cristianoradin/zapdinagent/releases/tag/v${v}`;
+    } catch (_) { /* best-effort */ }
+  }
+
   // Telegram → telegramModule em js/modules/telegram.js
 
   // ── Init ──────────────────────────────────────────────────────────────────────
+  async function _loadAppVersion() {
+    try {
+      const r = await fetch('/api/version');
+      if (!r.ok) return;
+      const d = await r.json();
+      const el = document.getElementById('app-version');
+      if (el) el.textContent = 'v' + (d.versao || '?');
+    } catch { /* silent */ }
+  }
+
   checkAuth().then(async () => {
+    _loadAppVersion();
     await _loadPage('home');
     initHome();
     _updateTopbarStatus();

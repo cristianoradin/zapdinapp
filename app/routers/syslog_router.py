@@ -100,9 +100,12 @@ async def clear_old_logs(
     db=Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
+    # Isolation: só apaga logs DA PRÓPRIA empresa (nunca de outras nem os globais)
     deleted = await db.fetchval(
-        "DELETE FROM system_logs WHERE created_at < NOW() - ($1 || ' days')::INTERVAL RETURNING id",
-        str(dias),
+        "DELETE FROM system_logs "
+        "WHERE created_at < NOW() - ($1 || ' days')::INTERVAL AND empresa_id = $2 "
+        "RETURNING id",
+        str(dias), user["empresa_id"],
     )
     return {"deleted": deleted or 0}
 

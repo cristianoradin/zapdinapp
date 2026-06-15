@@ -171,17 +171,24 @@ async def survey_page(t: str = ""):
         return HTMLResponse(_survey_page(nome_emp, t, vendedor=row["vendedor"] or "", primary_color=color))
 
 
-_cached_demo_link: str = ""
+_cached_demo_link_by_empresa: dict = {}
 
 @router.get("/api/avaliacao/link-demo")
 async def get_link_demo(user=Depends(get_current_user)):
-    """Retorna link encurtado do DEMO — cacheado em memória."""
-    global _cached_demo_link
-    if not _cached_demo_link:
-        url = f"{settings.public_url}/avaliacao?t=DEMO"
-        from ..routers.erp import _encurtar_url
-        _cached_demo_link = await _encurtar_url(url)
-    return {"link": _cached_demo_link}
+    """Retorna link encurtado do DEMO — usa avaliacao_url_base da empresa do usuário."""
+    empresa_id = user["empresa_id"]
+    if empresa_id in _cached_demo_link_by_empresa:
+        return {"link": _cached_demo_link_by_empresa[empresa_id]}
+    # Lê config da empresa, fallback pro public_url
+    async with get_db_direct() as db:
+        async with db.execute(
+            "SELECT value FROM config WHERE key='avaliacao_url_base' AND empresa_id=?", (empresa_id,)
+        ) as cur:
+            row = await cur.fetchone()
+    base = (row["value"] if row else "") or settings.public_url
+    link = f"{base.rstrip('/')}/avaliacao?t=DEMO"
+    _cached_demo_link_by_empresa[empresa_id] = link
+    return {"link": link}
 
 
 @router.get("/avaliacao/preview", response_class=HTMLResponse, include_in_schema=False)

@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ZapDin — Entrar</title>
+<link rel="icon" type="image/png" href="/logo/favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;550;600;650;700;750;800&display=swap" rel="stylesheet" />
@@ -79,6 +80,8 @@
     .logo-word { font-size: 52px; font-weight: 800; letter-spacing: -.03em; line-height: 1; }
     .logo-word b { font-weight: 800; }
     .logo-app { font-size: 30px; font-weight: 700; letter-spacing: .02em; opacity: .9; margin-top: -8px; }
+    .brand-logo { width: 320px; max-width: 78%; height: auto; object-fit: contain;
+      filter: drop-shadow(0 6px 24px rgba(0,0,0,.18)); animation: rise .6s cubic-bezier(.2,.8,.3,1) both; }
     .brand-foot { position: absolute; bottom: 30px; left: 0; right: 0; text-align: center; z-index: 1; font-size: 12.5px; opacity: .8; }
 
     /* ── Lado direito: formulário ─────────────────────────────────────────── */
@@ -130,6 +133,7 @@
     }
 
     input[type="text"],
+    input[type="email"],
     input[type="password"] {
       width: 100%; height: 56px;
       border-radius: 15px; border: 1.5px solid var(--border);
@@ -143,6 +147,7 @@
     }
 
     input[type="text"]:focus,
+    input[type="email"]:focus,
     input[type="password"]:focus {
       background: var(--surface);
       border-color: var(--primary);
@@ -250,11 +255,10 @@
     <div class="glow-b"></div>
     <div class="dots"></div>
     <div class="logo-stack">
-      <img src="/logo/rocket-login.png" alt="ZapDin" class="rocket-logo" onerror="this.style.display='none'" />
-      <div class="logo-word">Zap<b>Din</b></div>
-      <div class="logo-app">App</div>
+      <img src="/logo/zapdin-white.png" alt="ZapDin" class="brand-logo"
+           onerror="this.onerror=null;this.src='/logo/rocket-login.png';this.className='rocket-logo'" />
     </div>
-    <div class="brand-foot">Plataforma de mensagens · v2.4</div>
+    <div class="brand-foot">Plataforma de mensagens</div>
   </section>
 
   <!-- ── Lado direito: formulário ──────────────────────────────────────── -->
@@ -297,37 +301,16 @@
           </button>
         </form>
 
-        <!-- Etapa 1: CNPJ -->
-        <form id="cnpjForm" novalidate style="display:contents">
-          <div class="field" id="step-cnpj">
-            <label for="cnpj">CNPJ do Cliente</label>
-            <div class="input-wrap">
-              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/>
-              </svg>
-              <input type="text" id="cnpj" name="cnpj" placeholder="00.000.000/0000-00"
-                autocomplete="off" autofocus required maxlength="18" />
-            </div>
-          </div>
-          <button type="submit" class="btn-login" id="btn-cnpj">
-            <div class="spinner" id="spinner-cnpj"></div>
-            <span id="btn-cnpj-text">Verificar CNPJ</span>
-            <svg class="btn-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-            </svg>
-          </button>
-        </form>
-
-        <!-- Etapa 2: Usuário + Senha (oculto até CNPJ validado) -->
-        <form id="loginForm" novalidate style="display:none;contents">
+        <!-- Etapa 1: Usuário + Senha (visível direto, sem CNPJ — privacidade) -->
+        <form id="loginForm" novalidate style="display:contents">
           <div class="field">
-            <label for="username">Usuário</label>
+            <label for="username">E-mail ou usuário</label>
             <div class="input-wrap">
               <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                <circle cx="12" cy="7" r="4"/>
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
               </svg>
-              <input type="text" id="username" name="username" placeholder="Digite seu usuário"
+              <input type="text" id="username" name="username" placeholder="seu@email.com ou usuário"
                 autocomplete="username" required />
             </div>
           </div>
@@ -362,11 +345,33 @@
               <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
             </svg>
           </button>
-          <button type="button" id="btn-voltar" onclick="voltarCnpj()"
-            style="background:none;border:none;color:var(--text-3);font-size:.82rem;cursor:pointer;margin-top:4px;text-decoration:underline">
-            ← Trocar CNPJ
+          <button type="button" onclick="abrirEsqueciSenha()"
+            style="background:none;border:none;color:var(--text-3);font-size:.82rem;cursor:pointer;margin-top:6px;text-decoration:underline;align-self:center">
+            Esqueci minha senha
           </button>
         </form>
+
+        <!-- Esqueci senha -->
+        <div id="forgotForm" style="display:none">
+          <p style="font-size:.85rem;color:var(--text-3);margin:0 0 .8rem">Informe seu e-mail. Enviaremos um link para redefinir a senha.</p>
+          <div class="field">
+            <label for="forgot-email">E-mail</label>
+            <div class="input-wrap">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+              <input type="email" id="forgot-email" placeholder="seu@email.com" autocomplete="email" />
+            </div>
+          </div>
+          <button type="button" class="btn-login" id="btn-forgot" onclick="enviarEsqueciSenha()">
+            <span id="btn-forgot-text">Enviar link de recuperação</span>
+          </button>
+          <button type="button" onclick="voltarLogin()"
+            style="background:none;border:none;color:var(--text-3);font-size:.82rem;cursor:pointer;margin-top:8px;text-decoration:underline">
+            ← Voltar para login
+          </button>
+        </div>
 
         <!-- Seleção de empresa (multi-empresa) -->
         <div id="empresaForm" style="display:none">
@@ -404,17 +409,7 @@
     return JSON.stringify(d);
   }
 
-  let _cnpjValidado = null;
-
-  // Máscara CNPJ
-  document.getElementById('cnpj').addEventListener('input', function () {
-    let v = this.value.replace(/\D/g, '').slice(0, 14);
-    if (v.length > 12) v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
-    else if (v.length > 8) v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d+)$/, '$1.$2.$3/$4');
-    else if (v.length > 5) v = v.replace(/^(\d{2})(\d{3})(\d+)$/, '$1.$2.$3');
-    else if (v.length > 2) v = v.replace(/^(\d{2})(\d+)$/, '$1.$2');
-    this.value = v;
-  });
+  // CNPJ form removido — login direto por user+senha (privacidade)
 
   function togglePwd() {
     const inp = document.getElementById('password');
@@ -432,7 +427,6 @@
 
   function showForm(step) {
     document.getElementById('tokenForm').style.display = 'none';
-    document.getElementById('cnpjForm').style.display  = 'none';
     document.getElementById('loginForm').style.display = 'none';
     const _ef = document.getElementById('empresaForm'); if (_ef) _ef.style.display = 'none';
     document.getElementById('err').style.display = 'none';
@@ -441,53 +435,67 @@
       document.getElementById('form-title').textContent = 'Ativar Sistema';
       document.getElementById('form-sub').style.display = 'none';
       document.getElementById('token-ativacao').focus();
-    } else if (step === 'cnpj') {
-      document.getElementById('cnpjForm').style.display = 'contents';
-      document.getElementById('form-title').textContent = 'Bem-vindo de volta';
-      document.getElementById('form-sub').style.display = 'none';
-      _cnpjValidado = null;
-      document.getElementById('cnpj').focus();
     } else if (step === 'login') {
       document.getElementById('loginForm').style.display = 'contents';
+      document.getElementById('form-title').textContent = 'ZapDin';
+      document.getElementById('form-sub').style.display = 'none';
       document.getElementById('username').focus();
     }
   }
 
-  function voltarCnpj() { showForm('login'); }
-  function voltarLogin() { showForm('login'); }
+  function voltarLogin() {
+    document.getElementById('forgotForm').style.display = 'none';
+    showForm('login');
+  }
 
-  // Verifica se empresa já está registrada → se não, faz auto-setup via backend
-  fetch('/api/auth/empresa-info')
-    .then(r => r.ok ? r.json() : null)
-    .then(async d => {
-      if (d && d.cnpj) {
-        _cnpjValidado = d.cnpj;
-        if (d.nome) document.getElementById('form-title').textContent = d.nome;
-        showForm('login');
-        return;
-      }
-      // Primeira abertura: registra empresa automaticamente usando o token do .env
-      try {
-        const r2 = await fetch('/api/auth/auto-setup', { method: 'POST' });
-        const d2 = await r2.json().catch(() => ({}));
-        if (r2.ok && d2.cnpj) {
-          _cnpjValidado = d2.cnpj;
-          if (d2.empresa) document.getElementById('form-title').textContent = d2.empresa;
-          showForm('login');
-          return;
-        }
-        // Auto-setup falhou — mostra erro sem pedir token manualmente
-        const err = document.getElementById('err');
-        err.textContent = d2.detail || 'Sistema não configurado. Contate o suporte.';
+  function abrirEsqueciSenha() {
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('empresaForm').style.display = 'none';
+    document.getElementById('err').style.display = 'none';
+    document.getElementById('form-title').textContent = 'Recuperar senha';
+    document.getElementById('forgotForm').style.display = 'block';
+    document.getElementById('forgot-email').focus();
+  }
+
+  async function enviarEsqueciSenha() {
+    const err = document.getElementById('err');
+    err.style.display = 'none';
+    const email = document.getElementById('forgot-email').value.trim().toLowerCase();
+    if (!email || !email.includes('@')) {
+      err.textContent = 'Informe um e-mail válido.';
+      err.style.display = 'block';
+      return;
+    }
+    const btn = document.getElementById('btn-forgot');
+    btn.disabled = true;
+    document.getElementById('btn-forgot-text').textContent = 'Enviando...';
+    try {
+      const r = await fetch('/api/auth/recuperar-senha', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) {
+        document.getElementById('forgotForm').innerHTML =
+          '<p style="text-align:center;padding:20px 0;color:var(--primary-deep,#3d7f1f);font-weight:600">✓ Se o e-mail estiver cadastrado, você receberá um link em instantes. Verifique também sua caixa de spam.</p>' +
+          '<button type="button" onclick="voltarLogin()" style="background:none;border:none;color:var(--text-3);font-size:.85rem;cursor:pointer;text-decoration:underline;width:100%">← Voltar para login</button>';
+      } else {
+        err.textContent = _fmtErr(d) || 'Não foi possível enviar o e-mail.';
         err.style.display = 'block';
-      } catch (e) {
-        const err = document.getElementById('err');
-        err.textContent = 'Não foi possível conectar ao servidor.';
-        err.style.display = 'block';
+        btn.disabled = false;
+        document.getElementById('btn-forgot-text').textContent = 'Enviar link de recuperação';
       }
-      showForm('login');
-    })
-    .catch(() => showForm('login'));
+    } catch {
+      err.textContent = 'Falha de conexão. Tente novamente.';
+      err.style.display = 'block';
+      btn.disabled = false;
+      document.getElementById('btn-forgot-text').textContent = 'Enviar link de recuperação';
+    }
+  }
+
+  // Tela inicial: mostra DIRETO loginForm com título "ZapDin" — sem expor nome de empresa
+  showForm('login');
 
   // Etapa 0: Ativar com token
   document.getElementById('tokenForm').addEventListener('submit', async (e) => {
@@ -530,56 +538,7 @@
     }
   });
 
-  // Etapa 1: validar CNPJ
-  document.getElementById('cnpjForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const err = document.getElementById('err');
-    err.style.display = 'none';
-
-    const cnpj = document.getElementById('cnpj').value.replace(/\D/g, '');
-    if (cnpj.length !== 14) {
-      err.textContent = 'Informe um CNPJ válido com 14 dígitos.';
-      err.style.display = 'block';
-      return;
-    }
-
-    const btnCnpj = document.getElementById('btn-cnpj');
-    const spinnerCnpj = document.getElementById('spinner-cnpj');
-    btnCnpj.disabled = true;
-    spinnerCnpj.style.display = 'block';
-    document.getElementById('btn-cnpj-text').textContent = 'Verificando…';
-
-    try {
-      const res = await fetch('/api/auth/check-cnpj', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cnpj }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) {
-        _cnpjValidado = cnpj;
-        document.getElementById('form-title').textContent = data.nome || 'Acesso autorizado';
-        const sub = document.getElementById('form-sub');
-        sub.textContent = 'CNPJ: ' + document.getElementById('cnpj').value;
-        sub.style.display = 'block';
-        document.getElementById('cnpjForm').style.display = 'none';
-        document.getElementById('loginForm').style.display = 'contents';
-        document.getElementById('username').focus();
-      } else {
-        err.textContent = _fmtErr(data) || 'CNPJ não encontrado ou inativo.';
-        err.style.display = 'block';
-      }
-    } catch {
-      err.textContent = 'Não foi possível conectar ao servidor.';
-      err.style.display = 'block';
-    } finally {
-      btnCnpj.disabled = false;
-      spinnerCnpj.style.display = 'none';
-      document.getElementById('btn-cnpj-text').textContent = 'Verificar CNPJ';
-    }
-  });
-
-  // Etapa 2: login com usuário/senha
+  // Login com usuário/senha (sem CNPJ)
   document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const err = document.getElementById('err');
@@ -603,6 +562,11 @@
         body: JSON.stringify({ username, password }),
       });
       const data = await res.json().catch(() => ({}));
+      // Senha temporária — força troca antes de logar
+      if (data && data.must_change_password && data.reset_token) {
+        window.location.href = '/redefinir-senha?token=' + encodeURIComponent(data.reset_token) + '&first=1';
+        return;
+      }
       if (res.ok && data.ok) {
         if (data.multi === false) {
           // 1 empresa → já logado
@@ -630,7 +594,6 @@
 
   function _mostrarSelecaoEmpresa(empresas) {
     document.getElementById('loginForm').style.display  = 'none';
-    document.getElementById('cnpjForm').style.display   = 'none';
     document.getElementById('form-title').textContent   = 'Escolha a empresa';
     const lista = document.getElementById('empresaLista');
     lista.innerHTML = empresas.map(e => `

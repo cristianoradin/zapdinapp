@@ -1,0 +1,193 @@
+{
+  "versions": [
+    {
+      "version": "1.3.19",
+      "date": "2026-06-08",
+      "tipo": "app",
+      "title": "Botão Ver no histórico de envios + IA Central + Agent NAT",
+      "notes": [
+        "Botão 'Ver' em Gestão de Arquivos → Histórico de Envios: abre modal com mensagem/PDF/imagem",
+        "Tela Chatbot agora ocupa altura e largura total do viewport",
+        "Menu IA Central abaixo de Chatbot no sidebar",
+        "Sub-nav do Chatbot removida — configs de IA centralizadas em IA Central",
+        "Mapeamento completo de menus para controle por cliente no Monitor",
+        "Tracking de status entregue/visualizado também para tabelas mensagens + campanha_envios",
+        "Modo de conexão WhatsApp visível ao criar sessão (Servidor / LAN / Agente)",
+        "Routing automático get_qr via Socket.IO quando sessão é modo Agente",
+        "Botão 'Testar comunicação' ao escolher modo Agente",
+        "Endpoint /api/agents/install-script.bat — instalador zero-touch com token embutido",
+        "Página Download no portal com botão personalizado por empresa"
+      ]
+    },
+    {
+      "version": "1.3.18",
+      "date": "2026-06-02",
+      "tipo": "app",
+      "title": "Modo Híbrido NAT — ZapDin Agent",
+      "notes": [
+        "Arquitetura NAT bridge: agent local controla WhatsApp Web via Playwright Chromium",
+        "Login do Monitor sem dropdown de cliente",
+        "Botão colapsável 'Onde roda Evolution API' no app"
+      ]
+    }
+  ],
+  "agent_versions": [
+    {
+      "version": "0.2.18",
+      "date": "2026-06-08",
+      "notes": [
+        "Setup aceita argumento /TOKEN=xxx (instalação personalizada zero-touch)",
+        "activate.bat skipa prompt se .env já configurado",
+        "Novo comando 'ping' lightweight (sem spawn Chromium)"
+      ]
+    },
+    {
+      "version": "0.2.17",
+      "date": "2026-06-08",
+      "notes": [
+        "Fix definitivo: AppParameters NSSM quoting via concat literal",
+        "REG ADD fallback se NSSM não preservar aspas"
+      ]
+    },
+    {
+      "version": "0.2.16",
+      "date": "2026-06-08",
+      "notes": [
+        "sc continue antes de start (handle PAUSED state residual)"
+      ]
+    },
+    {
+      "version": "0.2.15",
+      "date": "2026-06-08",
+      "notes": [
+        "PrepareToInstall: nssm stop + remove + kill surgical (não toca python/chrome do user)",
+        "restartreplace flag em vendor/python (fallback DLL locked)",
+        "Mata só processos com ExecutablePath dentro do install dir"
+      ]
+    },
+    {
+      "version": "0.2.14",
+      "date": "2026-06-08",
+      "notes": [
+        "PrepareToInstall: stop service antes de overwrite (libera DLLs em uso)"
+      ]
+    },
+    {
+      "version": "0.2.13",
+      "date": "2026-06-07",
+      "notes": [
+        "Stealth fingerprint: esconde navigator.webdriver",
+        "User-Agent Chrome real, args sem --enable-automation",
+        "Aguarda WhatsApp Web carregar 5s antes de buscar QR canvas",
+        "Fallback selector qualquer canvas + debug log"
+      ]
+    },
+    {
+      "version": "0.2.12",
+      "date": "2026-06-07",
+      "notes": [
+        "PLAYWRIGHT_BROWSERS_PATH fixo (compatível com service LocalSystem)"
+      ]
+    },
+    {
+      "version": "0.2.11",
+      "date": "2026-06-07",
+      "notes": [
+        "AppParameters quoted para paths com espaço (Program Files)"
+      ]
+    },
+    {
+      "version": "0.2.10",
+      "date": "2026-06-08",
+      "notes": [
+        "nssm.exe REAL no setup (não shim Chocolatey de 50KB)"
+      ]
+    },
+    {
+      "version": "0.2.9",
+      "date": "2026-06-08",
+      "notes": [
+        "Fix flag inválido shellexec+waituntilterminated → cmd /c",
+        "install-service.ps1 sem runhidden + try/catch + debug log",
+        "Script repair.bat idempotente"
+      ]
+    },
+    {
+      "version": "0.2.8",
+      "date": "2026-06-07",
+      "notes": [
+        "Fix path .env (.parent em vez de .parent.parent)",
+        "Reorder setup steps: activate + service antes de Chromium download"
+      ]
+    },
+    {
+      "version": "0.2.7",
+      "date": "2026-06-07",
+      "notes": [
+        "agent_runner.py wrapper que resolve sys.path internamente",
+        "diag.bat script diagnóstico com 8 checks"
+      ]
+    },
+    {
+      "version": "0.2.6",
+      "date": "2026-06-07",
+      "notes": [
+        "NSSM PYTHONPATH={app} pra agent module resolver"
+      ]
+    },
+    {
+      "version": "0.2.5",
+      "date": "2026-06-07",
+      "notes": [
+        "activate.bat wrapper + tk smoke test",
+        "Fallback console com traceback se GUI falhar"
+      ]
+    },
+    {
+      "version": "0.2.4",
+      "date": "2026-06-07",
+      "notes": [
+        "Console fallback no activate (Python embedded sem tkinter)",
+        "Atalho desktop default-checked"
+      ]
+    },
+    {
+      "version": "0.2.3",
+      "date": "2026-06-07",
+      "notes": [
+        "chromium-headless-shell (60MB vs 150MB full Chromium)"
+      ]
+    },
+    {
+      "version": "0.2.2",
+      "date": "2026-06-07",
+      "notes": [
+        "Console visível durante install com progress bar real"
+      ]
+    },
+    {
+      "version": "0.2.1",
+      "date": "2026-06-03",
+      "notes": [
+        "Auto-update endpoint + cliente polling 6h"
+      ]
+    },
+    {
+      "version": "0.2.0",
+      "date": "2026-06-03",
+      "notes": [
+        "Refactor: Playwright Chromium nativo (sem Docker)",
+        "Single-exe install, sem prereq",
+        "~700MB RAM idle vs 2GB Docker",
+        "Mesmo motor do app cloud"
+      ]
+    },
+    {
+      "version": "0.1.1",
+      "date": "2026-06-03",
+      "notes": [
+        "Agent NAT bridge inicial (Evolution Docker local + Socket.IO)"
+      ]
+    }
+  ]
+}

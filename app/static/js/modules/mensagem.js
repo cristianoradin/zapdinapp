@@ -86,10 +86,7 @@ window.mensagemModule = (() => {
     const avalAtivo = document.getElementById('toggleAvaliacao')?.checked;
     if (avalAtivo) {
       const linkFull = _linkDemoAvaliacao || `${location.origin}/avaliacao?t=DEMO`;
-      const linkCurto = (() => {
-        try { const u = new URL(linkFull); return u.hostname + '/avaliacao'; } catch { return 'avaliacao'; }
-      })();
-      preview += `\n\n⭐ Avalie nosso atendimento:\n🔗 ${linkCurto}`;
+      preview += `\n\n⭐ Avalie nosso atendimento:\n${linkFull}`;
     }
     document.getElementById('previewMensagem').textContent = preview || 'Digite o template ao lado para ver o preview aqui…';
     const wrap = document.querySelector('.wa-preview-wrap-inner');

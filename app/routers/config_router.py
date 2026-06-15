@@ -48,7 +48,10 @@ async def get_config(
         data["mensagem_padrao"] = _DEFAULT_TEMPLATE
 
     # Expõe o nome da empresa da licença (somente leitura — não editável)
-    data["client_name"] = settings.client_name or ""
+    # Vem da tabela `empresas` (multi-tenant), não do settings global.
+    async with db.execute("SELECT nome FROM empresas WHERE id=?", (empresa_id,)) as cur:
+        emp_row = await cur.fetchone()
+    data["client_name"] = (emp_row["nome"] if emp_row else "") or settings.client_name or ""
 
     return data
 

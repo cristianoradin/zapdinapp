@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 import socketio
 import uvicorn
 from fastapi import Depends, FastAPI, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -88,7 +88,15 @@ _WS_ORIGINS = [
     f"http://localhost:{settings.port}",
     f"http://127.0.0.1:{settings.port}",
 ]
-sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins=_WS_ORIGINS)
+# ping_timeout alto (90s): o agente pode travar o loop durante o launch do
+# Chromium (get_qr ~15-30s) e não responder o ping a tempo. Com timeout curto
+# (default 20s) o servidor matava a conexão → agente caía ~1min após conectar.
+sio = socketio.AsyncServer(
+    async_mode="asgi",
+    cors_allowed_origins=_WS_ORIGINS,
+    ping_interval=25,
+    ping_timeout=90,
+)
 
 # Injeta sio no evolution_service para que comandos em modo agente sejam roteados via WS
 try:
@@ -190,6 +198,8 @@ _LOCK_ALLOWED_PREFIXES = (
     "/favicon",
     "/avaliacao",
     "/api/avaliacao/",
+    "/instalar/",          # kit de instalação self-service
+    "/api/kit/",
 )
 
 
@@ -383,6 +393,8 @@ fastapi_app.include_router(syslog_router)            # /api/syslog/* (log do sis
 fastapi_app.include_router(ia_central_router)       # /api/ia-central/* (IA Central)
 fastapi_app.include_router(home_router)             # /api/home/* (Home Dashboard)
 fastapi_app.include_router(agents_router)           # /api/agents + /metrics (NAT agent + Prometheus)
+from .routers.kit import router as kit_router
+fastapi_app.include_router(kit_router)               # /instalar/{kit} + /api/kit/* (onboarding self-service)
 
 
 @fastapi_app.post("/api/logout")
@@ -416,6 +428,20 @@ async def list_connected_agents(user: dict = Depends(get_current_user)):
     if emp_id:
         agents = [a for a in agents if a.get("empresa_id") == emp_id]
     return {"agents": agents, "count": len(agents)}
+
+
+@fastapi_app.get("/api/version")
+async def api_version():
+    """Versão atual do app (lida de versao.json)."""
+    import json as _json2
+    from pathlib import Path as _Path2
+    p = _Path2(__file__).parent / "versao.json"
+    if p.exists():
+        try:
+            return {"versao": _json2.loads(p.read_text()).get("versao", "?"), "build": APP_BUILD}
+        except Exception:
+            pass
+    return {"versao": "?", "build": APP_BUILD}
 
 
 @fastapi_app.get("/api/evo-file/{token}")
@@ -457,7 +483,7 @@ _static_dir = os.path.join(os.path.dirname(__file__), "static")
 _logo_dir = os.path.join(_static_dir, "logo")
 
 _NO_CACHE = {"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
-APP_BUILD = "20260603ze"
+APP_BUILD = "20260615g"
 
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -474,9 +500,23 @@ class NoCacheStaticMiddleware(BaseHTTPMiddleware):
 fastapi_app.add_middleware(NoCacheStaticMiddleware)
 
 
+@fastapi_app.get("/favicon.ico")
+@fastapi_app.get("/favicon.png")
+async def serve_favicon():
+    p = os.path.join(_static_dir, "logo", "favicon.png")
+    if os.path.exists(p):
+        return FileResponse(p, media_type="image/png")
+    return Response(status_code=404)
+
+
 @fastapi_app.get("/login")
 async def serve_login():
     return FileResponse(os.path.join(_static_dir, "login.html"), headers=_NO_CACHE)
+
+
+@fastapi_app.get("/redefinir-senha")
+async def serve_redefinir_senha():
+    return FileResponse(os.path.join(_static_dir, "redefinir-senha.html"), headers=_NO_CACHE)
 
 
 @fastapi_app.get("/static/pages/{page_name}")

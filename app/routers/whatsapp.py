@@ -90,13 +90,113 @@ async def live_status(user: dict = Depends(get_current_user)):
     return wa_manager.get_status(user["empresa_id"])
 
 
-@router.get("/qr/{sessao_id}")
-async def get_qr(sessao_id: str, user: dict = Depends(get_current_user)):
+@router.get("/modos-permitidos")
+async def modos_permitidos(db=Depends(get_db), user: dict = Depends(get_current_user)):
+    """Retorna lista de modos permitidos pra empresa (gerenciado pelo Monitor admin)."""
     empresa_id = user["empresa_id"]
+    async with db.execute("SELECT modos_conexao FROM empresas WHERE id=?", (empresa_id,)) as cur:
+        row = await cur.fetchone()
+    raw = (row["modos_conexao"] if row else "") or "servidor,local,agente"
+    modos = [m.strip() for m in raw.split(",") if m.strip()]
+    # Sanitiza: aceita só valores conhecidos
+    allowed = {"servidor", "local", "agente"}
+    modos = [m for m in modos if m in allowed]
+    if not modos:
+        modos = ["servidor"]
+    return {"modos": modos}
+
+
+@router.post("/refresh-phone/{sessao_id}")
+async def refresh_phone(sessao_id: str, db=Depends(get_db), user: dict = Depends(get_current_user)):
+    """Pede ao agent get_state, extrai phone e grava em sessoes_wa.phone.
+    Usado depois de scan QR pra identificar o número conectado."""
+    empresa_id = user["empresa_id"]
+    from ..services import agent_bridge
+    if not agent_bridge.has_agent(empresa_id):
+        raise HTTPException(503, "Nenhum agent conectado")
+    ag = agent_bridge.get_agent(empresa_id)
+    from ..main import sio
+    try:
+        res = await sio.call(
+            "get_state",
+            {"command": "get_state", "payload": {"instance": sessao_id}},
+            to=ag["sid"], namespace="/agent", timeout=15,
+        )
+    except Exception as exc:
+        raise HTTPException(504, f"Agent timeout: {exc}")
+    if not isinstance(res, dict) or not res.get("ok"):
+        err = (res or {}).get("error") if isinstance(res, dict) else "no response"
+        raise HTTPException(502, f"Agent: {err}")
+    state = res.get("state")
+    phone = res.get("phone") or ""
+    if state == "open" and phone:
+        await db.execute(
+            "UPDATE sessoes_wa SET status='connected', phone=?, last_seen=NOW() WHERE id=? AND empresa_id=?",
+            (phone, sessao_id, empresa_id),
+        )
+        await db.commit()
+        logger.info("[whatsapp] phone gravado: sessao=%s empresa=%s phone=%s", sessao_id, empresa_id, phone)
+    return {"ok": True, "state": state, "phone": phone}
+
+
+@router.get("/qr/{sessao_id}")
+async def get_qr(sessao_id: str, db=Depends(get_db), user: dict = Depends(get_current_user)):
+    empresa_id = user["empresa_id"]
+
+    # Detecta modo da sessão: só roteia via agent se evolution_url == "agent://"
+    async with db.execute(
+        "SELECT evolution_url FROM sessoes_wa WHERE id=? AND empresa_id=?",
+        (sessao_id, empresa_id),
+    ) as cur:
+        sess_row = await cur.fetchone()
+    sess_url = (sess_row["evolution_url"] if sess_row else "") or ""
+    is_agent_mode = sess_url.strip().lower().startswith("agent://")
+
+    # Branch agent_bridge: só ativa se sessão configurada em "Agente (atravessa NAT)"
+    from ..services import agent_bridge
+    if is_agent_mode and agent_bridge.has_agent(empresa_id):
+        from ..main import sio
+        ag = agent_bridge.get_agent(empresa_id)
+        logger.info("[whatsapp] get_qr via agent: empresa=%s sid=%s sessao=%s",
+                    empresa_id, ag["sid"], sessao_id)
+        try:
+            res = await sio.call(
+                "get_qr",
+                {"command": "get_qr", "payload": {"instance": sessao_id}},
+                to=ag["sid"],
+                namespace="/agent",
+                timeout=60,  # primeira chamada precisa spawn Chromium
+            )
+            logger.info("[whatsapp] agent response: %r", res)
+            if isinstance(res, dict) and res.get("ok"):
+                qr = res.get("qr") or ""
+                state = res.get("state") or ""
+                if not qr and state == "open":
+                    raise HTTPException(status_code=409, detail="WhatsApp já conectado.")
+                if not qr:
+                    raise HTTPException(status_code=404, detail=f"QR ainda não disponível (state={state}), tente em 5s.")
+                return {"qr": qr, "state": state, "via": "agent"}
+            err = (res or {}).get("error") if isinstance(res, dict) else "agent não respondeu"
+            logger.warning("[whatsapp] agent retornou erro: %s | res=%r", err, res)
+            raise HTTPException(status_code=502, detail=f"Agent: {err}")
+        except HTTPException:
+            raise
+        except Exception as exc:
+            logger.exception("[whatsapp] get_qr via agent falhou")
+            raise HTTPException(status_code=504, detail=f"Timeout/erro agent: {exc}")
+
+    # Modo agente configurado mas agent não conectado → erro explícito
+    if is_agent_mode and not agent_bridge.has_agent(empresa_id):
+        raise HTTPException(
+            status_code=503,
+            detail="Sessão em modo Agente, mas nenhum ZapDinAgent conectado para esta empresa. Verifique o serviço no posto.",
+        )
+
+    # Fallback legacy (Evolution/Playwright server-side)
     qr = wa_manager.get_qr(sessao_id, empresa_id)
     if qr is None:
         logger.warning(
-            "[whatsapp] QR não disponível: sessao=%s empresa=%s — sessão pode não estar conectando ou já conectada",
+            "[whatsapp] QR não disponível: sessao=%s empresa=%s",
             sessao_id, empresa_id,
         )
         raise HTTPException(status_code=404, detail="QR não disponível")

@@ -30,7 +30,7 @@ class MensagemRepository(BaseRepository):
     async def list_recent(self, empresa_id: int, limit: int = 50) -> list:
         return await self._fetchall(
             "SELECT id, destinatario, nome_destinatario, mensagem, tipo, status, "
-            "created_at, sent_at, erro "
+            "created_at, sent_at, delivered_at, read_at, erro "
             "FROM mensagens WHERE empresa_id=? ORDER BY id DESC LIMIT ?",
             (empresa_id, limit),
         )

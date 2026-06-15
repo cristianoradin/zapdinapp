@@ -2,6 +2,10 @@
 app/routers/contabil.py
 Módulo Contábil — endpoints para escritório de contabilidade.
 
+Router HTTP fino: validação de entrada, chamada ao repositório/serviço, resposta.
+SQL em app/repositories/contabil_repository.py;
+regra de negócio (boas-vindas WA) em app/services/contabil_service.py.
+
 Rotas:
   GET/POST  /api/contabil/empresas
   GET/PUT/DELETE /api/contabil/empresas/{id}
@@ -15,13 +19,11 @@ Rotas:
 """
 from __future__ import annotations
 
-import asyncio
-import json
 import logging
-import os
 import shutil
+import os
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date
 from pathlib import Path
 from typing import Optional
 
@@ -31,6 +33,14 @@ from pydantic import BaseModel, field_validator
 
 from ..core.database import get_db
 from ..core.security import get_current_user
+from ..repositories import ContabilRepository
+from ..repositories.contabil_repository import EMPRESA_FIELDS
+from ..services.contabil_service import (  # noqa: F401 — re-export p/ compatibilidade
+    _MSG_BOAS_VINDAS,
+    _enviar_boas_vindas,
+    _entregar_boas_vindas,
+    processar_boasvindas_pendentes,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/contabil", tags=["contabil"])
@@ -97,114 +107,16 @@ class DadosManuaisNF(BaseModel):
     totais: Optional[dict] = None
 
 
-# ── Helper: enviar boas-vindas WA ─────────────────────────────────────────────
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
-_MSG_BOAS_VINDAS = (
-    "👋 *Olá, {nome}!*\n\n"
-    "Seu cadastro no nosso escritório de contabilidade foi realizado com sucesso! ✅\n\n"
-    "*Como enviar seus documentos:*\n"
-    "📄 Envie suas *Notas Fiscais* (imagens ou PDF) diretamente aqui neste chat.\n"
-    "📊 Aceitamos NF-e, NF-Ce e CT-e.\n\n"
-    "Nossa equipe irá processar seus documentos e mantê-lo informado. 🚀\n\n"
-    "_Dúvidas? Responda esta mensagem._"
-)
-
-
-async def _enviar_boas_vindas(empresa_id: int, telefone: str, nome: str, db) -> None:
-    """Envia mensagem de boas-vindas via WhatsApp. Se não houver sessão ativa,
-    grava em contabil_wa_pendentes para o worker reenviar depois."""
-    try:
-        from ..main import wa_manager
-        sessoes = list(wa_manager._sessions.values())
-        # Prefere sessão conectada; qualquer sessão como fallback
-        sessao = next((s for s in sessoes if getattr(s, "status", "") == "connected"), None) \
-                 or (sessoes[0] if sessoes else None)
-        if not sessao:
-            # Sem sessão WA: enfileirar para reenvio futuro
-            await db.execute(
-                "INSERT INTO contabil_wa_pendentes(empresa_id, telefone, nome) VALUES(?,?,?)",
-                (empresa_id, telefone, nome),
-            )
-            await db.commit()
-            logger.info(
-                "[contabil] Sem sessão WA — boas-vindas para %s enfileiradas (%s)",
-                nome, telefone,
-            )
-            return
-
-        await _entregar_boas_vindas(empresa_id, telefone, nome, db, wa_manager, sessao)
-
-    except Exception as e:
-        logger.error("[contabil] Erro ao enviar boas-vindas: %s", e)
-
-
-async def _entregar_boas_vindas(empresa_id: int, telefone: str, nome: str, db, wa_manager, sessao) -> None:
-    """Faz o envio real via wa_manager (compatível com Playwright e Evolution)."""
-    phone_wa = "55" + telefone if not telefone.startswith("55") else telefone
-    msg = _MSG_BOAS_VINDAS.format(nome=nome)
-    # Usa wa_manager.send_text que funciona para ambos os backends
-    ok, err = await wa_manager.send_text(sessao.session_id, sessao.empresa_id, phone_wa, msg)
-    if not ok:
-        raise RuntimeError(f"Falha ao enviar WA: {err}")
-
-    await db.execute(
-        "UPDATE empresas_contabil SET boas_vindas_enviadas=TRUE WHERE id=?",
-        (empresa_id,),
-    )
-    await db.execute(
-        "INSERT INTO contabil_feed(empresa_id, tipo, descricao) VALUES(?,?,?)",
-        (empresa_id, "boas_vindas", f"Mensagem de boas-vindas enviada para {nome}"),
-    )
-    await db.commit()
-    logger.info("[contabil] Boas-vindas enviadas para %s (%s)", nome, telefone)
-
-
-async def processar_boasvindas_pendentes(wa_manager, get_db_direct) -> int:
-    """Chamado pelo queue_worker. Processa até 5 pendentes por rodada.
-    Retorna quantos foram enviados com sucesso."""
-    sessoes = list(wa_manager._sessions.values())
-    if not sessoes:
-        return 0  # ainda sem sessão, não faz nada
-
-    # Prefere sessão conectada
-    sessao = next((s for s in sessoes if getattr(s, "status", "") == "connected"), sessoes[0])
-    enviados = 0
-
-    async with get_db_direct() as db:
-        async with db.execute(
-            "SELECT id, empresa_id, telefone, nome, tentativas "
-            "FROM contabil_wa_pendentes WHERE status='pendente' "
-            "ORDER BY criado_em LIMIT 5"
-        ) as cur:
-            pendentes = await cur.fetchall()
-
-        for row in pendentes:
-            pid, empresa_id, telefone, nome, tentativas = (
-                row["id"], row["empresa_id"], row["telefone"],
-                row["nome"], row["tentativas"],
-            )
-            try:
-                await _entregar_boas_vindas(empresa_id, telefone, nome, db, wa_manager, sessao)
-                await db.execute(
-                    "UPDATE contabil_wa_pendentes SET status='enviado', enviado_em=NOW() WHERE id=?",
-                    (pid,),
-                )
-                await db.commit()
-                enviados += 1
-            except Exception as exc:
-                novas_tentativas = tentativas + 1
-                novo_status = "falha" if novas_tentativas >= 3 else "pendente"
-                await db.execute(
-                    "UPDATE contabil_wa_pendentes SET tentativas=?, status=? WHERE id=?",
-                    (novas_tentativas, novo_status, pid),
-                )
-                await db.commit()
-                logger.warning(
-                    "[contabil] Falha ao entregar boas-vindas pendente id=%s (tentativa %s): %s",
-                    pid, novas_tentativas, exc,
-                )
-
-    return enviados
+def _salvar_upload(arquivo: UploadFile) -> tuple[str, str]:
+    """Salva o arquivo em disco. Retorna (dest_path, mime)."""
+    ext = Path(arquivo.filename or "doc").suffix or ".jpg"
+    nome_arquivo = f"{uuid.uuid4().hex}{ext}"
+    dest_path = str(_UPLOAD_DIR / nome_arquivo)
+    with open(dest_path, "wb") as f:
+        shutil.copyfileobj(arquivo.file, f)
+    return dest_path, (arquivo.content_type or "image/jpeg")
 
 
 # ── CRUD Empresas ─────────────────────────────────────────────────────────────
@@ -215,25 +127,8 @@ async def listar_empresas(
     db=Depends(get_db),
     user=Depends(get_current_user),
 ):
-    sql = """
-        SELECT ec.*,
-               COUNT(df.id) FILTER (WHERE df.status != 'aprovado') AS docs_pendentes,
-               COUNT(df.id) FILTER (WHERE df.status = 'aprovado')  AS docs_aprovados,
-               COUNT(df.id) FILTER (WHERE df.status = 'ocr_erro')  AS docs_erro,
-               COUNT(df.id)                                         AS docs_total
-        FROM empresas_contabil ec
-        LEFT JOIN documentos_fiscais df ON df.empresa_id = ec.id
-    """
-    params = []
-    if q:
-        sql += " WHERE ec.nome ILIKE ? OR ec.cnpj LIKE ? OR ec.telefone LIKE ?"
-        like = f"%{q}%"
-        params = [like, like, like]
-    sql += " GROUP BY ec.id ORDER BY ec.nome"
-
-    async with db.execute(sql, params) as cur:
-        rows = await cur.fetchall()
-    return [dict(r) for r in rows]
+    tenant_id = user["empresa_id"]
+    return await ContabilRepository(db).listar_empresas(tenant_id, q)
 
 
 @router.post("/empresas", status_code=201)
@@ -243,32 +138,18 @@ async def criar_empresa(
     db=Depends(get_db),
     user=Depends(get_current_user),
 ):
-    # Verifica duplicata de telefone
-    async with db.execute(
-        "SELECT id FROM empresas_contabil WHERE telefone=?", (body.telefone,)
-    ) as cur:
-        if await cur.fetchone():
-            raise HTTPException(400, "Telefone já cadastrado para outra empresa.")
+    tenant_id = user["empresa_id"]
+    repo = ContabilRepository(db)
+    # Verifica duplicata de telefone DENTRO do mesmo tenant
+    if await repo.telefone_existe(tenant_id, body.telefone):
+        raise HTTPException(400, "Telefone já cadastrado para outra empresa.")
 
-    async with db.execute(
-        """INSERT INTO empresas_contabil
-           (nome, cnpj, ie, cpf, rg, endereco, numero_endereco, bairro, cep,
-            cidade, uf, telefone, email, regime_tributario)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-        (body.nome, body.cnpj, body.ie, body.cpf, body.rg,
-         body.endereco, body.numero_endereco, body.bairro, body.cep,
-         body.cidade, body.uf, body.telefone,
-         body.email, body.regime_tributario)
-    ) as cur:
-        empresa_id = cur.lastrowid
-    await db.commit()
+    empresa_id = await repo.criar_empresa(tenant_id, body.model_dump())
 
     # Feed
-    await db.execute(
-        "INSERT INTO contabil_feed(empresa_id, tipo, descricao) VALUES(?,?,?)",
-        (empresa_id, "cadastro", f"Empresa '{body.nome}' cadastrada")
+    await repo.add_evento(
+        tenant_id, "cadastro", f"Empresa '{body.nome}' cadastrada", empresa_id=empresa_id
     )
-    await db.commit()
 
     # Boas-vindas em background
     bg.add_task(_enviar_boas_vindas, empresa_id, body.telefone, body.nome, db)
@@ -278,10 +159,8 @@ async def criar_empresa(
 
 @router.get("/empresas/{empresa_id}")
 async def get_empresa(empresa_id: int, db=Depends(get_db), user=Depends(get_current_user)):
-    async with db.execute(
-        "SELECT * FROM empresas_contabil WHERE id=?", (empresa_id,)
-    ) as cur:
-        row = await cur.fetchone()
+    tenant_id = user["empresa_id"]
+    row = await ContabilRepository(db).get_empresa(tenant_id, empresa_id)
     if not row:
         raise HTTPException(404, "Empresa não encontrada.")
     return dict(row)
@@ -294,21 +173,19 @@ async def atualizar_empresa(
     db=Depends(get_db),
     user=Depends(get_current_user),
 ):
-    fields, params = [], []
-    for f in ["nome", "cnpj", "ie", "cpf", "rg", "endereco", "numero_endereco",
-              "bairro", "cep", "cidade", "uf", "telefone", "email", "regime_tributario"]:
-        val = getattr(body, f, None)
-        if val is not None:
-            fields.append(f"{f}=?")
-            params.append(val)
-    if not fields:
+    tenant_id = user["empresa_id"]
+    repo = ContabilRepository(db)
+    # Confirma posse antes de atualizar
+    if not await repo.empresa_existe(tenant_id, empresa_id):
+        raise HTTPException(404, "Empresa não encontrada.")
+    campos = {
+        f: getattr(body, f, None)
+        for f in EMPRESA_FIELDS
+        if getattr(body, f, None) is not None
+    }
+    if not campos:
         raise HTTPException(400, "Nenhum campo para atualizar.")
-    params.append(empresa_id)
-    await db.execute(
-        f"UPDATE empresas_contabil SET {', '.join(fields)}, updated_at=NOW() WHERE id=?",
-        params
-    )
-    await db.commit()
+    await repo.atualizar_empresa(tenant_id, empresa_id, campos)
     return {"ok": True}
 
 
@@ -316,8 +193,8 @@ async def atualizar_empresa(
 async def deletar_empresa(
     empresa_id: int, db=Depends(get_db), user=Depends(get_current_user)
 ):
-    await db.execute("DELETE FROM empresas_contabil WHERE id=?", (empresa_id,))
-    await db.commit()
+    tenant_id = user["empresa_id"]
+    await ContabilRepository(db).deletar_empresa(tenant_id, empresa_id)
 
 
 @router.post("/empresas/{empresa_id}/reenviar-boasvindas")
@@ -328,21 +205,16 @@ async def reenviar_boasvindas(
     user=Depends(get_current_user),
 ):
     """Reenvia a mensagem de boas-vindas via WhatsApp para a empresa."""
-    async with db.execute(
-        "SELECT nome, telefone FROM empresas_contabil WHERE id=?", (empresa_id,)
-    ) as cur:
-        row = await cur.fetchone()
+    tenant_id = user["empresa_id"]
+    repo = ContabilRepository(db)
+    row = await repo.get_nome_telefone(tenant_id, empresa_id)
     if not row:
         raise HTTPException(404, "Empresa não encontrada.")
 
     nome, telefone = row["nome"], row["telefone"]
 
     # Reseta flag para que o reenvio seja registrado corretamente
-    await db.execute(
-        "UPDATE empresas_contabil SET boas_vindas_enviadas=FALSE WHERE id=?",
-        (empresa_id,),
-    )
-    await db.commit()
+    await repo.set_boas_vindas(tenant_id, empresa_id, False)
 
     bg.add_task(_enviar_boas_vindas, empresa_id, telefone, nome, db)
     return {"ok": True, "mensagem": f"Reenvio de boas-vindas agendado para {nome}."}
@@ -352,43 +224,15 @@ async def reenviar_boasvindas(
 
 @router.get("/dashboard")
 async def dashboard(db=Depends(get_db), user=Depends(get_current_user)):
+    tenant_id = user["empresa_id"]
+    repo = ContabilRepository(db)
     hoje = date.today()  # asyncpg exige date object, não string isoformat
 
-    async with db.execute(
-        "SELECT COUNT(*) AS total FROM documentos_fiscais WHERE created_at::date = ?", (hoje,)
-    ) as cur:
-        docs_hoje = (await cur.fetchone())["total"]
-
-    async with db.execute(
-        "SELECT COUNT(*) AS total FROM documentos_fiscais WHERE status IN ('ocr_pendente','revisao_manual')"
-    ) as cur:
-        pendencias = (await cur.fetchone())["total"]
-
-    async with db.execute(
-        """SELECT
-            COUNT(*) FILTER (WHERE status = 'aprovado')  AS aprovados,
-            COUNT(*) FILTER (WHERE status != 'recebido') AS processados
-           FROM documentos_fiscais"""
-    ) as cur:
-        row = await cur.fetchone()
-        aprovados = row["aprovados"] or 0
-        processados = row["processados"] or 0
-        taxa_ocr = round((aprovados / processados * 100), 1) if processados > 0 else 0.0
-
-    async with db.execute(
-        """SELECT df.*, ec.nome AS empresa_nome
-           FROM documentos_fiscais df
-           LEFT JOIN empresas_contabil ec ON ec.id = df.empresa_id
-           ORDER BY df.created_at DESC
-           LIMIT 50"""
-    ) as cur:
-        docs = [dict(r) for r in await cur.fetchall()]
-
     return {
-        "docs_hoje": docs_hoje,
-        "pendencias": pendencias,
-        "taxa_ocr": taxa_ocr,
-        "documentos": docs,
+        "docs_hoje": await repo.dashboard_docs_hoje(tenant_id, hoje),
+        "pendencias": await repo.dashboard_pendencias(tenant_id),
+        "taxa_ocr": await repo.dashboard_taxa_ocr(tenant_id),
+        "documentos": await repo.dashboard_docs_recentes(tenant_id),
     }
 
 
@@ -401,56 +245,23 @@ async def listar_documentos(
     db=Depends(get_db),
     user=Depends(get_current_user),
 ):
-    sql = """
-        SELECT df.*, ec.nome AS empresa_nome
-        FROM documentos_fiscais df
-        LEFT JOIN empresas_contabil ec ON ec.id = df.empresa_id
-        WHERE 1=1
-    """
-    params = []
-    if empresa_id:
-        sql += " AND df.empresa_id=?"
-        params.append(empresa_id)
-    if status:
-        sql += " AND df.status=?"
-        params.append(status)
-    sql += " ORDER BY df.created_at DESC LIMIT 200"
-
-    async with db.execute(sql, params) as cur:
-        rows = await cur.fetchall()
-    return [dict(r) for r in rows]
+    tenant_id = user["empresa_id"]
+    return await ContabilRepository(db).listar_documentos(tenant_id, empresa_id, status)
 
 
 @router.get("/documentos/{doc_id}")
 async def get_documento(doc_id: int, db=Depends(get_db), user=Depends(get_current_user)):
-    async with db.execute(
-        """SELECT df.*, ec.nome AS empresa_nome
-           FROM documentos_fiscais df
-           LEFT JOIN empresas_contabil ec ON ec.id = df.empresa_id
-           WHERE df.id=?""",
-        (doc_id,)
-    ) as cur:
-        row = await cur.fetchone()
-    if not row:
+    tenant_id = user["empresa_id"]
+    doc = await ContabilRepository(db).get_documento(tenant_id, doc_id)
+    if not doc:
         raise HTTPException(404, "Documento não encontrado.")
-    d = dict(row)
-    # Parse JSON fields
-    for f in ("dados_ocr", "dados_manual"):
-        if d.get(f) and isinstance(d[f], str):
-            try:
-                d[f] = json.loads(d[f])
-            except Exception:
-                pass
-    return d
+    return doc
 
 
 @router.get("/documentos/{doc_id}/arquivo")
 async def download_documento(doc_id: int, db=Depends(get_db), user=Depends(get_current_user)):
-    async with db.execute(
-        "SELECT arquivo_path, arquivo_mime, arquivo_nome FROM documentos_fiscais WHERE id=?",
-        (doc_id,)
-    ) as cur:
-        row = await cur.fetchone()
+    tenant_id = user["empresa_id"]
+    row = await ContabilRepository(db).get_arquivo(tenant_id, doc_id)
     if not row or not row["arquivo_path"] or not os.path.exists(row["arquivo_path"]):
         raise HTTPException(404, "Arquivo não encontrado.")
     return FileResponse(
@@ -468,37 +279,12 @@ async def entrada_manual(
     user=Depends(get_current_user),
 ):
     """Contador preenche manualmente os dados de um documento com erro de OCR."""
-    dados = body.model_dump(exclude_none=True)
-    valor_total = dados.get("valor_total")
-    emitente_nome = dados.get("emitente_nome")
-    emitente_cnpj = dados.get("emitente_cnpj")
-    dest_nome = dados.get("destinatario_nome")
-    dest_cnpj = dados.get("destinatario_cnpj")
-    chave = dados.get("chave_acesso")
-    numero = dados.get("numero_nf")
-    data_emis = dados.get("data_emissao")  # já é date (do Pydantic)
-
-    # JSON não serializa date — converte para string antes de salvar como JSON
-    dados_json = {k: (v.isoformat() if isinstance(v, date) else v) for k, v in dados.items()}
-
-    await db.execute(
-        """UPDATE documentos_fiscais SET
-            status='revisao_manual', dados_manual=?, chave_acesso=COALESCE(?,chave_acesso),
-            numero_nf=COALESCE(?,numero_nf), emitente_nome=COALESCE(?,emitente_nome),
-            emitente_cnpj=COALESCE(?,emitente_cnpj), destinatario_nome=COALESCE(?,destinatario_nome),
-            destinatario_cnpj=COALESCE(?,destinatario_cnpj),
-            valor_total=COALESCE(?,valor_total), data_emissao=COALESCE(?,data_emissao),
-            updated_at=NOW()
-           WHERE id=?""",
-        (json.dumps(dados_json, ensure_ascii=False), chave, numero,
-         emitente_nome, emitente_cnpj, dest_nome, dest_cnpj,
-         valor_total, data_emis, doc_id)
-    )
-    await db.execute(
-        "INSERT INTO contabil_feed(documento_id, tipo, descricao) VALUES(?,?,?)",
-        (doc_id, "manual", f"Dados inseridos manualmente pelo contador — NF {numero or '?'}")
-    )
-    await db.commit()
+    tenant_id = user["empresa_id"]
+    repo = ContabilRepository(db)
+    # Confirma posse antes de atualizar
+    if not await repo.documento_existe(tenant_id, doc_id):
+        raise HTTPException(404, "Documento não encontrado.")
+    await repo.entrada_manual(tenant_id, doc_id, body.model_dump(exclude_none=True))
     return {"ok": True}
 
 
@@ -506,15 +292,11 @@ async def entrada_manual(
 async def aprovar_documento(
     doc_id: int, db=Depends(get_db), user=Depends(get_current_user)
 ):
-    await db.execute(
-        "UPDATE documentos_fiscais SET status='aprovado', updated_at=NOW() WHERE id=?",
-        (doc_id,)
-    )
-    await db.execute(
-        "INSERT INTO contabil_feed(documento_id, tipo, descricao) VALUES(?,?,?)",
-        (doc_id, "aprovado", "Documento aprovado pelo contador")
-    )
-    await db.commit()
+    tenant_id = user["empresa_id"]
+    repo = ContabilRepository(db)
+    if not await repo.documento_existe(tenant_id, doc_id):
+        raise HTTPException(404, "Documento não encontrado.")
+    await repo.aprovar_documento(tenant_id, doc_id)
     return {"ok": True}
 
 
@@ -526,25 +308,13 @@ async def reprocessar_ocr(
     user=Depends(get_current_user),
 ):
     """Re-envia documento para a fila OCR."""
-    async with db.execute(
-        "SELECT arquivo_path FROM documentos_fiscais WHERE id=?", (doc_id,)
-    ) as cur:
-        row = await cur.fetchone()
+    tenant_id = user["empresa_id"]
+    repo = ContabilRepository(db)
+    row = await repo.get_documento_arquivo_path(tenant_id, doc_id)
     if not row:
         raise HTTPException(404, "Documento não encontrado.")
 
-    await db.execute(
-        "UPDATE documentos_fiscais SET status='ocr_pendente', erro_msg=NULL, updated_at=NOW() WHERE id=?",
-        (doc_id,)
-    )
-    # Reseta o job
-    await db.execute(
-        """INSERT INTO ocr_jobs(documento_id, status, tentativas)
-           VALUES(?, 'pending', 0)
-           ON CONFLICT(documento_id) DO UPDATE SET status='pending', tentativas=0, erro=NULL""",
-        (doc_id,)
-    )
-    await db.commit()
+    await repo.reprocessar_documento(tenant_id, doc_id)
 
     from ..services.ocr_service import extrair_dados_fiscal
     bg.add_task(extrair_dados_fiscal, doc_id, row["arquivo_path"])
@@ -563,35 +333,20 @@ async def receber_doc_wa(
     """
     Chamado internamente quando uma empresa registrada envia um documento via WA.
     Salva o arquivo, cria o documento_fiscal e enfileira OCR.
+    tenant_id é herdado da empresas_contabil.
     """
-    ext = Path(arquivo.filename or "doc").suffix or ".jpg"
-    nome_arquivo = f"{uuid.uuid4().hex}{ext}"
-    dest_path = str(_UPLOAD_DIR / nome_arquivo)
+    repo = ContabilRepository(db)
+    # Resolve tenant_id pela empresa contábil
+    tenant_id = await repo.get_tenant_da_empresa(empresa_id)
+    if tenant_id is None and not await repo.empresa_existe_global(empresa_id):
+        raise HTTPException(404, "Empresa contábil não encontrada.")
 
-    with open(dest_path, "wb") as f:
-        shutil.copyfileobj(arquivo.file, f)
+    dest_path, mime = _salvar_upload(arquivo)
 
-    mime = arquivo.content_type or "image/jpeg"
-
-    async with db.execute(
-        """INSERT INTO documentos_fiscais
-           (empresa_id, status, arquivo_path, arquivo_mime, arquivo_nome)
-           VALUES (?, 'ocr_pendente', ?, ?, ?)""",
-        (empresa_id, dest_path, mime, arquivo.filename)
-    ) as cur:
-        doc_id = cur.lastrowid
-    await db.commit()
-
-    # Cria job OCR
-    await db.execute(
-        "INSERT INTO ocr_jobs(documento_id) VALUES(?) ON CONFLICT DO NOTHING",
-        (doc_id,)
+    doc_id = await repo.criar_documento(
+        tenant_id, empresa_id, dest_path, mime, arquivo.filename,
+        "recebido", f"Documento recebido via WhatsApp: {arquivo.filename}",
     )
-    await db.execute(
-        "INSERT INTO contabil_feed(empresa_id, documento_id, tipo, descricao) VALUES(?,?,?,?)",
-        (empresa_id, doc_id, "recebido", f"Documento recebido via WhatsApp: {arquivo.filename}")
-    )
-    await db.commit()
 
     from ..services.ocr_service import extrair_dados_fiscal
     bg.add_task(extrair_dados_fiscal, doc_id, dest_path)
@@ -610,32 +365,18 @@ async def upload_documento(
     user=Depends(get_current_user),
 ):
     """Contador faz upload manual de um documento para uma empresa."""
-    ext = Path(arquivo.filename or "doc").suffix or ".jpg"
-    nome_arquivo = f"{uuid.uuid4().hex}{ext}"
-    dest_path = str(_UPLOAD_DIR / nome_arquivo)
+    tenant_id = user["empresa_id"]
+    repo = ContabilRepository(db)
+    # Confirma que empresa_contabil pertence ao tenant
+    if not await repo.empresa_existe(tenant_id, empresa_id):
+        raise HTTPException(403, "Empresa contábil não pertence à sua organização.")
 
-    with open(dest_path, "wb") as f:
-        shutil.copyfileobj(arquivo.file, f)
+    dest_path, mime = _salvar_upload(arquivo)
 
-    mime = arquivo.content_type or "image/jpeg"
-
-    async with db.execute(
-        """INSERT INTO documentos_fiscais
-           (empresa_id, status, arquivo_path, arquivo_mime, arquivo_nome)
-           VALUES (?, 'ocr_pendente', ?, ?, ?)""",
-        (empresa_id, dest_path, mime, arquivo.filename)
-    ) as cur:
-        doc_id = cur.lastrowid
-    await db.commit()
-
-    await db.execute(
-        "INSERT INTO ocr_jobs(documento_id) VALUES(?) ON CONFLICT DO NOTHING", (doc_id,)
+    doc_id = await repo.criar_documento(
+        tenant_id, empresa_id, dest_path, mime, arquivo.filename,
+        "upload", f"Upload manual: {arquivo.filename}",
     )
-    await db.execute(
-        "INSERT INTO contabil_feed(empresa_id, documento_id, tipo, descricao) VALUES(?,?,?,?)",
-        (empresa_id, doc_id, "upload", f"Upload manual: {arquivo.filename}")
-    )
-    await db.commit()
 
     from ..services.ocr_service import extrair_dados_fiscal
     bg.add_task(extrair_dados_fiscal, doc_id, dest_path)
@@ -651,16 +392,8 @@ async def feed_atividade(
     db=Depends(get_db),
     user=Depends(get_current_user),
 ):
-    async with db.execute(
-        """SELECT cf.*, ec.nome AS empresa_nome
-           FROM contabil_feed cf
-           LEFT JOIN empresas_contabil ec ON ec.id = cf.empresa_id
-           ORDER BY cf.criado_em DESC
-           LIMIT ?""",
-        (limit,)
-    ) as cur:
-        rows = await cur.fetchall()
-    return [dict(r) for r in rows]
+    tenant_id = user["empresa_id"]
+    return await ContabilRepository(db).listar_feed(tenant_id, limit)
 
 
 @router.get("/ai-status")

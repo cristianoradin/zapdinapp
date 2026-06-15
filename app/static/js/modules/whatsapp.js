@@ -68,10 +68,28 @@ window.whatsappModule = (() => {
   async function _fetchQR(id) {
     try {
       const res = await fetch('/api/sessoes/qr/' + id);
+      if (res.status === 409) {
+        // 409 = WhatsApp já conectado — pega phone + atualiza lista
+        await _refreshPhone(id);
+        return 'CONNECTED';
+      }
       if (!res.ok) return null;
       const d = await res.json();
       return d.qr || null;
     } catch { return null; }
+  }
+
+  async function _refreshPhone(id) {
+    try {
+      const r = await fetch('/api/sessoes/refresh-phone/' + id, { method: 'POST' });
+      if (r.ok) {
+        const d = await r.json();
+        if (d.phone) {
+          // Recarrega lista pra mostrar número
+          if (typeof loadSessoes === 'function') loadSessoes();
+        }
+      }
+    } catch { /* silent */ }
   }
 
   function _setQrImg(id, qrDataUrl) {
@@ -84,6 +102,11 @@ window.whatsappModule = (() => {
     _stopQrPoller(id);
     _qrPollers[id] = setInterval(async () => {
       const qr = await _fetchQR(id);
+      if (qr === 'CONNECTED') {
+        // WA logado — para polling QR + atualiza UI
+        _stopQrPoller(id);
+        return;
+      }
       if (qr) _setQrImg(id, qr);
     }, 4000);
   }
@@ -286,13 +309,43 @@ window.whatsappModule = (() => {
 
   // ── Registro de eventos (executado uma única vez) ─────────────────────────
 
+  async function _applyModosPermitidos() {
+    // Busca modos permitidos pra empresa logada + esconde radios não permitidos
+    try {
+      const r = await fetch('/api/sessoes/modos-permitidos');
+      if (!r.ok) return;
+      const d = await r.json();
+      const allowed = new Set(d.modos || ['servidor', 'local', 'agente']);
+      document.querySelectorAll('input[name="sessaoModo"]').forEach(inp => {
+        const lbl = inp.closest('label.adv-radio');
+        if (!lbl) return;
+        if (!allowed.has(inp.value)) {
+          lbl.style.display = 'none';
+        } else {
+          lbl.style.display = '';
+        }
+      });
+      // Se modo atual checked foi escondido, marca primeiro permitido
+      const checked = document.querySelector('input[name="sessaoModo"]:checked');
+      if (checked && !allowed.has(checked.value)) {
+        const firstAllowed = document.querySelector('input[name="sessaoModo"]:not([style*="display: none"])')
+                          || [...document.querySelectorAll('input[name="sessaoModo"]')].find(i => allowed.has(i.value));
+        if (firstAllowed) {
+          firstAllowed.checked = true;
+          firstAllowed.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+    } catch { /* silent */ }
+  }
+
   function _registerEvents() {
     // Toggle Local/Agente/Servidor — mostra/esconde inputs auxiliares
     const MODO_LBL = {
       servidor: '🌐 Servidor (padrão)',
       local:    '🏠 Local no cliente (LAN)',
-      agente:   '🛰️ Agente (atravessa NAT)',
+      agente:   '🛰️ ZapDinAgent (ponte WhatsApp local)',
     };
+    _applyModosPermitidos();
     document.querySelectorAll('input[name="sessaoModo"]').forEach(r => {
       r.addEventListener('change', () => {
         const wrap   = document.getElementById('sessaoUrlWrap');
@@ -301,6 +354,12 @@ window.whatsappModule = (() => {
         const det    = document.getElementById('sessaoModoDetails');
         const checked = document.querySelector('input[name="sessaoModo"]:checked');
         const v = checked ? checked.value : 'servidor';
+        // Atualiza highlight visual: class .on no label pai do radio checked
+        document.querySelectorAll('label.adv-radio').forEach(l => l.classList.remove('on'));
+        if (checked) {
+          const lbl = checked.closest('label.adv-radio');
+          if (lbl) lbl.classList.add('on');
+        }
         if (wrap)   wrap.style.display   = (v === 'local')  ? 'block' : 'none';
         if (agWrap) agWrap.style.display = (v === 'agente') ? 'block' : 'none';
         if (badge)  badge.textContent    = MODO_LBL[v] || MODO_LBL.servidor;
@@ -339,7 +398,8 @@ window.whatsappModule = (() => {
             _srv.checked = true;
             document.getElementById('sessaoUrlWrap').style.display = 'none';
             const _ag = document.getElementById('sessaoAgenteWrap'); if (_ag) _ag.style.display = 'none';
-            const _det = document.getElementById('sessaoModoDetails'); if (_det) _det.open = false;
+            // Mantém details aberto pra próxima sessão (usuário precisa ver opções)
+            const _det = document.getElementById('sessaoModoDetails'); if (_det) _det.open = true;
             const _bd = document.getElementById('sessaoModoBadge'); if (_bd) _bd.textContent = '🌐 Servidor (padrão)';
           }
           const _modoLbl = !evolution_url ? '🌐 servidor'
@@ -427,6 +487,46 @@ window.whatsappModule = (() => {
 
   return { init, stop, toggleQR, deleteSessao, abrirModalTeste, fecharModalTeste };
 })();
+
+
+// Testa comunicação com agente (botão "Testar comunicação" na criação de sessão modo Agente)
+window.testarAgent = async function () {
+  const btn = document.getElementById('btnTestarAgent');
+  const out = document.getElementById('testarAgentStatus');
+  if (!out) return;
+  out.style.color = 'var(--text-3)';
+  out.textContent = 'Testando…';
+  if (btn) btn.disabled = true;
+  try {
+    const r = await fetch('/api/agents/ping');
+    const d = await r.json();
+    if (!d.connected) {
+      out.style.color = 'var(--red)';
+      out.textContent = '❌ ' + (d.error || 'Agent não conectado');
+      return;
+    }
+    if (d.error) {
+      out.style.color = 'var(--amber)';
+      out.textContent = `⚠️ v${d.version} conectado, mas comando falhou: ${d.error}`;
+      return;
+    }
+    out.style.color = 'var(--primary-deep)';
+    const lat = d.latency_ms != null ? `${d.latency_ms}ms` : '?';
+    const last = d.last_seen_sec != null ? `${d.last_seen_sec}s atrás` : '?';
+    const stateLabel = {
+      open: 'WhatsApp já conectado',
+      connecting: 'aguardando QR',
+      loading: 'WhatsApp Web carregando',
+      close: 'desconectado',
+    }[d.state] || d.state || '?';
+    out.textContent = `✅ Agent v${d.version} • ${lat} • último heartbeat ${last} • ${stateLabel}`;
+  } catch (e) {
+    out.style.color = 'var(--red)';
+    out.textContent = '❌ Erro de rede: ' + (e.message || e);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+};
 
 // ── Globais para onclick inline no HTML gerado dinamicamente ─────────────────
 window.toggleQR        = (id)         => whatsappModule.toggleQR(id);

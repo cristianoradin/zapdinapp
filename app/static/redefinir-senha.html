@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Redefinir senha — ZapDin</title>
+<link rel="icon" type="image/png" href="/logo/favicon.png">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent: #3d7f1f;
+    --accent-light: #7cdc44;
+    --bg: #f4f6f9;
+    --surface: #fff;
+    --border: #e4e6ea;
+    --text: #1a1d23;
+    --text-muted: #6b7280;
+    --grad: linear-gradient(90deg, #3d7f1f 0%, #7cdc44 50%, #3b82f6 100%);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--bg);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;color:var(--text)}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:36px;max-width:440px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.06)}
+  h1{margin:0 0 8px;font-size:1.5rem;color:var(--accent)}
+  p.sub{color:var(--text-muted);font-size:.9rem;margin:0 0 24px}
+  .field{margin-bottom:16px}
+  label{display:block;font-size:.78rem;color:var(--text-muted);font-weight:600;margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase}
+  input{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:10px;font-size:.95rem;background:var(--bg);transition:.15s}
+  input:focus{outline:none;border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(61,127,31,.1)}
+  .btn{width:100%;padding:13px;border:none;border-radius:10px;background:var(--grad);color:#fff;font-weight:600;font-size:1rem;cursor:pointer;margin-top:8px}
+  .btn:disabled{opacity:.6;cursor:wait}
+  .err{background:#fee2e2;color:#991b1b;padding:10px 14px;border-radius:8px;font-size:.85rem;margin-bottom:14px;display:none}
+  .ok{background:#dcfce7;color:#15803d;padding:10px 14px;border-radius:8px;font-size:.85rem;margin-bottom:14px;display:none}
+  a{color:var(--accent);text-decoration:none;font-size:.85rem}
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1 id="title">🔒 Redefinir senha</h1>
+    <p class="sub" id="sub">Digite sua nova senha (mínimo 6 caracteres).</p>
+    <div class="err" id="err"></div>
+    <div class="ok" id="ok"></div>
+    <form id="form">
+      <div class="field">
+        <label>Nova senha</label>
+        <input type="password" id="senha" required minlength="6" placeholder="••••••••">
+      </div>
+      <div class="field">
+        <label>Confirmar senha</label>
+        <input type="password" id="senha2" required minlength="6" placeholder="••••••••">
+      </div>
+      <button class="btn" id="btn" type="submit">Salvar nova senha</button>
+    </form>
+    <p style="text-align:center;margin-top:16px"><a href="/login">← Voltar para login</a></p>
+  </div>
+<script>
+  const params = new URLSearchParams(location.search);
+  const token = params.get('token') || '';
+  const isFirst = params.get('first') === '1';
+  const err = document.getElementById('err');
+  const ok = document.getElementById('ok');
+  const btn = document.getElementById('btn');
+
+  if (isFirst) {
+    document.getElementById('title').textContent = '🎉 Primeiro acesso';
+    document.getElementById('sub').textContent = 'Por segurança, defina uma senha pessoal antes de continuar.';
+  }
+
+  if (!token) {
+    err.textContent = 'Link inválido. Solicite um novo e-mail de recuperação.';
+    err.style.display = 'block';
+    btn.disabled = true;
+  }
+
+  document.getElementById('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    err.style.display = 'none';
+    ok.style.display = 'none';
+    const s1 = document.getElementById('senha').value;
+    const s2 = document.getElementById('senha2').value;
+    if (s1.length < 6) { err.textContent = 'A senha deve ter pelo menos 6 caracteres.'; err.style.display='block'; return; }
+    if (s1 !== s2) { err.textContent = 'As senhas não conferem.'; err.style.display='block'; return; }
+    btn.disabled = true; btn.textContent = 'Salvando...';
+    try {
+      const r = await fetch('/api/auth/redefinir-senha', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, nova_senha: s1 }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) {
+        ok.textContent = '✓ Senha redefinida com sucesso! Redirecionando para login...';
+        ok.style.display = 'block';
+        setTimeout(() => location.href = '/login', 2000);
+      } else {
+        err.textContent = d.detail || 'Não foi possível redefinir a senha.';
+        err.style.display = 'block';
+        btn.disabled = false; btn.textContent = 'Salvar nova senha';
+      }
+    } catch {
+      err.textContent = 'Falha de conexão. Tente novamente.';
+      err.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Salvar nova senha';
+    }
+  });
+</script>
+</body>
+</html>

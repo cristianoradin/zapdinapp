@@ -22,11 +22,13 @@
 
   function _statusChip(status) {
     const map = {
-      sent:    { cls: 'badge ok dot',    label: 'Enviada' },
-      failed:  { cls: 'badge fail dot',  label: 'Falhou' },
-      error:   { cls: 'badge fail dot',  label: 'Erro' },
-      queued:  { cls: 'badge queue dot', label: 'Na fila' },
-      pending: { cls: 'badge queue dot', label: 'Pendente' },
+      sent:      { cls: 'badge ok dot',    label: 'Enviada' },
+      delivered: { cls: 'badge info dot',  label: 'Entregue' },
+      read:      { cls: 'badge ok dot',    label: 'Visualizada' },
+      failed:    { cls: 'badge fail dot',  label: 'Falhou' },
+      error:     { cls: 'badge fail dot',  label: 'Erro' },
+      queued:    { cls: 'badge queue dot', label: 'Na fila' },
+      pending:   { cls: 'badge queue dot', label: 'Pendente' },
     };
     const { cls, label } = map[status] || { cls: 'badge queue dot', label: status };
     return `<span class="${cls}">${label}</span>`;
@@ -93,7 +95,9 @@
     const tbody = document.getElementById('tbodyRecentes');
     if (!tbody) return;
     let rows = _msgRecentesCache;
-    if (_msgFiltro === 'enviadas') rows = rows.filter(r => r.status === 'sent');
+    if (_msgFiltro === 'enviadas') rows = rows.filter(r => ['sent','delivered','read'].includes(r.status));
+    else if (_msgFiltro === 'entregues') rows = rows.filter(r => ['delivered','read'].includes(r.status));
+    else if (_msgFiltro === 'visualizadas') rows = rows.filter(r => r.status === 'read');
     else if (_msgFiltro === 'falhas') rows = rows.filter(r => r.status === 'failed' || r.status === 'error');
     if (!rows.length) {
       tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--text-3);padding:1.5rem">Nenhuma mensagem ${_msgFiltro==='enviadas'?'enviada':_msgFiltro==='falhas'?'com falha':''}</td></tr>`;

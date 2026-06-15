@@ -972,8 +972,8 @@ class EvoManager:
                 pass
             return False, err
 
-    def schedule_status_check(self, arquivo_id, session_id, empresa_id, phone):
-        pass   # reservado para uso futuro
+    def schedule_status_check(self, arquivo_id, session_id, empresa_id, phone, table="arquivos"):
+        pass   # reservado para uso futuro (Evolution webhook MESSAGES_UPDATE cobriria isso)
 
     async def _processar_mensagem_contabil(self, inst: str, data: dict, tenant_id: int = 0) -> None:
         """

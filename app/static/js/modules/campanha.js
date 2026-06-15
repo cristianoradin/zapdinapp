@@ -1021,6 +1021,8 @@ window.campanhaModule = (() => {
                 Criada em ${dt} · Concluída em ${doneAt} ·
                 Total: <b style="color:var(--text-2)">${c.total}</b> ·
                 Enviados: <b style="color:var(--primary-deep)">${c.enviados}</b> ·
+                Entregues: <b style="color:var(--blue)">${c.entregues || 0}</b> ·
+                Visualizadas: <b style="color:var(--primary-deep)">${c.visualizadas || 0}</b> ·
                 Erros: <b style="color:var(--red)">${c.erros}</b>
               </div>
               ${msg}

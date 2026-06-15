@@ -77,8 +77,14 @@ def unregister_by_sid(sid: str) -> Optional[int]:
     if empresa_id is not None:
         cur = _agents.get(empresa_id)
         if cur and cur.get("sid") == sid:
+            # Telemetria: quanto tempo ficou conectado + há quanto não dava heartbeat
+            uptime = round(time.time() - cur.get("connected_at", time.time()))
+            since_hb = round(time.time() - cur.get("last_seen", time.time()))
             _agents.pop(empresa_id, None)
-            logger.info("[agent] Agente desconectado: empresa=%s sid=%s", empresa_id, sid)
+            logger.info(
+                "[agent] Agente desconectado: empresa=%s sid=%s uptime=%ss ultimo_heartbeat=há_%ss",
+                empresa_id, sid, uptime, since_hb,
+            )
     return empresa_id
 
 

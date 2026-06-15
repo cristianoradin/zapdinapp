@@ -65,6 +65,7 @@
               </svg>
               ${_esc(u.username)}
             </span>
+            ${u.email ? `<div style="font-size:.74rem;color:var(--text-3);margin-top:2px;padding-left:21px">${_esc(u.email)}</div>` : ''}
           </td>
           <td style="padding:.6rem .75rem;font-size:.82rem;color:var(--text-3)">${_fmtData(u.created_at)}</td>
           <td style="padding:.6rem .75rem;text-align:right">
@@ -94,31 +95,42 @@
 
   // ── Criar usuário ─────────────────────────────────────────────────────────────
   async function usrCriar() {
-    const username = (document.getElementById('usrNovoUsername')?.value || '').trim().toLowerCase();
-    const senha    = document.getElementById('usrNovoSenha')?.value || '';
-    const conf     = document.getElementById('usrNovoSenhaConf')?.value || '';
-    const msgEl    = 'usrCriarMsg';
+    const email     = (document.getElementById('usrNovoEmail')?.value || '').trim().toLowerCase();
+    const username  = (document.getElementById('usrNovoUsername')?.value || '').trim().toLowerCase();
+    const senha     = document.getElementById('usrNovoSenha')?.value || '';   // opcional
+    const sendEmail = document.getElementById('usrNovoSendEmail')?.checked ?? true;
+    const msgEl     = 'usrCriarMsg';
 
+    if (!email || !email.includes('@')) { _msg(msgEl, 'Informe um e-mail válido.', false); return; }
     if (!username) { _msg(msgEl, 'Informe o nome de usuário.', false); return; }
-    if (senha.length < 6) { _msg(msgEl, 'Senha muito curta (mínimo 6 caracteres).', false); return; }
-    if (senha !== conf) { _msg(msgEl, 'As senhas não coincidem.', false); return; }
+    if (senha && senha.length < 6) { _msg(msgEl, 'Senha muito curta (mínimo 6 caracteres) ou deixe vazio.', false); return; }
 
     _msg(msgEl, 'Salvando…', true);
     try {
+      const payload = { username, email, send_welcome_email: sendEmail };
+      if (senha) payload.password = senha;
       const res = await fetch('/api/auth/usuarios', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password: senha }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) {
         _msg(msgEl, data.detail || 'Erro ao criar usuário.', false);
         return;
       }
-      _msg(msgEl, `Usuário "${username}" criado com sucesso!`, true);
+      let msg = `Usuário "${username}" criado!`;
+      if (data.auto_password && data.temp_password) {
+        msg += data.email_status === 'sent'
+          ? ` E-mail enviado para ${email}.`
+          : ` Senha temporária: ${data.temp_password} (e-mail não enviado: ${data.email_status}).`;
+      } else if (data.email_status === 'sent') {
+        msg += ` E-mail de boas-vindas enviado.`;
+      }
+      _msg(msgEl, msg, true);
+      document.getElementById('usrNovoEmail').value    = '';
       document.getElementById('usrNovoUsername').value = '';
       document.getElementById('usrNovoSenha').value    = '';
-      document.getElementById('usrNovoSenhaConf').value = '';
       await usrCarregar();
     } catch {
       _msg(msgEl, 'Erro de conexão.', false);

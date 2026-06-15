@@ -85,8 +85,7 @@ async def processar_venda(db, empresa_id: int, body, public_url: str) -> dict:
             token_aval = secrets.token_urlsafe(16)
             url_base   = await cfg_repo.get_avaliacao_url_base(empresa_id, public_url)
 
-            from ..routers.erp import _encurtar_url
-            link = await _encurtar_url(f"{url_base}/avaliacao?t={token_aval}")
+            link = f"{url_base}/avaliacao?t={token_aval}"
             mensagem += f"\n\n⭐ Avalie nosso atendimento:\n{link}"
 
             await aval_repo.create(
