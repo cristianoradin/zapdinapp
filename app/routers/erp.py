@@ -227,6 +227,7 @@ async def _gerar_sufixo_avaliacao(db, empresa_id: int, telefone: str, nome: str,
 
 
 @router.post("/venda")
+@router.post("/venda/api/erp/venda")  # tolera ERP que duplica o path na base URL
 async def receber_venda(
     body: VendaPayload,
     request: Request,
@@ -289,6 +290,7 @@ async def receber_venda(
 
 
 @router.post("/arquivo")
+@router.post("/arquivo/api/erp/arquivo")  # tolera ERP que duplica o path na base URL
 async def receber_arquivo(
     body: ArquivoPayload,
     request: Request,
