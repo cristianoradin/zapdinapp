@@ -130,16 +130,21 @@ def _survey_page(nome_empresa: str, token: str, vendedor: str = "", already_answ
 # ── Rotas públicas ─────────────────────────────────────────────────────────────
 
 @router.get("/avaliacao", response_class=HTMLResponse, include_in_schema=False)
-async def survey_page(t: str = ""):
+async def survey_page(t: str = "", e: int = 0):
     if not t:
         return HTMLResponse(_survey_page("", "", invalid=True))
-    # Token DEMO → página de demonstração com dados de exemplo
+    # Token DEMO → página de demonstração com dados de exemplo.
+    # `e` = empresa_id (vem no link-demo) → mostra a empresa LOGADA, não uma arbitrária.
     if t.upper() == "DEMO":
         nome_emp = "Sua Empresa"
         empresa_id_demo = None
         async with get_db_direct() as db:
-            async with db.execute("SELECT id, nome FROM empresas LIMIT 1") as cur:
-                row_emp = await cur.fetchone()
+            if e:
+                async with db.execute("SELECT id, nome FROM empresas WHERE id=?", (e,)) as cur:
+                    row_emp = await cur.fetchone()
+            else:
+                async with db.execute("SELECT id, nome FROM empresas LIMIT 1") as cur:
+                    row_emp = await cur.fetchone()
             if row_emp:
                 nome_emp = row_emp["nome"]
                 empresa_id_demo = row_emp["id"]
@@ -186,7 +191,8 @@ async def get_link_demo(user=Depends(get_current_user)):
         ) as cur:
             row = await cur.fetchone()
     base = (row["value"] if row else "") or settings.public_url
-    link = f"{base.rstrip('/')}/avaliacao?t=DEMO"
+    # e=<empresa_id> → a página DEMO mostra a empresa LOGADA (não uma arbitrária)
+    link = f"{base.rstrip('/')}/avaliacao?t=DEMO&e={empresa_id}"
     _cached_demo_link_by_empresa[empresa_id] = link
     return {"link": link}
 
