@@ -248,6 +248,7 @@
       // data.menus: null = todos permitidos; array = só esses menus visíveis
       const allowedMenus = Array.isArray(data.menus) ? data.menus : null;
       window._allowedMenus = allowedMenus;  // usado por applySubmenuPerms (páginas lazy)
+      window._landingPage = 'home';         // landing padrão (sobrescrito abaixo se home oculta)
       if (allowedMenus !== null) {
         let firstAllowed = null;
 
@@ -257,6 +258,9 @@
         for (const item of document.querySelectorAll('.nav-item[data-page]')) {
           if (allowedMenus.includes(item.dataset.page)) { firstAllowed = item.dataset.page; break; }
         }
+
+        // Landing: home só se permitida; senão a 1ª página permitida (evita flash da home)
+        window._landingPage = allowedMenus.includes('home') ? 'home' : (firstAllowed || 'home');
 
         // 2ª passagem: aplica visibilidade
         document.querySelectorAll('.nav-item[data-page]').forEach(item => {
@@ -599,8 +603,14 @@
 
   checkAuth().then(async () => {
     _loadAppVersion();
-    await _loadPage('home');
-    initHome();
+    const landing = window._landingPage || 'home';
+    if (landing === 'home') {
+      await _loadPage('home');
+      initHome();
+    } else {
+      // Home não permitida → vai direto pra 1ª página permitida (sem flash da home)
+      navigate(landing);
+    }
     _updateTopbarStatus();
     _updateAiStatus();
     // Refresh periódico do dashboard: usa o módulo dashboard.js (linhas clicáveis +
