@@ -592,11 +592,10 @@
   // ── Multi-empresa: seleção ──────────────────────────────────────────────────
   let _lastUser = '', _lastPass = '';
 
-  function _mostrarSelecaoEmpresa(empresas) {
-    document.getElementById('loginForm').style.display  = 'none';
-    document.getElementById('form-title').textContent   = 'Escolha a empresa';
-    const lista = document.getElementById('empresaLista');
-    lista.innerHTML = empresas.map(e => `
+  let _empresasCache = [];
+
+  function _empresaItemHtml(e) {
+    return `
       <button type="button" onclick="selecionarEmpresa(${e.empresa_id})"
         style="display:flex;align-items:center;gap:.7rem;width:100%;text-align:left;padding:.8rem 1rem;border:1px solid var(--border,#e4e6ea);border-radius:10px;background:#fff;cursor:pointer;transition:.15s"
         onmouseover="this.style.borderColor='var(--primary-deep)';this.style.background='#f0f7eb'"
@@ -606,8 +605,48 @@
           <span style="display:block;font-weight:600;font-size:.9rem;color:#111318">${e.nome}</span>
           <span style="display:block;font-size:.75rem;color:var(--text-muted,#6b7280)">${e.cnpj||''}</span>
         </span>
-      </button>`).join('');
+      </button>`;
+  }
+
+  function _renderEmpresas(termo) {
+    const t = (termo || '').toLowerCase().trim();
+    const arr = !t ? _empresasCache : _empresasCache.filter(e =>
+      (e.nome || '').toLowerCase().includes(t) || (e.cnpj || '').toLowerCase().includes(t));
+    const lista = document.getElementById('empresaLista');
+    lista.innerHTML = arr.length
+      ? arr.map(_empresaItemHtml).join('')
+      : '<div style="text-align:center;color:var(--text-muted,#6b7280);padding:1rem;font-size:.85rem">Nenhum posto encontrado</div>';
+  }
+
+  function _mostrarSelecaoEmpresa(empresas) {
+    document.getElementById('loginForm').style.display  = 'none';
+    document.getElementById('form-title').textContent   = 'Escolha a empresa';
+    // Ordena por nome (facilita achar quando tem muitos postos)
+    _empresasCache = (empresas || []).slice().sort((a, b) =>
+      (a.nome || '').localeCompare(b.nome || '', 'pt', { sensitivity: 'base' }));
+
+    const lista = document.getElementById('empresaLista');
+    // Campo de busca (cria 1x) — só aparece com muitos postos
+    let box = document.getElementById('empresaBusca');
+    if (!box) {
+      box = document.createElement('input');
+      box.id = 'empresaBusca';
+      box.type = 'search';
+      box.placeholder = '\u{1F50E} Buscar posto por nome ou CNPJ…';
+      box.autocomplete = 'off';
+      box.style.cssText = 'width:100%;padding:.7rem 1rem;margin-bottom:.6rem;border:1px solid var(--border,#e4e6ea);border-radius:10px;font-size:.9rem;box-sizing:border-box';
+      box.addEventListener('input', () => _renderEmpresas(box.value));
+      lista.parentNode.insertBefore(box, lista);
+      lista.style.maxHeight = '46vh';
+      lista.style.overflowY = 'auto';
+    } else {
+      box.value = '';
+    }
+    box.style.display = _empresasCache.length > 6 ? 'block' : 'none';
+
+    _renderEmpresas('');
     document.getElementById('empresaForm').style.display = 'block';
+    if (box.style.display !== 'none') setTimeout(() => box.focus(), 50);
   }
 
   async function selecionarEmpresa(empresaId) {
