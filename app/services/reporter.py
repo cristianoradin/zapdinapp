@@ -211,6 +211,8 @@ async def _send_heartbeat() -> None:
 
     # Atualiza mapa de agente compartilhado (grupo econômico) a cada ciclo
     await _refresh_owner_map()
+    # Reflete no app conexões WhatsApp feitas via tray/agente (reconcile)
+    await _reconcile_agent_sessions()
 
     # Tenta buscar lista de empresas do banco; se falhar usa fallback do .env
     try:
@@ -408,6 +410,61 @@ async def _send_heartbeat() -> None:
 
             except Exception as exc:
                 logger.debug("Heartbeat falhou para %s: %s", emp.get("nome"), exc)
+
+
+async def _reconcile_agent_sessions() -> None:
+    """Para cada empresa com AGENTE conectado, garante que o app reflita a conexão
+    WhatsApp feita por fora (ex: QR escaneado pelo tray). Consulta get_state via WS
+    e atualiza/garante uma sessão agent-mode (status=connected + phone).
+
+    Evita get_state redundante: só pergunta se ainda não há sessão agent conectada
+    com phone pra empresa."""
+    try:
+        from . import agent_bridge
+        from ..main import sio
+        from ..core.database import get_db_direct, _pool
+        if _pool is None:
+            return
+        import uuid as _uuid
+        empresas = list(agent_bridge._agents.keys())  # empresas com WS direto (donas/standalone)
+        for empresa_id in empresas:
+            try:
+                async with get_db_direct() as db:
+                    async with db.execute(
+                        "SELECT id, status, phone FROM sessoes_wa "
+                        "WHERE empresa_id=? AND evolution_url='agent://' ORDER BY created_at LIMIT 1",
+                        (empresa_id,),
+                    ) as cur:
+                        row = await cur.fetchone()
+                    # Já conectado com phone → nada a fazer (não chama Chromium à toa)
+                    if row and row["status"] == "connected" and row["phone"]:
+                        continue
+                # Pergunta o estado real ao agente
+                res = await agent_bridge.send_command(
+                    sio, empresa_id, "get_state", {"instance": "default"}, timeout=12
+                )
+                if not (isinstance(res, dict) and res.get("state") == "open"):
+                    continue
+                phone = res.get("phone") or ""
+                async with get_db_direct() as db:
+                    if row:
+                        await db.execute(
+                            "UPDATE sessoes_wa SET status='connected', phone=?, last_seen=NOW() "
+                            "WHERE id=? AND empresa_id=?",
+                            (phone, row["id"], empresa_id),
+                        )
+                    else:
+                        await db.execute(
+                            "INSERT INTO sessoes_wa (empresa_id, id, nome, status, evolution_url, phone) "
+                            "VALUES (?, ?, 'WhatsApp Principal', 'connected', 'agent://', ?)",
+                            (empresa_id, str(_uuid.uuid4())[:8], phone),
+                        )
+                    await db.commit()
+                logger.info("[reporter] reconcile: empresa=%s WhatsApp conectado (phone=%s)", empresa_id, phone)
+            except Exception as exc:
+                logger.debug("[reporter] reconcile empresa=%s erro: %s", empresa_id, exc)
+    except Exception as exc:
+        logger.debug("[reporter] _reconcile_agent_sessions erro: %s", exc)
 
 
 async def _refresh_owner_map() -> None:
