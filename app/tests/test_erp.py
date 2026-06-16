@@ -15,6 +15,17 @@ import pytest_asyncio
 pytestmark = pytest.mark.asyncio
 
 
+def test_normalizar_telefone_insere_9():
+    """Celular antigo (8 díg após DDD, prefixo 6-9) ganha o 9; fixo e completo não."""
+    from app.routers.erp import _normalizar_telefone as n
+    assert n("556799635905") == "5567999635905"   # 55+DDD+8 móvel → +9
+    assert n("6799635905") == "5567999635905"      # sem 55, 8 díg móvel → +9
+    assert n("67999635905") == "5567999635905"     # já tem 9 → igual
+    assert n("5567999635905") == "5567999635905"   # completo → igual
+    assert n("556734221234") == "556734221234"     # fixo (prefixo 3) → NÃO insere 9
+    assert n("44997250658") == "5544997250658"     # 55 + DDD + 9 díg
+
+
 class TestErpConfig:
     async def test_config_sem_auth_retorna_401(self, client):
         r = await client.get("/api/erp/config")

@@ -146,10 +146,22 @@ def _montar_lista_produtos(produtos: List[Produto]) -> str:
 
 
 def _normalizar_telefone(telefone: str) -> str:
-    """Garante DDI 55 — ERP envia apenas DDD+número."""
+    """Normaliza pra DDI 55 + DDD + número, inserindo o 9º dígito do celular
+    quando vier no formato antigo (8 dígitos após o DDD começando em 6-9).
+
+    Ex: 6799635905 → 5567999635905 ; 556799635905 → 5567999635905.
+    Fixo (8 dígitos começando 2-5) não recebe o 9. Número já completo (9 dígitos) fica igual."""
     digits = "".join(c for c in telefone if c.isdigit())
     if not digits.startswith("55"):
         digits = "55" + digits
+    # Estrutura: 55 + DDD(2) + numero
+    if len(digits) >= 4:
+        ddd = digits[2:4]
+        num = digits[4:]
+        # Celular antigo (8 dígitos, prefixo de móvel 6-9) → insere o 9
+        if len(num) == 8 and num[0] in "6789":
+            num = "9" + num
+        digits = "55" + ddd + num
     return digits
 
 
