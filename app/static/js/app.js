@@ -37,6 +37,8 @@
         const html = await r.text();
         document.querySelector('.content').insertAdjacentHTML('beforeend', html);
         _loadedPages.add(page);
+        // Página lazy recém-injetada (ex: sistema/chatbot) → reaplica restrição de sub-menus
+        if (typeof window.applySubmenuPerms === 'function') window.applySubmenuPerms();
       } else {
         console.warn(`[pages] ${page} not found (${r.status})`);
       }
@@ -245,6 +247,7 @@
       // ── Permissões de menus ──────────────────────────────────────────────────
       // data.menus: null = todos permitidos; array = só esses menus visíveis
       const allowedMenus = Array.isArray(data.menus) ? data.menus : null;
+      window._allowedMenus = allowedMenus;  // usado por applySubmenuPerms (páginas lazy)
       if (allowedMenus !== null) {
         let firstAllowed = null;
 
@@ -278,59 +281,61 @@
           navigate(firstAllowed);
         }
 
-        // ── Sub-menus internos (chatbot e sistema) ─────────────────────────────
-        // Chaves compostas: "chatbot:conversas", "sistema:token-ia", etc.
-        // Se não há chaves compostas para o módulo → todos os sub-menus visíveis.
-        const _mainMenuKeys = allowedMenus.filter(k => !k.includes(':'));
-
-        // Chatbot sub-menus
-        if (_mainMenuKeys.includes('chatbot')) {
-          const cbSubs = allowedMenus.filter(k => k.startsWith('chatbot:')).map(k => k.split(':')[1]);
-          if (cbSubs.length > 0) {
-            // Restrição explícita: oculta os não listados
-            ['conversas','personalidade','boasvindas','faq','aprendizado','memoria'].forEach(key => {
-              const el = document.getElementById('cbMenu-' + key);
-              if (el) el.style.display = cbSubs.includes(key) ? '' : 'none';
-            });
-            // Se o painel ativo ficou oculto, ativa o primeiro visível
-            const cbActive = document.querySelector('#page-chatbot .sys-menu-item.active');
-            if (cbActive && cbActive.style.display === 'none') {
-              const firstCb = document.querySelector('#page-chatbot .sys-menu-item:not([style*="none"])');
-              if (firstCb) firstCb.click();
-            }
-          }
-        }
-
-        // Sistema sub-menus
-        if (_mainMenuKeys.includes('sistema')) {
-          const sysSubs = allowedMenus.filter(k => k.startsWith('sistema:')).map(k => k.split(':')[1]);
-          if (sysSubs.length > 0) {
-            // Descobre os data-panel REAIS na tela (evita lista hardcoded incompleta/errada).
-            document.querySelectorAll('#page-sistema .sys-menu-item[data-panel]').forEach(el => {
-              const key = el.dataset.panel;
-              el.style.display = sysSubs.includes(key) ? '' : 'none';
-            });
-            // Se o painel ativo ficou oculto, ativa o primeiro visível
-            const sysActive = document.querySelector('#page-sistema .sys-menu-item.active[data-panel]');
-            if (sysActive && sysActive.style.display === 'none') {
-              const firstSys = document.querySelector('#page-sistema .sys-menu-item[data-panel]:not([style*="none"])');
-              if (firstSys) firstSys.click();
-            }
-            // Oculta sidebar-section labels que ficaram sem itens
-            document.querySelectorAll('#page-sistema .sys-sidebar-section').forEach(section => {
-              let next = section.nextElementSibling;
-              let hasVisible = false;
-              while (next && !next.classList.contains('sys-sidebar-section')) {
-                if (next.classList.contains('sys-menu-item') && next.style.display !== 'none') hasVisible = true;
-                next = next.nextElementSibling;
-              }
-              section.style.display = hasVisible ? '' : 'none';
-            });
-          }
-        }
+        // Sub-menus internos (chatbot/sistema) — reaplicado também após carregar
+        // cada página lazy (ver _loadPage), pois #page-sistema não existe no checkAuth.
+        applySubmenuPerms();
       }
     } catch { window.location.href = '/login'; }
   }
+
+  // Aplica restrição de sub-menus (chaves compostas "chatbot:x" / "sistema:y").
+  // Idempotente — pode rodar no checkAuth E após cada _loadPage.
+  function applySubmenuPerms() {
+    const allowedMenus = window._allowedMenus;
+    if (!Array.isArray(allowedMenus)) return;  // null = todos permitidos
+    const _mainMenuKeys = allowedMenus.filter(k => !k.includes(':'));
+
+    // Chatbot sub-menus
+    if (_mainMenuKeys.includes('chatbot')) {
+      const cbSubs = allowedMenus.filter(k => k.startsWith('chatbot:')).map(k => k.split(':')[1]);
+      if (cbSubs.length > 0) {
+        ['conversas','personalidade','boasvindas','faq','aprendizado','memoria'].forEach(key => {
+          const el = document.getElementById('cbMenu-' + key);
+          if (el) el.style.display = cbSubs.includes(key) ? '' : 'none';
+        });
+        const cbActive = document.querySelector('#page-chatbot .sys-menu-item.active');
+        if (cbActive && cbActive.style.display === 'none') {
+          const firstCb = document.querySelector('#page-chatbot .sys-menu-item:not([style*="none"])');
+          if (firstCb) firstCb.click();
+        }
+      }
+    }
+
+    // Sistema sub-menus
+    if (_mainMenuKeys.includes('sistema')) {
+      const sysSubs = allowedMenus.filter(k => k.startsWith('sistema:')).map(k => k.split(':')[1]);
+      if (sysSubs.length > 0) {
+        document.querySelectorAll('#page-sistema .sys-menu-item[data-panel]').forEach(el => {
+          el.style.display = sysSubs.includes(el.dataset.panel) ? '' : 'none';
+        });
+        const sysActive = document.querySelector('#page-sistema .sys-menu-item.active[data-panel]');
+        if (sysActive && sysActive.style.display === 'none') {
+          const firstSys = document.querySelector('#page-sistema .sys-menu-item[data-panel]:not([style*="none"])');
+          if (firstSys) firstSys.click();
+        }
+        document.querySelectorAll('#page-sistema .sys-sidebar-section').forEach(section => {
+          let next = section.nextElementSibling;
+          let hasVisible = false;
+          while (next && !next.classList.contains('sys-sidebar-section')) {
+            if (next.classList.contains('sys-menu-item') && next.style.display !== 'none') hasVisible = true;
+            next = next.nextElementSibling;
+          }
+          section.style.display = hasVisible ? '' : 'none';
+        });
+      }
+    }
+  }
+  window.applySubmenuPerms = applySubmenuPerms;
 
   document.getElementById('btnLogout').addEventListener('click', async () => {
     // Redireciona SEMPRE, mesmo se o servidor não responder (logout client-side garantido)
