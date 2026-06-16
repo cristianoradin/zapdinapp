@@ -53,6 +53,14 @@
       </tr>`;
   }
 
+  function _fmtTs(ts) {
+    if (!ts) return '—';
+    const d = new Date(typeof ts === 'string' ? ts.replace(' ', 'T') : ts);
+    if (isNaN(d)) return ts;
+    // Fuso local do navegador (cada cliente vê no horário dele)
+    return `${d.toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric'})} ${d.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})}`;
+  }
+
   function _renderRow(r) {
     const empresa = r.empresa || r.client_name || '';
     const msg = (r.mensagem || '—').replace(/^🏪\s*\*[^*]+\*\s*\n+/, '');
@@ -64,7 +72,7 @@
         <td class="mono">${escHtml(r.destinatario || '—')}</td>
         <td style="max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${empresaHtml}</td>
         <td>${_statusChip(r.status)}</td>
-        <td class="mono">${r.created_at || '—'}</td>
+        <td class="mono">${_fmtTs(r.created_at)}</td>
       </tr>`;
   }
 
