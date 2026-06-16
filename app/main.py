@@ -129,9 +129,11 @@ _agent_log = logging.getLogger("app.agent")
 async def connect(sid, environ, auth):
     token = None
     version = "?"
+    device_id = None
     if isinstance(auth, dict):
         token = auth.get("token")
         version = auth.get("version", "?")
+        device_id = auth.get("device_id")
     if not token:
         _agent_log.warning("[agent] connect rejeitado: sem token (sid=%s)", sid)
         return False
@@ -146,6 +148,23 @@ async def connect(sid, environ, auth):
     if not empresa_id:
         _agent_log.warning("[agent] connect rejeitado: token inválido (sid=%s)", sid)
         return False
+
+    # Trava de dispositivo: token vincula a 1 máquina. 1ª ativação vincula; mesma
+    # máquina reativa; outra máquina é bloqueada. Agentes antigos (sem device_id)
+    # não vinculam nem são bloqueados (compatibilidade).
+    if device_id:
+        try:
+            async with pool.acquire() as conn:
+                row = await conn.fetchrow("SELECT bound_device_id FROM empresas WHERE id=$1", empresa_id)
+                bound = row["bound_device_id"] if row else None
+                if not bound:
+                    await conn.execute("UPDATE empresas SET bound_device_id=$1 WHERE id=$2", device_id, empresa_id)
+                    _agent_log.info("[agent] device vinculado: empresa=%s device=%s", empresa_id, device_id[:12])
+                elif bound != device_id:
+                    _agent_log.warning("[agent] connect REJEITADO: token da empresa=%s já vinculado a outro dispositivo (sid=%s)", empresa_id, sid)
+                    return False
+        except Exception as exc:
+            _agent_log.debug("[agent] device-bind erro (segue): %s", exc)
 
     _agent_bridge.register_agent(empresa_id, sid, {"version": version})
     await sio.emit(

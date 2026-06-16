@@ -64,7 +64,7 @@ async def activate_agent(body: ActivatePayload):
 # ── Auto-update (agent polls daily) ──────────────────────────────────────────
 
 # Versão alvo do agent. Bump quando uma release nova estiver pronta no GitHub.
-AGENT_LATEST_VERSION = "0.2.31"
+AGENT_LATEST_VERSION = "0.2.32"
 # .exe hospedado no próprio servidor (evita exigir GitHub auth — repo zapdinagent é private)
 AGENT_DOWNLOAD_URL = f"/static/downloads/ZapDinAgentSetup-{AGENT_LATEST_VERSION}.exe"
 
@@ -450,6 +450,25 @@ async def admin_set_agente_dono(
         raise HTTPException(503, f"DB: {exc}")
     agent_bridge.set_owner_map({r["id"]: r["agente_dono_empresa_id"] for r in rows})
     return {"ok": True, "empresa_id": empresa_id, "dono_empresa_id": dono}
+
+
+@router.post("/api/admin/empresas/{empresa_id}/unbind-device")
+async def admin_unbind_device(
+    empresa_id: int,
+    x_monitor_token: Optional[str] = Header(default=None, alias="X-Monitor-Token"),
+):
+    """Libera o vínculo de dispositivo do token (permite ativar em outra máquina).
+    Auth via X-Monitor-Token."""
+    expected = settings.monitor_client_token
+    if not expected or x_monitor_token != expected:
+        raise HTTPException(401, "X-Monitor-Token inválido")
+    try:
+        async with get_db_direct() as db:
+            await db.execute("UPDATE empresas SET bound_device_id=NULL WHERE id=?", (empresa_id,))
+            await db.commit()
+    except Exception as exc:
+        raise HTTPException(503, f"DB: {exc}")
+    return {"ok": True, "empresa_id": empresa_id, "unbound": True}
 
 
 @router.post("/api/admin/agents/{empresa_id}/update")
