@@ -117,8 +117,35 @@ async def delete_sessao(
 
 
 @router.get("/live-status")
-async def live_status(user: dict = Depends(get_current_user)):
-    return wa_manager.get_status(user["empresa_id"])
+async def live_status(db=Depends(get_db), user: dict = Depends(get_current_user)):
+    """Status das sessões. Agente: DB sessoes_wa é a verdade (atualizado pelo
+    reconcile/refresh-phone — QR pelo tray reflete aqui). Servidor/local: usa o
+    status em memória (real-time), com fallback pro DB."""
+    empresa_id = user["empresa_id"]
+    mem = {s["id"]: s for s in wa_manager.get_status(empresa_id)}
+    out, seen = [], set()
+    async with db.execute(
+        "SELECT id, nome, status, phone, evolution_url FROM sessoes_wa WHERE empresa_id=? ORDER BY created_at",
+        (empresa_id,),
+    ) as cur:
+        rows = await cur.fetchall()
+    for r in rows:
+        sid = r["id"]; evo = (r["evolution_url"] or "").strip()
+        is_agent = evo.lower().startswith("agent://")
+        m = mem.get(sid)
+        if is_agent:
+            status, phone = r["status"], r["phone"]
+        else:
+            status = (m or {}).get("status") or r["status"]
+            phone = (m or {}).get("phone") or r["phone"]
+        out.append({"id": sid, "nome": r["nome"], "status": status, "phone": phone,
+                    "evolution_url": evo,
+                    "modo": "agente" if is_agent else ("local" if evo else "servidor")})
+        seen.add(sid)
+    for sid, m in mem.items():
+        if sid not in seen:
+            out.append(m)
+    return out
 
 
 @router.get("/modos-permitidos")
