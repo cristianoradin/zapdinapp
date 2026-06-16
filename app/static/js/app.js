@@ -598,7 +598,13 @@
     initHome();
     _updateTopbarStatus();
     _updateAiStatus();
-    setInterval(loadStats, 30_000);
+    // Refresh periódico do dashboard: usa o módulo dashboard.js (linhas clicáveis +
+    // data formatada). loadStats() legado só como fallback — antes ele sobrescrevia
+    // a tabela a cada 30s, revertendo o render novo ("ficava voltando").
+    setInterval(() => {
+      if (window.ZD && ZD.registry._handlers['dashboard']) ZD.registry.dispatch('dashboard');
+      else loadStats();
+    }, 30_000);
     setInterval(_updateTopbarStatus, 30_000);
     setInterval(_updateAiStatus, 60_000); // checa IA a cada 60s
   });
