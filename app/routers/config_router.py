@@ -20,8 +20,10 @@ from ..core.security import get_current_user
 
 router = APIRouter(prefix="/api/config", tags=["config"])
 
-# Template padrão usado na primeira vez (sem mensagem_padrao salva no banco)
+# Template padrão usado na primeira vez (sem mensagem_padrao salva no banco).
+# {empresa} = nome da empresa da licença (cada cliente com o seu).
 _DEFAULT_TEMPLATE = (
+    "🏪 *{empresa}*\n\n"
     "✅ *Venda Confirmada!*\n\n"
     "👤 Cliente: {nome}\n"
     "💰 Valor Total: R$ {valor_total}\n"
