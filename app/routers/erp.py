@@ -444,7 +444,9 @@ async def gerar_token(
     O token bruto é retornado APENAS nesta resposta — não há como recuperá-lo depois.
     """
     empresa_id = user["empresa_id"]
-    novo_token = secrets.token_urlsafe(32)
+    # Hex puro (0-9a-f) com prefixo: sem '-', '_' ou case → o ERP/PDV não mexe nos
+    # caracteres ao salvar/enviar (token_urlsafe quebrava em alguns ERPs).
+    novo_token = "zap_" + secrets.token_hex(20)
     hashed = hash_erp_token(novo_token)
     await db.execute(
         """INSERT INTO config (empresa_id, key, value) VALUES (?, 'erp_token', ?)
