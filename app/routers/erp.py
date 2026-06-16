@@ -257,9 +257,11 @@ async def receber_venda(
         # Template configurado no ZapDin sempre tem prioridade sobre mensagem_custom do ERP
         mensagem = _aplicar_template(template_salvo, body, telefone, empresa_nome)
     else:
-        # Sem template salvo: usa mensagem_custom do ERP, ou aplica template padrão
-        _default = "Olá {nome}, obrigado pela sua compra de {valor_total} em {data}!"
-        mensagem = body.mensagem_custom or _aplicar_template(_default, body, telefone, empresa_nome)
+        # Sem template salvo: usa mensagem_custom do ERP, ou aplica o MESMO template
+        # padrão que o editor exibe (config_router._DEFAULT_TEMPLATE) — antes havia
+        # um default divergente aqui, então a venda saía diferente do editor.
+        from .config_router import _DEFAULT_TEMPLATE
+        mensagem = body.mensagem_custom or _aplicar_template(_DEFAULT_TEMPLATE, body, telefone, empresa_nome)
 
     # Anexa link de avaliação à mensagem (se recurso habilitado)
     try:
