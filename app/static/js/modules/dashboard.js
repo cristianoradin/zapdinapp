@@ -61,20 +61,58 @@
     return `${d.toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric'})} ${d.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'})}`;
   }
 
-  function _renderRow(r) {
+  function _renderRow(r, i) {
     const empresa = r.empresa || r.client_name || '';
     const msg = (r.mensagem || '—').replace(/^🏪\s*\*[^*]+\*\s*\n+/, '');
     const empresaHtml = empresa
       ? `<span style="font-weight:700">🏢 ${escHtml(empresa)}</span> <span style="color:var(--text-2)">${escHtml(msg)}</span>`
       : `<span style="color:var(--text-2)">${escHtml(msg)}</span>`;
     return `
-      <tr>
+      <tr onclick="verMsgDash(${i})" style="cursor:pointer" title="Ver mensagem completa">
         <td class="mono">${escHtml(r.destinatario || '—')}</td>
         <td style="max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${empresaHtml}</td>
         <td>${_statusChip(r.status)}</td>
         <td class="mono">${_fmtTs(r.created_at)}</td>
       </tr>`;
   }
+
+  // Mensagens atualmente exibidas (após filtro) — base do índice do onclick
+  let _displayedRows = [];
+
+  function _wppToHtml(t) {
+    // *bold* → <b>, _italic_ → <i>, preserva quebras e links
+    let h = escHtml(t || '');
+    h = h.replace(/\*([^*\n]+)\*/g, '<b>$1</b>')
+         .replace(/(^|[\s(])_([^_\n]+)_/g, '$1<i>$2</i>')
+         .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener" style="color:var(--accent)">$1</a>')
+         .replace(/\n/g, '<br>');
+    return h;
+  }
+
+  window.verMsgDash = function (i) {
+    const r = _displayedRows[i];
+    if (!r) return;
+    const meta = [
+      ['Destinatário', escHtml(r.destinatario || '—')],
+      ['Status', _statusChip(r.status)],
+      ['Data', _fmtTs(r.created_at)],
+    ].map(([k, v]) => `<div style="font-size:.78rem;color:var(--text-2)"><b>${k}:</b> ${v}</div>`).join('');
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:1rem';
+    ov.innerHTML = `
+      <div style="background:var(--surface);border-radius:12px;max-width:520px;width:100%;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,.3)">
+        <div style="padding:1rem 1.2rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <b style="font-size:.95rem">Mensagem enviada</b>
+          <button id="vmClose" style="border:none;background:none;font-size:1.3rem;cursor:pointer;color:var(--text-2);line-height:1">×</button>
+        </div>
+        <div style="padding:.8rem 1.2rem;display:flex;flex-direction:column;gap:.2rem;border-bottom:1px solid var(--border)">${meta}</div>
+        <div style="padding:1.2rem;overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:.88rem;line-height:1.5;color:var(--text)">${_wppToHtml(r.mensagem || '—')}</div>
+      </div>`;
+    const close = () => ov.remove();
+    ov.addEventListener('click', (e) => { if (e.target === ov) close(); });
+    ov.querySelector('#vmClose').addEventListener('click', close);
+    document.body.appendChild(ov);
+  };
 
   async function _checkQueueHealth() {
     try {
@@ -107,6 +145,7 @@
     else if (_msgFiltro === 'entregues') rows = rows.filter(r => ['delivered','read'].includes(r.status));
     else if (_msgFiltro === 'visualizadas') rows = rows.filter(r => r.status === 'read');
     else if (_msgFiltro === 'falhas') rows = rows.filter(r => r.status === 'failed' || r.status === 'error');
+    _displayedRows = rows;
     if (!rows.length) {
       tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--text-3);padding:1.5rem">Nenhuma mensagem ${_msgFiltro==='enviadas'?'enviada':_msgFiltro==='falhas'?'com falha':''}</td></tr>`;
     } else {
