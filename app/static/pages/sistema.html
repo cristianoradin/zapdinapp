@@ -21,12 +21,8 @@
         </div>
 
         <div class="sys-navgroup">
-          <span class="sys-navgroup-label">Integração Contábil</span>
+          <span class="sys-navgroup-label">Documentação e Logs</span>
           <div class="sys-navgroup-items">
-            <button class="sys-tab sys-menu-item" data-panel="dominio" onclick="sysNav(this,'dominio')">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-              <span>Domínio</span>
-            </button>
             <button class="sys-tab sys-menu-item" data-panel="docs" onclick="sysNav(this,'docs')">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
               <span>Documentações</span>
@@ -97,30 +93,6 @@
                   <span><b id="iacMsgs24h">—</b> msgs / 24h</span>
                 </div>
               </div>
-
-              <!-- OCR Master -->
-              <div class="card pad iac-master" id="iacOcrCard">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-                  <div style="display:flex;align-items:center;gap:12px;min-width:0">
-                    <span class="ci t-blue" style="width:44px;height:44px;flex:none">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
-                    </span>
-                    <div style="min-width:0">
-                      <div style="font-size:15px;font-weight:800">OCR Fiscal</div>
-                      <div style="font-size:12.5px;color:var(--text-3)">Extração automática de NF / cupons</div>
-                    </div>
-                  </div>
-                  <label class="toggle-switch" style="flex:none">
-                    <input type="checkbox" id="iacOcrMaster" onchange="iacToggleOcr(this)">
-                    <span class="toggle-slider"></span>
-                  </label>
-                </div>
-                <div style="display:flex;gap:14px;margin-top:12px;flex-wrap:wrap;font-size:12.5px;color:var(--text-2)">
-                  <span><b id="iacDocsHoje">—</b> docs / hoje</span>
-                  <span class="ctb-meta-dot">·</span>
-                  <span><b id="iacTaxaOcr">—%</b> acerto</span>
-                </div>
-              </div>
             </div>
 
             <!-- ── ATALHOS CHATBOT ──────────────────────────────────────── -->
@@ -150,7 +122,7 @@
 
             <!-- ── PROVEDORES ──────────────────────────────────────────── -->
             <div class="usr-section-label" style="margin:18px 0 10px">Provedores de IA</div>
-            <div style="font-size:12.5px;color:var(--text-3);margin-bottom:14px">Configure chaves dos provedores. Toggles <b>OCR</b>/<b>Chatbot</b> definem onde cada provider é usado. Sistema faz fallback automático.</div>
+            <div style="font-size:12.5px;color:var(--text-3);margin-bottom:14px">Configure chaves dos provedores de IA usados pelo Chatbot. Sistema faz fallback automático entre provedores ativos.</div>
 
             <!-- Cards de provedor -->
             <div class="ai-cards-grid">
@@ -192,7 +164,6 @@
                   <div>
                     <div class="ai-card-field-label">Usar para</div>
                     <div class="ai-uso-pills">
-                      <div class="ai-uso-pill ocr" id="aiUso-openai-ocr" onclick="aiToggleUso('openai','ocr')"><span class="ai-uso-dot"></span>🔍 OCR</div>
                       <div class="ai-uso-pill chat" id="aiUso-openai-chat" onclick="aiToggleUso('openai','chat')"><span class="ai-uso-dot"></span>💬 Chatbot</div>
                     </div>
                   </div>
@@ -241,7 +212,6 @@
                   <div>
                     <div class="ai-card-field-label">Usar para</div>
                     <div class="ai-uso-pills">
-                      <div class="ai-uso-pill ocr" id="aiUso-gemini-ocr" onclick="aiToggleUso('gemini','ocr')"><span class="ai-uso-dot"></span>🔍 OCR</div>
                       <div class="ai-uso-pill chat" id="aiUso-gemini-chat" onclick="aiToggleUso('gemini','chat')"><span class="ai-uso-dot"></span>💬 Chatbot</div>
                     </div>
                   </div>
@@ -290,7 +260,6 @@
                   <div>
                     <div class="ai-card-field-label">Usar para</div>
                     <div class="ai-uso-pills">
-                      <div class="ai-uso-pill ocr" id="aiUso-anthropic-ocr" onclick="aiToggleUso('anthropic','ocr')"><span class="ai-uso-dot"></span>🔍 OCR</div>
                       <div class="ai-uso-pill chat" id="aiUso-anthropic-chat" onclick="aiToggleUso('anthropic','chat')"><span class="ai-uso-dot"></span>💬 Chatbot</div>
                     </div>
                   </div>
@@ -341,7 +310,6 @@
                   <div>
                     <div class="ai-card-field-label">Usar para</div>
                     <div class="ai-uso-pills">
-                      <div class="ai-uso-pill ocr" id="aiUso-groq-ocr" onclick="aiToggleUso('groq','ocr')"><span class="ai-uso-dot"></span>🔍 OCR</div>
                       <div class="ai-uso-pill chat" id="aiUso-groq-chat" onclick="aiToggleUso('groq','chat')"><span class="ai-uso-dot"></span>💬 Chatbot</div>
                     </div>
                   </div>
@@ -466,141 +434,6 @@
             </div>
           </div>
 
-          <!-- Painel: Domínio -->
-          <div class="sys-panel" id="sys-panel-dominio">
-            <div class="sys-panel-header">
-              <div class="sys-panel-title">Integração Domínio</div>
-              <div class="sys-panel-sub">Configure a integração com o sistema Domínio Thomson Reuters para envio automático de documentos fiscais ao escritório contábil.</div>
-            </div>
-
-            <div id="dominio-alert" style="display:none;margin-bottom:1rem"></div>
-
-            <!-- Status -->
-            <div class="sys-row">
-              <div>
-                <div class="sys-row-title">Status da conexão</div>
-                <div class="sys-row-desc">Clique em "Testar" para verificar a conectividade com a API Domínio.</div>
-              </div>
-              <div class="sys-row-control" style="flex-direction:row;align-items:center;gap:.75rem">
-                <span id="dominio-status-dot" style="width:10px;height:10px;border-radius:50%;background:#e5e7eb;flex-shrink:0"></span>
-                <span id="dominio-status-text" style="font-size:.82rem;color:var(--text-3)">Não testado</span>
-                <button class="btn sm" id="btnDominioTestar" onclick="dominio.testar()" style="margin-left:.5rem">Testar</button>
-              </div>
-            </div>
-
-            <div class="sys-divider"></div>
-            <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);margin:.25rem 0 .75rem">Origem — Dados do Cliente</div>
-
-            <div class="sys-row">
-              <div>
-                <div class="sys-row-title">CNPJ do Cliente</div>
-                <div class="sys-row-desc">CNPJ da empresa cujos documentos serão enviados.</div>
-              </div>
-              <div class="sys-row-control">
-                <input class="field" type="text" id="dominio-cnpj-origem" placeholder="00.000.000/0001-00" maxlength="18" oninput="dominio.maskCnpj(this)" />
-              </div>
-            </div>
-
-            <div class="sys-divider"></div>
-
-            <div class="sys-row">
-              <div>
-                <div class="sys-row-title">Nome / Razão Social</div>
-                <div class="sys-row-desc">Apenas para identificação interna.</div>
-              </div>
-              <div class="sys-row-control">
-                <input class="field" type="text" id="dominio-nome-origem" placeholder="Empresa Ltda" />
-              </div>
-            </div>
-
-            <div class="sys-divider"></div>
-            <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);margin:.25rem 0 .75rem">Destino — Credenciais Domínio</div>
-
-            <div class="sys-row">
-              <div>
-                <div class="sys-row-title">URL Base da API</div>
-                <div class="sys-row-desc">Endpoint fornecido pelo escritório ou Thomson Reuters.</div>
-              </div>
-              <div class="sys-row-control">
-                <input class="field" type="url" id="dominio-api-url" placeholder="https://api.dominio.com.br/v1" value="https://api.dominio.com.br/v1" />
-              </div>
-            </div>
-
-            <div class="sys-divider"></div>
-
-            <div class="sys-row">
-              <div>
-                <div class="sys-row-title">Token de Autenticação</div>
-                <div class="sys-row-desc">Token gerado no portal Onvio (Thomson Reuters).</div>
-              </div>
-              <div class="sys-row-control" style="position:relative">
-                <input class="field" type="password" id="dominio-api-token" placeholder="Bearer token ou API Key" style="padding-right:2.5rem" />
-                <button type="button" onclick="dominio.toggleToken()" style="position:absolute;right:.6rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-3);padding:0">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                </button>
-              </div>
-            </div>
-
-            <div class="sys-divider"></div>
-
-            <div class="sys-row">
-              <div>
-                <div class="sys-row-title">CNPJ do Escritório Contábil</div>
-                <div class="sys-row-desc">CNPJ do destinatário no sistema Domínio.</div>
-              </div>
-              <div class="sys-row-control">
-                <input class="field" type="text" id="dominio-cnpj-escritorio" placeholder="00.000.000/0001-00" maxlength="18" oninput="dominio.maskCnpj(this)" />
-              </div>
-            </div>
-
-            <div class="sys-divider"></div>
-
-            <div class="sys-row">
-              <div>
-                <div class="sys-row-title">Tipos de Documento</div>
-                <div class="sys-row-desc">Documentos destes tipos serão enviados ao Domínio automaticamente.</div>
-              </div>
-              <div class="sys-row-control" style="flex-direction:row;flex-wrap:wrap;gap:.75rem">
-                <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;cursor:pointer"><input type="checkbox" id="dominio-tipo-nfe" checked> NF-e</label>
-                <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;cursor:pointer"><input type="checkbox" id="dominio-tipo-cte"> CT-e</label>
-                <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;cursor:pointer"><input type="checkbox" id="dominio-tipo-nfse"> NFS-e</label>
-                <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;cursor:pointer"><input type="checkbox" id="dominio-tipo-cfe"> CF-e (SAT)</label>
-              </div>
-            </div>
-
-            <div class="sys-divider"></div>
-
-            <div class="sys-row">
-              <div>
-                <div class="sys-row-title">Envio Automático</div>
-                <div class="sys-row-desc">Envia documentos ao Domínio assim que chegam do ERP, sem intervenção manual.</div>
-              </div>
-              <div class="sys-row-control">
-                <label class="toggle-switch">
-                  <input type="checkbox" id="dominio-auto-envio">
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-            </div>
-
-            <div style="margin-top:1.5rem;display:flex;gap:.75rem">
-              <button class="btn" onclick="dominio.salvar()">Salvar configuração</button>
-              <button class="btn" onclick="dominio.carregar()">Cancelar</button>
-            </div>
-            <div class="alert" id="alertDominio" style="margin-top:.75rem;display:none"></div>
-
-            <div class="sys-divider" style="margin-top:2rem"></div>
-            <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);margin:.25rem 0 .75rem">Log de Envios Recentes</div>
-            <div class="table-wrap">
-              <table class="table" id="dominioLogTable">
-                <thead><tr><th>Data/Hora</th><th>Documento</th><th>Tipo</th><th>Status</th><th>Resposta</th></tr></thead>
-                <tbody id="dominioLogBody">
-                  <tr><td colspan="5" class="table-empty">Nenhum envio registrado</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div><!-- /sys-panel-dominio -->
-
           <!-- Painel: Log do Sistema -->
           <div class="sys-panel" id="sys-panel-log">
             <div class="sys-panel-header">
@@ -634,7 +467,6 @@
                 <option value="monitor">Monitor</option>
                 <option value="worker">Worker</option>
                 <option value="chatbot">Chatbot</option>
-                <option value="dominio">Domínio</option>
                 <option value="sistema">Sistema</option>
               </select>
               <!-- Busca -->

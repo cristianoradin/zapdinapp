@@ -721,7 +721,7 @@ class EvoManager:
 
         elif event == "MESSAGES_UPSERT":
             # Nova mensagem recebida — rota para o módulo contábil se for mídia de cliente
-            asyncio.create_task(self._processar_mensagem_contabil(inst, data, sess.empresa_id))
+            asyncio.create_task(self._processar_inbound(inst, data, sess.empresa_id))
             # Chat/chamados: repassa texto recebido pro sistema externo (best-effort)
             try:
                 key = data.get("key") or {}
@@ -1059,195 +1059,38 @@ class EvoManager:
     def schedule_status_check(self, arquivo_id, session_id, empresa_id, phone, table="arquivos"):
         pass   # reservado para uso futuro (Evolution webhook MESSAGES_UPDATE cobriria isso)
 
-    async def _processar_mensagem_contabil(self, inst: str, data: dict, tenant_id: int = 0) -> None:
-        """
-        Processa MESSAGES_UPSERT: se o remetente for cliente cadastrado em
-        empresas_contabil e enviou mídia (imagem ou PDF), baixa e enfileira OCR.
-        tenant_id = empresas.id (ID do escritório contábil, dono da sessão WA)
-        """
-        import uuid as _uuid
-        import base64 as _b64
-        from pathlib import Path
-
+    async def _processar_inbound(self, inst: str, data: dict, tenant_id: int = 0) -> None:
+        """Inbound de TEXTO → chatbot geral da empresa dona da sessão.
+        (Contábil/OCR de mídia foi extraído pro projeto zapdincontabil.)"""
         try:
             key = data.get("key") or {}
             if key.get("fromMe"):
-                return  # ignora mensagens enviadas pelo próprio sistema
-
+                return
             remote_jid = key.get("remoteJid") or ""
             if "@g.us" in remote_jid:
-                return  # ignora grupos
-
+                return
             msg_type = data.get("messageType") or ""
-            msg      = data.get("message") or {}
-
-            # Tipos de mídia aceitos como documento fiscal
-            _MEDIA_TYPES = {
-                "imageMessage", "documentMessage",
-                "documentWithCaptionMessage", "ptvMessage",
-            }
-
-            # Tipos de mensagem de texto simples → chatbot
-            _TEXT_TYPES = {"conversation", "extendedTextMessage"}
-            _is_text = (
-                msg_type in _TEXT_TYPES
-                or (msg_type not in _MEDIA_TYPES
-                    and not any(k in msg for k in _MEDIA_TYPES))
-            )
-
-            if _is_text and msg_type not in _MEDIA_TYPES:
-                # Extrai o texto
-                _texto = (
-                    msg.get("conversation")
-                    or (msg.get("extendedTextMessage") or {}).get("text")
-                    or ""
-                ).strip()
-                if not _texto:
-                    return
-                # Será preenchido após lookup de empresa — tratado abaixo
-                _ROTA_CHATBOT = True
-            else:
-                _ROTA_CHATBOT = False
-
-            # Extrai número do remetente
-            # Evolution pode usar @lid (novo formato) ou @s.whatsapp.net (formato padrão)
-            # Se for @lid, usa remoteJidAlt que contém o número real
+            msg = data.get("message") or {}
+            _MEDIA = {"imageMessage", "documentMessage", "documentWithCaptionMessage", "ptvMessage"}
+            if msg_type in _MEDIA:
+                return  # mídia não é mais tratada aqui (contábil saiu)
+            texto = (
+                msg.get("conversation")
+                or (msg.get("extendedTextMessage") or {}).get("text")
+                or ""
+            ).strip()
+            if not texto:
+                return
             if "@lid" in remote_jid:
-                alt_jid = key.get("remoteJidAlt") or ""
-                effective_jid = alt_jid if alt_jid else remote_jid
+                alt = key.get("remoteJidAlt") or ""
+                eff = alt or remote_jid
             else:
-                effective_jid = remote_jid
-
-            phone_full  = effective_jid.split("@")[0]   # ex: "5544991099797"
-            phone_local = phone_full[2:] if phone_full.startswith("55") else phone_full
-
-            # Busca empresa pelo telefone — tenta 3 variantes de formato
-            # WA pode entregar em formato antigo (10 dig) ou novo (11 dig)
-            # DB pode ter qualquer um dos dois formatos
-            variantes = [phone_local]
-            if len(phone_local) == 10:
-                # formato antigo (DDD+8) → tenta novo (DDD+9+8)
-                variantes.append(phone_local[:2] + "9" + phone_local[2:])
-            elif len(phone_local) == 11 and phone_local[2] == "9":
-                # formato novo (DDD+9+8) → tenta antigo (DDD+8)
-                variantes.append(phone_local[:2] + phone_local[3:])
-
-            from ..core.database import get_db_direct
-            async with get_db_direct() as db:
-                empresa = None
-                for variante in variantes:
-                    async with db.execute(
-                        "SELECT id, nome FROM empresas_contabil WHERE telefone=? AND ativo=TRUE",
-                        (variante,)
-                    ) as cur:
-                        empresa = await cur.fetchone()
-                    if empresa:
-                        break
-
-                if not empresa:
-                    # Não é cliente contábil — roteia texto para o chatbot geral da empresa dona da sessão
-                    if _ROTA_CHATBOT:
-                        from ..services.chatbot_service import responder_mensagem
-                        logger.info("[chatbot] Roteando %s → chatbot geral (tenant=%s inst=%s texto=%r)",
-                                    phone_local, tenant_id, inst, _texto[:60])
-                        asyncio.create_task(
-                            responder_mensagem(tenant_id, phone_full, _texto, inst, "")
-                        )
-                    else:
-                        logger.info("[chatbot] _ROTA_CHATBOT=False — chatbot desativado para inst=%s", inst)
-                    return
-
-                empresa_id   = empresa["id"]
-                empresa_nome = empresa["nome"]
-
-                # ── Roteamento: texto → chatbot, mídia → OCR ──────────────────────
-                if _ROTA_CHATBOT:
-                    from ..services.chatbot_service import responder_mensagem
-                    # tenant_id = empresas.id (ID do escritório, dono da sessão)
-                    # empresa_id aqui é empresas_contabil.id — passamos tenant_id para o chatbot
-                    asyncio.create_task(
-                        responder_mensagem(tenant_id, phone_full, _texto, inst, empresa_nome)
-                    )
-                    return
-
-                # ── Download da mídia via Evolution API ──────────────────────────
-                # O endpoint espera {"message": {"key": ..., "message": ...}}
-                async with httpx.AsyncClient(timeout=60.0) as client:
-                    r = await client.post(
-                        self._url_for_inst(inst, f"chat/getBase64FromMediaMessage/{inst}"),
-                        json={"message": {"key": key, "message": msg}, "convertToMp4": False},
-                        headers=_h(),
-                    )
-
-                if r.status_code not in (200, 201):
-                    logger.warning(
-                        "[contabil] Falha ao baixar mídia (HTTP %s) de %s",
-                        r.status_code, phone_local
-                    )
-                    return
-
-                media_resp = r.json()
-                b64_data   = media_resp.get("base64") or media_resp.get("data") or ""
-                if not b64_data:
-                    logger.warning("[contabil] Mídia sem base64 de %s", phone_local)
-                    return
-
-                # ── Determina tipo e extensão ─────────────────────────────────────
-                if msg_type == "imageMessage":
-                    img_msg  = msg.get("imageMessage") or {}
-                    mime     = img_msg.get("mimetype") or "image/jpeg"
-                    ext      = ".jpg" if "jpeg" in mime else ".png"
-                    nome_arq = f"wa_{_uuid.uuid4().hex}{ext}"
-                else:
-                    doc_msg  = (msg.get("documentMessage")
-                                or (msg.get("documentWithCaptionMessage") or {})
-                                   .get("message", {}).get("documentMessage") or {})
-                    mime     = doc_msg.get("mimetype") or "application/octet-stream"
-                    title    = doc_msg.get("title") or doc_msg.get("fileName") or "doc"
-                    raw_ext  = os.path.splitext(title)[1]
-                    ext      = raw_ext if raw_ext else (".pdf" if "pdf" in mime else ".bin")
-                    nome_arq = f"wa_{_uuid.uuid4().hex}{ext}"
-
-                # ── Salva em disco ────────────────────────────────────────────────
-                upload_dir = Path("data/contabil_docs")
-                upload_dir.mkdir(parents=True, exist_ok=True)
-                dest_path  = str(upload_dir / nome_arq)
-                with open(dest_path, "wb") as fh:
-                    fh.write(_b64.b64decode(b64_data))
-
-                # ── Insere documento_fiscal e enfileira OCR ───────────────────────
-                async with db.execute(
-                    """INSERT INTO documentos_fiscais
-                       (empresa_id, status, origem_wa, arquivo_path, arquivo_mime, arquivo_nome)
-                       VALUES (?, 'ocr_pendente', ?, ?, ?, ?)""",
-                    (empresa_id, phone_full, dest_path, mime, nome_arq)
-                ) as cur:
-                    doc_id = cur.lastrowid
-                await db.commit()
-
-                await db.execute(
-                    "INSERT INTO ocr_jobs(documento_id) VALUES(?) ON CONFLICT DO NOTHING",
-                    (doc_id,)
-                )
-                await db.execute(
-                    "INSERT INTO contabil_feed(empresa_id, documento_id, tipo, descricao)"
-                    " VALUES(?,?,?,?)",
-                    (empresa_id, doc_id, "recebido",
-                     f"Documento recebido de {empresa_nome} via WhatsApp")
-                )
-                await db.commit()
-
-                logger.info(
-                    "[contabil] Documento #%s recebido de %s (%s) — OCR enfileirado",
-                    doc_id, empresa_nome, phone_local
-                )
-
-                # ── Dispara OCR em background ─────────────────────────────────────
-                from ..services.ocr_service import extrair_dados_fiscal
-                asyncio.create_task(extrair_dados_fiscal(doc_id, dest_path))
-
+                eff = remote_jid
+            phone_full = eff.split("@")[0]
+            from ..services.chatbot_service import responder_mensagem
+            asyncio.create_task(responder_mensagem(tenant_id, phone_full, texto, inst, ""))
         except Exception as exc:
-            logger.error("[contabil] Erro ao processar MESSAGES_UPSERT: %s", exc, exc_info=True)
+            logger.error("[chatbot] erro no inbound: %s", exc, exc_info=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

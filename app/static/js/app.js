@@ -67,9 +67,6 @@
     'dm-campanha':    'Criar Campanhas',
     'dm-historico':   'Gerenciar Campanhas',
     'dm-enviadas':    'Campanhas Enviadas',
-    'ctb-dashboard':  'Gestão de Documentos',
-    'ctb-empresas':   'Cadastro de Empresas',
-    'ctb-arquivos':   'Arquivados',
     'sistema':        'Sistema',
     'chatbot':        'Chatbot',
     'ia-central':     'IA Central',
@@ -114,13 +111,12 @@
     document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
     // Marca nav-item normal
     let navItem = document.querySelector(`.nav-item[data-page="${page}"]`);
-    // Para sub-páginas (dm-*, ctb-*), destaca o item pai visível do grupo
+    // Para sub-páginas (dm-*), destaca o item pai visível do grupo
     if (navItem && navItem.style.display === 'none') {
-      // Sub-page: encontra o pai do grupo (primeiro item visível do grupo Campanhas/Contábil)
+      // Sub-page: encontra o pai do grupo (primeiro item visível do grupo Campanhas)
       const parentMap = {
         'dm-contatos': 'dm-dashboard', 'dm-campanha': 'dm-dashboard',
         'dm-historico': 'dm-dashboard', 'dm-enviadas': 'dm-dashboard',
-        'ctb-dashboard': 'ctb-empresas', 'ctb-arquivos': 'ctb-empresas',
       };
       const parentPage = parentMap[page];
       if (parentPage) {
@@ -517,9 +513,6 @@
     else if (page === 'dm-campanha') window.initNovaCampanha && window.initNovaCampanha();
     else if (page === 'dm-historico') { window.loadCampanhas && window.loadCampanhas(); window.loadWorkerStatus && window.loadWorkerStatus(); }
     else if (page === 'dm-enviadas') window.loadCampanhasEnviadas && window.loadCampanhasEnviadas();
-    else if (page === 'ctb-dashboard') { if (window.ctbDashboard) ctbDashboard.reload(); }
-    else if (page === 'ctb-empresas')  { if (window.ctbEmpresas)  ctbEmpresas.carregar(); }
-    else if (page === 'ctb-arquivos')  { if (window.ctbArquivos)  ctbArquivos.carregar(); }
     else if (page === 'ia-central') { iaCentral.init(); }
   }
 

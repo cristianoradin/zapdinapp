@@ -35,7 +35,6 @@ async def empresa_b(db_conn, empresa_usuario):
         await db_conn.execute(f"DELETE FROM {tbl} WHERE empresa_id = $1", eb)
     await db_conn.execute("DELETE FROM sessoes_wa WHERE empresa_id = $1", eb)
     await db_conn.execute("DELETE FROM config WHERE empresa_id = $1", eb)
-    await db_conn.execute("DELETE FROM empresas_contabil WHERE tenant_id = $1", eb)
     try:
         await db_conn.execute("DELETE FROM system_logs WHERE empresa_id = $1", eb)
     except Exception:
@@ -81,21 +80,6 @@ async def empresa_b(db_conn, empresa_usuario):
            ON CONFLICT (empresa_id, key) DO UPDATE SET value = EXCLUDED.value""",
         eb, f"template secreto {MARKER}",
     )
-    ids["ctb_empresa_id"] = await db_conn.fetchval(
-        """INSERT INTO empresas_contabil (tenant_id, nome, telefone)
-           VALUES ($1, $2, '44966665555') RETURNING id""",
-        eb, f"Contabil {MARKER}",
-    )
-    ids["ctb_doc_id"] = await db_conn.fetchval(
-        """INSERT INTO documentos_fiscais (tenant_id, empresa_id, status, arquivo_nome)
-           VALUES ($1, $2, 'recebido', $3) RETURNING id""",
-        eb, ids["ctb_empresa_id"], f"nf-{MARKER}.pdf",
-    )
-    await db_conn.execute(
-        """INSERT INTO contabil_feed (tenant_id, empresa_id, tipo, descricao)
-           VALUES ($1, $2, 'cadastro', $3)""",
-        eb, ids["ctb_empresa_id"], f"feed {MARKER}",
-    )
     # Grupo da B (pra testar vínculo de contato cross-tenant no pivô)
     ids["grupo_id"] = await db_conn.fetchval(
         """INSERT INTO grupos_contatos (empresa_id, nome) VALUES ($1, $2) RETURNING id""",
@@ -130,10 +114,6 @@ LIST_ENDPOINTS = [
     "/api/avaliacoes",
     "/api/avaliacoes/dashboard",
     "/api/config",
-    "/api/contabil/empresas",
-    "/api/contabil/documentos",
-    "/api/contabil/dashboard",
-    "/api/contabil/feed",
 ]
 
 
@@ -210,51 +190,6 @@ async def test_delete_sessao_da_b_nao_remove(auth_client, empresa_b, db_conn):
         empresa_b["sessao_id"], empresa_b["empresa_id"],
     )
     assert ainda_existe == 1, "DELETE cross-tenant removeu sessão WA de outra empresa!"
-
-
-@pytest.mark.asyncio
-async def test_get_empresa_contabil_da_b_404(auth_client, empresa_b):
-    r = await auth_client.get(f"/api/contabil/empresas/{empresa_b['ctb_empresa_id']}")
-    assert r.status_code in (403, 404)
-
-
-@pytest.mark.asyncio
-async def test_put_empresa_contabil_da_b_404(auth_client, empresa_b):
-    r = await auth_client.put(
-        f"/api/contabil/empresas/{empresa_b['ctb_empresa_id']}",
-        json={"nome": "HACKED"},
-    )
-    assert r.status_code in (403, 404)
-
-
-@pytest.mark.asyncio
-async def test_delete_empresa_contabil_da_b_nao_remove(auth_client, empresa_b, db_conn):
-    await auth_client.delete(f"/api/contabil/empresas/{empresa_b['ctb_empresa_id']}")
-    ainda_existe = await db_conn.fetchval(
-        "SELECT COUNT(*) FROM empresas_contabil WHERE id = $1", empresa_b["ctb_empresa_id"]
-    )
-    assert ainda_existe == 1, "DELETE cross-tenant removeu empresa contábil de outro tenant!"
-
-
-@pytest.mark.asyncio
-async def test_get_documento_da_b_404(auth_client, empresa_b):
-    r = await auth_client.get(f"/api/contabil/documentos/{empresa_b['ctb_doc_id']}")
-    assert r.status_code in (403, 404)
-
-
-@pytest.mark.asyncio
-async def test_aprovar_documento_da_b_404(auth_client, empresa_b):
-    r = await auth_client.put(f"/api/contabil/documentos/{empresa_b['ctb_doc_id']}/aprovar")
-    assert r.status_code in (403, 404)
-
-
-@pytest.mark.asyncio
-async def test_upload_doc_para_empresa_da_b_bloqueado(auth_client, empresa_b):
-    r = await auth_client.post(
-        f"/api/contabil/documentos/upload?empresa_id={empresa_b['ctb_empresa_id']}",
-        files={"arquivo": ("nf.jpg", b"fake-image-bytes", "image/jpeg")},
-    )
-    assert r.status_code in (403, 404)
 
 
 # ── Config (client_name vem da empresa do cookie) ─────────────────────────────

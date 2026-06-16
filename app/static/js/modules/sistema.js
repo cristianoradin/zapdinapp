@@ -34,7 +34,6 @@
     el.classList.add('active');
     el.classList.add('on');
     if (target) target.classList.add('active');
-    if (panel === 'dominio' && window.dominio) dominio.carregar();
     if (panel === 'log' && window.syslog)    syslog.carregar(true);
     if (panel === 'token' && window.tokenModule) tokenModule.init();
     // ── Configurações do Chatbot (movidas pra cá) — dispara loaders ──
@@ -98,9 +97,8 @@
           _aiSetStatus(p, 'err', 'Não configurada');
         }
         const uso = info.uso || {};
-        const ocrAtivo  = uso.ocr  === true || (info.configurado && !uso.ocr && !uso.chat);
-        const chatAtivo = uso.chat === true;
-        _aiSetUsoPill(p, 'ocr',  ocrAtivo);
+        // OCR extraído pro zapdincontabil — provider serve só Chatbot agora.
+        const chatAtivo = uso.chat === true || (info.configurado && !uso.chat);
         _aiSetUsoPill(p, 'chat', chatAtivo);
         _aiSetAtivo(p, info.ativo !== false);
       }
@@ -151,9 +149,8 @@
     if (!key) { _aiShowAlert(provider, 'Digite a chave.', 'err'); return; }
     const r = await api('POST', '/api/config/ai-key', { provider, key });
     if (r.ok) {
-      const ocr  = document.getElementById('aiUso-' + provider + '-ocr')?.classList.contains('on')  || false;
       const chat = document.getElementById('aiUso-' + provider + '-chat')?.classList.contains('on') || false;
-      await api('POST', '/api/config/ai-uso', { provider, ocr, chat });
+      await api('POST', '/api/config/ai-uso', { provider, ocr: false, chat });
       _aiShowAlert(provider, '✓ Chave salva!', 'ok');
       inp.value = key.slice(0, 8) + '...' + key.slice(-4);
       inp.setAttribute('data-preview', '1'); inp.type = 'password';
@@ -164,9 +161,8 @@
   };
 
   window.aiSalvarUso = async function aiSalvarUso(provider) {
-    const ocr  = document.getElementById('aiUso-' + provider + '-ocr')?.classList.contains('on')  || false;
     const chat = document.getElementById('aiUso-' + provider + '-chat')?.classList.contains('on') || false;
-    await api('POST', '/api/config/ai-uso', { provider, ocr, chat });
+    await api('POST', '/api/config/ai-uso', { provider, ocr: false, chat });
     _aiShowAlert(provider, '✓ Preferência salva!', 'ok');
   };
 
@@ -208,7 +204,7 @@
   window.aiTestar = async function aiTestar(provider) {
     _aiSetStatus(provider, '', '⏳ Testando…');
     try {
-      const r = await fetch('/api/contabil/ai-status?provider=' + provider);
+      const r = await fetch('/api/config/ai-status?provider=' + provider);
       if (r.ok) {
         const d = await r.json();
         if (d.ativa) _aiSetStatus(provider, 'ok', 'Conexão OK');
@@ -236,10 +232,9 @@
 
   async function _iacRefresh() {
     try {
-      const [cfg, conversas, stats] = await Promise.all([
+      const [cfg, conversas] = await Promise.all([
         fetch('/api/chatbot/config').then(r => r.ok ? r.json() : {}),
         fetch('/api/chatbot/conversas').then(r => r.ok ? r.json() : []),
-        fetch('/api/contabil/dashboard').then(r => r.ok ? r.json() : {}),
       ]);
 
       // Master chatbot toggle
@@ -266,21 +261,6 @@
         const faq = await fetch('/api/chatbot/faq').then(r => r.ok ? r.json() : []);
         const elF = document.getElementById('iacFaqCount'); if (elF) elF.textContent = (faq || []).length;
       } catch {}
-
-      // Master OCR (config key 'ocr_ativo' — default ON)
-      try {
-        const gcfg = await fetch('/api/config').then(r => r.ok ? r.json() : {});
-        const ocrAtivo = gcfg.ocr_ativo === undefined ? true
-                        : (gcfg.ocr_ativo === '1' || gcfg.ocr_ativo === true || gcfg.ocr_ativo === 'true');
-        const om = document.getElementById('iacOcrMaster');
-        const oc = document.getElementById('iacOcrCard');
-        if (om) om.checked = ocrAtivo;
-        if (oc) { oc.classList.toggle('on', ocrAtivo); oc.classList.toggle('off', !ocrAtivo); }
-      } catch {}
-
-      // OCR stats (dashboard contábil)
-      const elD = document.getElementById('iacDocsHoje'); if (elD) elD.textContent = stats.docs_hoje ?? '0';
-      const elT = document.getElementById('iacTaxaOcr');  if (elT) elT.textContent = (stats.taxa_ocr ?? 0) + '%';
     } catch (e) {
       console.error('[iac] refresh erro:', e);
     }
@@ -298,17 +278,6 @@
       await api('POST', '/api/chatbot/config', { ativo, system_prompt: cur.system_prompt || '' });
     } catch {
       cb.checked = !ativo; // rollback
-    }
-  };
-
-  window.iacToggleOcr = async function iacToggleOcr(cb) {
-    const ativo = !!cb.checked;
-    const card = document.getElementById('iacOcrCard');
-    if (card) { card.classList.toggle('on', ativo); card.classList.toggle('off', !ativo); }
-    try {
-      await api('POST', '/api/config', { ocr_ativo: ativo ? '1' : '0' });
-    } catch {
-      cb.checked = !ativo;
     }
   };
 

@@ -689,13 +689,7 @@ async def _loop() -> None:
             asyncio.create_task(_cleanup_old_files())  # roda em paralelo — não bloqueia heartbeat
         if _cleanup_tick % _SESSION_CLEANUP_INTERVAL == 0:
             asyncio.create_task(_cleanup_invalidated_sessions())  # M3: limpeza de sessões expiradas
-        if _cleanup_tick % _OCR_INTERVAL == 0:
-            # Processa fila OCR pendente a cada ~1 minuto
-            try:
-                from .ocr_service import processar_fila_ocr
-                asyncio.create_task(processar_fila_ocr())
-            except Exception:
-                pass
+        # OCR/contábil movido p/ projeto separado (zapdincontabil) — removido daqui.
         if _cleanup_tick % _ALERTA_INTERVAL == 0:
             # Reenvio de alertas críticos pendentes a cada ~2 minutos
             asyncio.create_task(_processar_alertas_pendentes())

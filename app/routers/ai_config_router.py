@@ -137,3 +137,89 @@ async def get_openai_key_status(user: dict = Depends(get_current_user)):
 async def set_openai_key(body: AIKeyBody, user: dict = Depends(get_current_user)):
     body.provider = "openai"
     return await set_ai_key(body, user)
+
+
+@router.get("/ai-status")
+async def ai_status(provider: str = "openai", user: dict = Depends(get_current_user)):
+    """Verifica se o provider de IA está configurado e acessível (chatbot)."""
+    import httpx
+
+    provider = provider.lower().strip()
+
+    if provider == "openai":
+        api_key = getattr(settings, "openai_api_key", "") or ""
+        if not api_key:
+            return {"ativa": False, "motivo": "OpenAI API key não configurada"}
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                r = await client.get(
+                    "https://api.openai.com/v1/models",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                )
+            if r.status_code == 200:
+                return {"ativa": True}
+            return {"ativa": False, "motivo": f"HTTP {r.status_code}"}
+        except Exception as e:
+            return {"ativa": False, "motivo": str(e)}
+
+    elif provider == "gemini":
+        api_key = getattr(settings, "gemini_api_key", "") or ""
+        if not api_key:
+            return {"ativa": False, "motivo": "Gemini API key não configurada"}
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                r = await client.get(
+                    f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}",
+                )
+            if r.status_code == 200:
+                return {"ativa": True}
+            detail = r.json().get("error", {}).get("message", f"HTTP {r.status_code}")
+            return {"ativa": False, "motivo": detail}
+        except Exception as e:
+            return {"ativa": False, "motivo": str(e)}
+
+    elif provider == "anthropic":
+        api_key = getattr(settings, "anthropic_api_key", "") or ""
+        if not api_key:
+            return {"ativa": False, "motivo": "Anthropic API key não configurada"}
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                r = await client.post(
+                    "https://api.anthropic.com/v1/messages",
+                    headers={
+                        "x-api-key": api_key,
+                        "anthropic-version": "2023-06-01",
+                        "content-type": "application/json",
+                    },
+                    json={
+                        "model": "claude-haiku-4-5",
+                        "max_tokens": 1,
+                        "messages": [{"role": "user", "content": "hi"}],
+                    },
+                )
+            # 200 = ok, 400 com erro de validação ainda significa chave válida
+            if r.status_code in (200, 400):
+                return {"ativa": True}
+            detail = r.json().get("error", {}).get("message", f"HTTP {r.status_code}")
+            return {"ativa": False, "motivo": detail}
+        except Exception as e:
+            return {"ativa": False, "motivo": str(e)}
+
+    elif provider == "groq":
+        api_key = getattr(settings, "groq_api_key", "") or ""
+        if not api_key:
+            return {"ativa": False, "motivo": "Groq API key não configurada"}
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                r = await client.get(
+                    "https://api.groq.com/openai/v1/models",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                )
+            if r.status_code == 200:
+                return {"ativa": True}
+            detail = r.json().get("error", {}).get("message", f"HTTP {r.status_code}")
+            return {"ativa": False, "motivo": detail}
+        except Exception as e:
+            return {"ativa": False, "motivo": str(e)}
+
+    return {"ativa": False, "motivo": f"Provider desconhecido: {provider}"}

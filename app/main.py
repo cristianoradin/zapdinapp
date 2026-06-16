@@ -64,9 +64,7 @@ from .routers.docs_router import router as docs_router
 from .routers.campanha import router as campanha_router
 from .routers.pdv_router import router as pdv_router
 from .routers.avaliacao import router as avaliacao_router
-from .routers.contabil import router as contabil_router
 from .routers.chatbot_router import router as chatbot_router
-from .routers.dominio_router import router as dominio_router
 from .routers.syslog_router import router as syslog_router
 from .routers.ia_central_router import router as ia_central_router
 from .routers.home_router import router as home_router
@@ -406,9 +404,7 @@ fastapi_app.include_router(docs_router)             # /api/docs/* (documentaçã
 fastapi_app.include_router(campanha_router)         # /api/campanha/* (disparo em massa)
 fastapi_app.include_router(pdv_router)              # /api/pdv/* (ZapDin PDV local)
 fastapi_app.include_router(avaliacao_router)        # /avaliacao + /api/avaliacao/* + /api/avaliacoes
-fastapi_app.include_router(contabil_router)         # /api/contabil/* (módulo contábil)
 fastapi_app.include_router(chatbot_router)          # /api/chatbot/* (chatbot IA)
-fastapi_app.include_router(dominio_router)          # /api/dominio/* (integração Domínio Thomson Reuters)
 fastapi_app.include_router(syslog_router)            # /api/syslog/* (log do sistema)
 fastapi_app.include_router(ia_central_router)       # /api/ia-central/* (IA Central)
 fastapi_app.include_router(home_router)             # /api/home/* (Home Dashboard)

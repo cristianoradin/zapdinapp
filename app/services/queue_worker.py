@@ -228,17 +228,7 @@ async def _loop() -> None:
             status = "error" if _last_error else "ok"
             asyncio.create_task(_write_heartbeat(get_db_direct, status, _last_error[:200]))
 
-        # Verifica boas-vindas WA pendentes a cada ~30 ciclos de sleep(1s)
-        _bv_check_counter += 1
-        if _bv_check_counter >= 30:
-            _bv_check_counter = 0
-            try:
-                from .contabil_service import processar_boasvindas_pendentes
-                _bv_enviados = await processar_boasvindas_pendentes(wa_manager, get_db_direct)
-                if _bv_enviados:
-                    logger.info("[worker] Boas-vindas pendentes: %s enviadas", _bv_enviados)
-            except Exception as bv_exc:
-                logger.debug("[worker] processar_boasvindas_pendentes: %s", bv_exc)
+        # Boas-vindas contábil movido p/ projeto separado (zapdincontabil) — removido.
 
         await asyncio.sleep(0.2 if dispatched else 1.0)
 

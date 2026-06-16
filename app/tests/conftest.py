@@ -234,14 +234,6 @@ def _patched_app(empresa_usuario):
             _originals[mod] = mod.get_db_direct
             mod.get_db_direct = _test_get_db_direct
 
-    # ocr_service pode não estar importado ainda
-    try:
-        import app.services.ocr_service as _ocr_mod
-        _originals[_ocr_mod] = _ocr_mod.get_db_direct
-        _ocr_mod.get_db_direct = _test_get_db_direct
-    except Exception:
-        pass
-
     yield fastapi_app
 
     fastapi_app.dependency_overrides.clear()
