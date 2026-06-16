@@ -137,6 +137,26 @@ async def _wa_info_for_empresa(empresa_id: int) -> dict:
                         statuses.add(st)
                     if st == "connected" and r["phone"] and not phone:
                         phone = r["phone"]
+
+            # Agente compartilhado: empresa que usa o número de uma DONA herda o
+            # status/telefone dela (mesmo número físico) — assim todas as filiais
+            # mostram o número conectado, não só a dona.
+            if not phone or "connected" not in statuses:
+                async with db.execute(
+                    "SELECT agente_dono_empresa_id FROM empresas WHERE id=?", (empresa_id,)
+                ) as cur:
+                    drow = await cur.fetchone()
+                dona = drow["agente_dono_empresa_id"] if drow else None
+                if dona:
+                    async with db.execute(
+                        "SELECT phone FROM sessoes_wa WHERE empresa_id=? AND status='connected' "
+                        "AND phone IS NOT NULL AND phone <> '' ORDER BY last_seen DESC NULLS LAST LIMIT 1",
+                        (dona,),
+                    ) as cur:
+                        dr = await cur.fetchone()
+                    if dr and dr["phone"]:
+                        statuses.add("connected")
+                        phone = phone or dr["phone"]
     except Exception as exc:
         logger.debug("[reporter] _wa_info_for_empresa(%s) DB erro: %s", empresa_id, exc)
 
