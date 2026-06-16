@@ -71,6 +71,7 @@ from .routers.syslog_router import router as syslog_router
 from .routers.ia_central_router import router as ia_central_router
 from .routers.home_router import router as home_router
 from .routers.agents import router as agents_router
+from .routers.chat_router import router as chat_router
 from .services import reporter, updater, telegram_service, queue_worker
 from .services.log_service import log_event
 from .services.whatsapp_service import wa_manager as _playwright_manager
@@ -412,6 +413,7 @@ fastapi_app.include_router(syslog_router)            # /api/syslog/* (log do sis
 fastapi_app.include_router(ia_central_router)       # /api/ia-central/* (IA Central)
 fastapi_app.include_router(home_router)             # /api/home/* (Home Dashboard)
 fastapi_app.include_router(agents_router)           # /api/agents + /metrics (NAT agent + Prometheus)
+fastapi_app.include_router(chat_router)             # /api/chat/* (integração chat/chamados — Evolution)
 from .routers.kit import router as kit_router
 fastapi_app.include_router(kit_router)               # /instalar/{kit} + /api/kit/* (onboarding self-service)
 

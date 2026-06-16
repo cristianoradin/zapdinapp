@@ -547,6 +547,58 @@ class EvoManager:
             return sess._url(path)
         return _url(path)
 
+    # ── Chat / chamados (integração externa) ─────────────────────────────────
+    def _first_session_id(self, empresa_id: int) -> Optional[str]:
+        """1ª sessão da empresa (prefere conectada) — usada pelo chat (1 número)."""
+        prefix = f"{empresa_id}:"
+        cand = [(k, s) for k, s in self._sessions.items() if k.startswith(prefix)]
+        if not cand:
+            return None
+        cand.sort(key=lambda kv: (kv[1].status != "connected",))
+        return cand[0][0].split(":", 1)[1]
+
+    async def send_presence(self, empresa_id: int, number: str,
+                            presence: str = "composing", delay_ms: int = 1500) -> tuple:
+        """Envia presença (composing/paused/available) → cliente vê 'digitando…'.
+        Separado do envio de mensagem. Só Evolution."""
+        sid = self._first_session_id(empresa_id)
+        if not sid:
+            return False, "sem sessão"
+        inst = _instance_name(empresa_id, sid)
+        num = "".join(c for c in (number or "") if c.isdigit())
+        if not num.startswith("55"):
+            num = "55" + num
+        try:
+            async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+                r = await client.post(
+                    self._url_for_inst(inst, f"chat/sendPresence/{inst}"),
+                    json={"number": num, "presence": presence, "delay": delay_ms},
+                    headers=_h(),
+                )
+            return (r.status_code in (200, 201)), (None if r.status_code in (200, 201) else r.text[:120])
+        except Exception as exc:
+            return False, str(exc)
+
+    async def _forward_chat(self, empresa_id: int, payload: dict) -> None:
+        """Repassa evento de chat (inbound/presence) pro sistema externo do cliente.
+        URL em config.chat_webhook_url (por empresa). Best-effort."""
+        try:
+            from ..core.database import get_db_direct
+            async with get_db_direct() as db:
+                async with db.execute(
+                    "SELECT value FROM config WHERE empresa_id=? AND key='chat_webhook_url'",
+                    (empresa_id,),
+                ) as cur:
+                    row = await cur.fetchone()
+            url = (row["value"] if row else "") or ""
+            if not url:
+                return
+            payload = {**payload, "empresa_id": empresa_id}
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                await client.post(url, json=payload)
+        except Exception as exc:
+            logger.debug("[chat] forward falhou empresa=%s: %s", empresa_id, exc)
+
     async def add_session(self, session_id: str, nome: str, empresa_id: int,
                           evolution_url: Optional[str] = None) -> None:
         """
@@ -670,6 +722,35 @@ class EvoManager:
         elif event == "MESSAGES_UPSERT":
             # Nova mensagem recebida — rota para o módulo contábil se for mídia de cliente
             asyncio.create_task(self._processar_mensagem_contabil(inst, data, sess.empresa_id))
+            # Chat/chamados: repassa texto recebido pro sistema externo (best-effort)
+            try:
+                key = data.get("key") or {}
+                if not key.get("fromMe") and "@g.us" not in (key.get("remoteJid") or ""):
+                    msg = data.get("message") or {}
+                    texto = msg.get("conversation") or (msg.get("extendedTextMessage") or {}).get("text") or ""
+                    de = (key.get("remoteJid") or "").split("@", 1)[0]
+                    if texto:
+                        asyncio.create_task(self._forward_chat(sess.empresa_id, {
+                            "tipo": "mensagem", "de": de, "texto": texto,
+                            "nome": data.get("pushName") or "",
+                        }))
+            except Exception:
+                pass
+
+        elif event == "PRESENCE_UPDATE":
+            # Cliente digitando/parou → repassa pro sistema externo
+            try:
+                jid = data.get("id") or data.get("remoteJid") or ""
+                pres = data.get("presences") or {}
+                st = ""
+                if isinstance(pres, dict):
+                    for _k, v in pres.items():
+                        st = (v or {}).get("lastKnownPresence") or st
+                asyncio.create_task(self._forward_chat(sess.empresa_id, {
+                    "tipo": "presenca", "de": jid.split("@", 1)[0], "estado": st,
+                }))
+            except Exception:
+                pass
 
     # ─────────────────────────────────────────────────────────────────────────
     #  Provisiona instância + webhook na Evolution API
@@ -707,6 +788,7 @@ class EvoManager:
                 "MESSAGES_UPSERT",
                 "MESSAGES_UPDATE",
                 "SEND_MESSAGE",
+                "PRESENCE_UPDATE",
             ],
         }
         try:
