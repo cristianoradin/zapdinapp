@@ -67,9 +67,23 @@ async def _marcar_completed(kit_id: int) -> None:
 
 
 async def _garantir_sessao(empresa_id: int) -> dict:
-    """Retorna a 1ª sessão WA da empresa; cria default (modo agent) se não houver."""
+    """Retorna a 1ª sessão WA da empresa; cria default (modo agent) se não houver.
+    Idempotente + auto-limpa duplicatas (corrida criava 2 'WhatsApp Principal')."""
     import uuid as _uuid
     async with get_db_direct() as db:
+        # Auto-limpa duplicatas: remove 'WhatsApp Principal' (agent, desconectada)
+        # extras, mantendo a mais antiga. Nunca apaga sessão conectada nem custom.
+        await db.execute(
+            """DELETE FROM sessoes_wa
+                WHERE empresa_id = ? AND nome = 'WhatsApp Principal'
+                  AND evolution_url = 'agent://' AND status <> 'connected'
+                  AND id <> (
+                      SELECT id FROM sessoes_wa WHERE empresa_id = ?
+                       ORDER BY (status='connected') DESC, created_at ASC LIMIT 1
+                  )""",
+            (empresa_id, empresa_id),
+        )
+        await db.commit()
         async with db.execute(
             "SELECT id, status, phone FROM sessoes_wa WHERE empresa_id=? ORDER BY created_at LIMIT 1",
             (empresa_id,),
@@ -77,15 +91,22 @@ async def _garantir_sessao(empresa_id: int) -> dict:
             sess = await cur.fetchone()
         if sess:
             return dict(sess)
+        # Cria default — atômico (WHERE NOT EXISTS) pra evitar corrida
         sessao_id = str(_uuid.uuid4())[:8]
         await db.execute(
             """INSERT INTO sessoes_wa (empresa_id, id, nome, status, evolution_url)
-               VALUES (?, ?, 'WhatsApp Principal', 'disconnected', 'agent://')""",
-            (empresa_id, sessao_id),
+               SELECT ?, ?, 'WhatsApp Principal', 'disconnected', 'agent://'
+               WHERE NOT EXISTS (SELECT 1 FROM sessoes_wa WHERE empresa_id = ?)""",
+            (empresa_id, sessao_id, empresa_id),
         )
         await db.commit()
-        logger.info("[kit] sessão WA default criada: empresa=%s sessao=%s", empresa_id, sessao_id)
-        return {"id": sessao_id, "status": "disconnected", "phone": ""}
+        async with db.execute(
+            "SELECT id, status, phone FROM sessoes_wa WHERE empresa_id=? ORDER BY created_at LIMIT 1",
+            (empresa_id,),
+        ) as cur:
+            sess = await cur.fetchone()
+        logger.info("[kit] sessão WA default garantida: empresa=%s", empresa_id)
+        return dict(sess) if sess else {"id": sessao_id, "status": "disconnected", "phone": ""}
 
 
 # ── Criação (Monitor → App) ───────────────────────────────────────────────────

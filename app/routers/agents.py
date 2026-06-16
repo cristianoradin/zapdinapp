@@ -359,21 +359,18 @@ async def admin_upsert_empresa(
                 row = await cur.fetchone()
             empresa_id = row["id"] if row else None
 
-            # Auto-cria sessão WhatsApp default (modo Agente) se nao tiver nenhuma
+            # Auto-cria sessão WhatsApp default (modo Agente) se nao tiver nenhuma.
+            # INSERT ... WHERE NOT EXISTS é atômico → evita corrida (2 sessões duplicadas
+            # quando upsert + kit polling rodam concorrentes).
             if empresa_id:
-                async with db.execute(
-                    "SELECT COUNT(*) AS cnt FROM sessoes_wa WHERE empresa_id=?", (empresa_id,)
-                ) as cur:
-                    cnt_row = await cur.fetchone()
-                if cnt_row and cnt_row["cnt"] == 0:
-                    sessao_id = str(_uuid.uuid4())[:8]
-                    await db.execute(
-                        """INSERT INTO sessoes_wa (empresa_id, id, nome, status, evolution_url)
-                           VALUES (?, ?, ?, 'disconnected', 'agent://')""",
-                        (empresa_id, sessao_id, "WhatsApp Principal"),
-                    )
-                    await db.commit()
-                    logger.info("[admin] Sessao WA default criada: empresa=%s sessao=%s", empresa_id, sessao_id)
+                sessao_id = str(_uuid.uuid4())[:8]
+                await db.execute(
+                    """INSERT INTO sessoes_wa (empresa_id, id, nome, status, evolution_url)
+                       SELECT ?, ?, 'WhatsApp Principal', 'disconnected', 'agent://'
+                       WHERE NOT EXISTS (SELECT 1 FROM sessoes_wa WHERE empresa_id = ?)""",
+                    (empresa_id, sessao_id, empresa_id),
+                )
+                await db.commit()
     except Exception as exc:
         raise HTTPException(503, f"DB: {exc}")
     return {"ok": True, "empresa_id": empresa_id}
