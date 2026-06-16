@@ -7,6 +7,7 @@
 window.mensagemModule = (() => {
   let _initialized = false;
   let _clientName = '';
+  let _tmplTeste = '';   // template carregado p/ o teste (página whatsapp não tem #inputMensagem)
   let _linkDemoAvaliacao = '';
 
   // ── Helpers internos ─────────────────────────────────────────────────────────
@@ -147,7 +148,8 @@ window.mensagemModule = (() => {
     const produtosEx = '• Gasolina Comum (x30) — R$ 5,99\n• Óleo Motor 5W30 (x1) — R$ 42,00';
     const phoneEx = '55' + (document.getElementById('testeMsgPhone')?.value.replace(/\D/g,'') || '11999998888');
     const header = _clientName ? '🏪 *' + _clientName + '*\n\n' : '';
-    const tmpl = document.getElementById('inputMensagem')?.value || '';
+    // Na página de teste (whatsapp) não existe #inputMensagem → usa o template carregado.
+    const tmpl = (document.getElementById('inputMensagem')?.value) || _tmplTeste || '';
     let msg = (header + tmpl)
       .replace(/{nome}/g, 'João Silva')
       .replace(/{telefone}/g, phoneEx)
@@ -300,6 +302,12 @@ window.mensagemModule = (() => {
       const r = await fetch('/api/config');
       const cfg = r.ok ? await r.json() : {};
       _clientName = cfg.client_name || '';
+      // Template real (config_router devolve o _DEFAULT_TEMPLATE se não houver salvo).
+      // Remove o cabeçalho 🏪 *{nome}* se já vier nele — _buildTesteMsg adiciona o seu.
+      let tmpl = cfg.mensagem_padrao || '';
+      const prefixo = '🏪 *' + _clientName + '*\n\n';
+      if (_clientName && tmpl.startsWith(prefixo)) tmpl = tmpl.slice(prefixo.length);
+      _tmplTeste = tmpl;
     } catch {}
   }
 
