@@ -446,18 +446,19 @@ async def _reconcile_agent_sessions() -> None:
                 if not (isinstance(res, dict) and res.get("state") == "open"):
                     continue
                 phone = res.get("phone") or ""
+                nome = (res.get("nome") or "WhatsApp Principal").strip()[:60]
                 async with get_db_direct() as db:
                     if row:
                         await db.execute(
-                            "UPDATE sessoes_wa SET status='connected', phone=?, last_seen=NOW() "
+                            "UPDATE sessoes_wa SET status='connected', phone=?, nome=?, last_seen=NOW() "
                             "WHERE id=? AND empresa_id=?",
-                            (phone, row["id"], empresa_id),
+                            (phone, nome, row["id"], empresa_id),
                         )
                     else:
                         await db.execute(
                             "INSERT INTO sessoes_wa (empresa_id, id, nome, status, evolution_url, phone) "
-                            "VALUES (?, ?, 'WhatsApp Principal', 'connected', 'agent://', ?)",
-                            (empresa_id, str(_uuid.uuid4())[:8], phone),
+                            "VALUES (?, ?, ?, 'connected', 'agent://', ?)",
+                            (empresa_id, str(_uuid.uuid4())[:8], nome, phone),
                         )
                     await db.commit()
                 logger.info("[reporter] reconcile: empresa=%s WhatsApp conectado (phone=%s)", empresa_id, phone)
