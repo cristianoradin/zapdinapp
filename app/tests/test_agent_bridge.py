@@ -18,6 +18,30 @@ from app.services import agent_bridge
 def _clear_registry():
     agent_bridge._agents.clear()
     agent_bridge._sid_to_empresa.clear()
+    agent_bridge.set_owner_map({})
+
+
+def test_agente_compartilhado_resolve_dona():
+    """Empresa filha (sem agente próprio) usa o agente da empresa dona."""
+    _clear_registry()
+    agent_bridge.register_agent(10, "sid-dona", {"version": "0.2.30"})  # só a dona conecta
+    agent_bridge.set_owner_map({11: 10, 12: 10})                        # 11 e 12 usam a 10
+    # Filhas resolvem pro agente da dona
+    assert agent_bridge.has_agent(11)
+    assert agent_bridge.has_agent(12)
+    assert agent_bridge.get_agent(11)["sid"] == "sid-dona"
+    assert agent_bridge.get_agent(12)["sid"] == "sid-dona"
+    # Empresa sem mapeamento e sem agente próprio → não tem
+    assert not agent_bridge.has_agent(99)
+    _clear_registry()
+
+
+def test_set_owner_map_ignora_auto_referencia():
+    _clear_registry()
+    agent_bridge.set_owner_map({5: 5, 6: 5})
+    assert 5 not in agent_bridge._owner_map      # auto-ref descartada
+    assert agent_bridge._owner_map.get(6) == 5
+    _clear_registry()
 
 
 def test_register_e_get_agent():

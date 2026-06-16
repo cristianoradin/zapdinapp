@@ -406,6 +406,55 @@ async def admin_set_modos_conexao(
     return {"ok": True, "empresa_id": empresa_id, "modos": modos}
 
 
+@router.put("/api/admin/empresas/{empresa_id}/agente-dono")
+async def admin_set_agente_dono(
+    empresa_id: int,
+    payload: dict,
+    x_monitor_token: Optional[str] = Header(default=None, alias="X-Monitor-Token"),
+):
+    """Define a empresa DONA do agente (grupo econômico): a empresa passa a usar o
+    número/agente da dona pra enviar, mantendo seus próprios dados. dono=None desfaz.
+    Auth via X-Monitor-Token."""
+    expected = settings.monitor_client_token
+    if not expected or not x_monitor_token or x_monitor_token != expected:
+        raise HTTPException(401, "X-Monitor-Token inválido")
+    dono = payload.get("dono_empresa_id")
+    if dono is not None:
+        try:
+            dono = int(dono)
+        except (TypeError, ValueError):
+            raise HTTPException(422, "dono_empresa_id inválido")
+        if dono == empresa_id:
+            raise HTTPException(422, "Empresa não pode ser dona dela mesma")
+    try:
+        async with get_db_direct() as db:
+            if dono is not None:
+                # Dona precisa existir e NÃO ter dona (evita cadeia/ciclo — 1 nível só)
+                async with db.execute(
+                    "SELECT agente_dono_empresa_id FROM empresas WHERE id=?", (dono,)
+                ) as cur:
+                    row = await cur.fetchone()
+                if not row:
+                    raise HTTPException(404, "Empresa dona não encontrada")
+                if row["agente_dono_empresa_id"] is not None:
+                    raise HTTPException(422, "A dona já usa o agente de outra empresa — escolha a empresa raiz")
+            await db.execute(
+                "UPDATE empresas SET agente_dono_empresa_id=? WHERE id=?", (dono, empresa_id)
+            )
+            await db.commit()
+            # Recarrega o mapa inteiro pra refletir já (sem esperar o heartbeat)
+            async with db.execute(
+                "SELECT id, agente_dono_empresa_id FROM empresas WHERE agente_dono_empresa_id IS NOT NULL"
+            ) as cur:
+                rows = await cur.fetchall()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(503, f"DB: {exc}")
+    agent_bridge.set_owner_map({r["id"]: r["agente_dono_empresa_id"] for r in rows})
+    return {"ok": True, "empresa_id": empresa_id, "dono_empresa_id": dono}
+
+
 @router.post("/api/admin/agents/{empresa_id}/update")
 async def admin_push_update(
     empresa_id: int,

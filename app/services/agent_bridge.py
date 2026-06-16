@@ -25,14 +25,31 @@ logger = logging.getLogger(__name__)
 _agents: Dict[int, dict] = {}
 _sid_to_empresa: Dict[str, int] = {}
 
+# Grupo de agente compartilhado: empresa_id → empresa DONA do agente.
+# Quando uma empresa usa o número de outra, seus comandos WS (send/qr/state) são
+# roteados pro agente da dona. Populado periodicamente do banco (empresas.agente_dono_empresa_id).
+_owner_map: Dict[int, int] = {}
+
+
+def set_owner_map(mapping: Dict[int, int]) -> None:
+    """Atualiza o mapa de agente compartilhado. {empresa_id: dona_empresa_id}.
+    Ignora auto-referência (empresa apontando pra si mesma)."""
+    global _owner_map
+    _owner_map = {int(k): int(v) for k, v in (mapping or {}).items() if v and int(v) != int(k)}
+
+
+def _eff(empresa_id: int) -> int:
+    """Resolve a empresa cujo agente deve ser usado (transporte compartilhado)."""
+    return _owner_map.get(empresa_id, empresa_id)
+
 
 def get_agent(empresa_id: int) -> Optional[dict]:
-    """Retorna info do agente conectado pra empresa, ou None."""
-    return _agents.get(empresa_id)
+    """Retorna info do agente conectado pra empresa (resolve dona), ou None."""
+    return _agents.get(_eff(empresa_id))
 
 
 def has_agent(empresa_id: int) -> bool:
-    return empresa_id in _agents
+    return _eff(empresa_id) in _agents
 
 
 def list_agents() -> list[dict]:
@@ -111,9 +128,12 @@ async def send_command(sio, empresa_id: int, command: str, payload: dict,
       - "create_instance"  payload={instance, nome}
       - "delete_instance"  payload={instance}
     """
-    agent = _agents.get(empresa_id)
+    # Resolve agente compartilhado (empresa pode usar o número de uma dona)
+    eff = _eff(empresa_id)
+    agent = _agents.get(eff)
     if not agent:
-        raise RuntimeError(f"Agente da empresa {empresa_id} não está conectado")
+        extra = f" (dona {eff})" if eff != empresa_id else ""
+        raise RuntimeError(f"Agente da empresa {empresa_id}{extra} não está conectado")
     sid = agent["sid"]
 
     # Socket.IO call() (request/response com timeout)

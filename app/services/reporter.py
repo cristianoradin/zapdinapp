@@ -189,6 +189,9 @@ async def _send_heartbeat() -> None:
     version = await _read_version()
     monitor_url = settings.monitor_url.rstrip("/")
 
+    # Atualiza mapa de agente compartilhado (grupo econômico) a cada ciclo
+    await _refresh_owner_map()
+
     # Tenta buscar lista de empresas do banco; se falhar usa fallback do .env
     try:
         empresas = await _get_empresas_ativas()
@@ -385,6 +388,25 @@ async def _send_heartbeat() -> None:
 
             except Exception as exc:
                 logger.debug("Heartbeat falhou para %s: %s", emp.get("nome"), exc)
+
+
+async def _refresh_owner_map() -> None:
+    """Carrega empresas.agente_dono_empresa_id e atualiza o agent_bridge.
+    Permite que empresas usem o agente (número) de uma empresa dona."""
+    try:
+        from ..core.database import _pool
+        if _pool is None:
+            return
+        async with _pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT id, agente_dono_empresa_id FROM empresas "
+                "WHERE agente_dono_empresa_id IS NOT NULL"
+            )
+        mapping = {r["id"]: r["agente_dono_empresa_id"] for r in rows}
+        from . import agent_bridge
+        agent_bridge.set_owner_map(mapping)
+    except Exception as exc:
+        logger.debug("[reporter] _refresh_owner_map falhou: %s", exc)
 
 
 async def _get_empresas_ativas() -> list:
