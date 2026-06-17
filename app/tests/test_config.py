@@ -93,3 +93,59 @@ class TestAIConfig:
             "chat": False,
         })
         assert r.status_code == 400
+
+
+class TestAlertaCritico:
+    """Alerta crítico: multi-número + alerta de falha de envio (mesmos números)."""
+
+    async def test_get_sem_auth_401(self, client):
+        r = await client.get("/api/config/alerta-critico")
+        assert r.status_code == 401
+
+    async def test_roundtrip_telefones_e_falha(self, auth_client):
+        payload = {
+            "ativo": True,
+            "telefones": ["11999998888", "(67) 98888-7777", "11999998888"],  # dup + máscara
+            "mensagem": "Nota baixa de {nome}",
+            "falha_ativo": True,
+            "falha_mensagem": "Falhou {numero} ({nome}): {erro}",
+        }
+        r = await auth_client.post("/api/config/alerta-critico", json=payload)
+        assert r.status_code == 200 and r.json().get("ok")
+
+        g = await auth_client.get("/api/config/alerta-critico")
+        assert g.status_code == 200
+        cfg = g.json()
+        # normaliza: só dígitos, sem duplicados
+        assert cfg["telefones"] == ["11999998888", "67988887777"]
+        assert cfg["telefone"] == "11999998888"      # legado = primeiro
+        assert cfg["ativo"] is True
+        assert cfg["falha_ativo"] is True
+        assert cfg["falha_mensagem"] == "Falhou {numero} ({nome}): {erro}"
+
+    async def test_retrocompat_telefone_legado(self, auth_client):
+        # Salva só o campo legado `telefone` → deve virar telefones[]
+        r = await auth_client.post("/api/config/alerta-critico", json={
+            "ativo": True, "telefone": "11955554444", "mensagem": "x",
+        })
+        assert r.status_code == 200
+        cfg = (await auth_client.get("/api/config/alerta-critico")).json()
+        assert cfg["telefones"] == ["11955554444"]
+
+
+class TestAlertaService:
+    """Classificador de erro inválido (número/cadastro vs infra)."""
+
+    def test_classifica_numero_invalido(self):
+        from app.services.alerta_service import is_invalid_number_error as f
+        assert f("number not on whatsapp") is True
+        assert f("invalid number") is True
+        assert f("Número inválido") is True
+
+    def test_classifica_infra_nao_alerta(self):
+        from app.services.alerta_service import is_invalid_number_error as f
+        assert f("connection timeout") is False
+        assert f("sem sessão") is False
+        assert f("agent: disconnected") is False
+        assert f("") is False
+        assert f(None) is False

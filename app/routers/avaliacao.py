@@ -275,11 +275,20 @@ async def _disparar_alerta_critico(
         if not cfg.get("ativo"):
             return
 
-        telefone_destino = cfg.get("telefone", "").strip()
-        template = cfg.get("mensagem", "")
+        # Lista de destinos: novo `telefones` ou legado `telefone` (1 só)
+        brutos = list(cfg.get("telefones") or [])
+        if cfg.get("telefone"):
+            brutos.append(cfg["telefone"])
+        vistos, telefones_destino = set(), []
+        for t in brutos:
+            d = "".join(c for c in (str(t) or "") if c.isdigit())
+            if d and d not in vistos:
+                vistos.add(d)
+                telefones_destino.append(d)
 
-        if not telefone_destino or not template:
-            logger.warning("[alerta_critico] config incompleta — tel=%s", bool(telefone_destino))
+        template = cfg.get("mensagem", "")
+        if not telefones_destino or not template:
+            logger.warning("[alerta_critico] config incompleta — destinos=%d", len(telefones_destino))
             return
 
         # Remove DDI 55 do telefone do cliente para exibição
@@ -294,9 +303,6 @@ async def _disparar_alerta_critico(
             .replace("{comentario}", comentario or "—")
             .replace("{data}",       datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M"))
         )
-
-        # Remove DDI do telefone destino para envio
-        fone_envio = telefone_destino.lstrip("+").lstrip("55")
 
         try:
             from ..services.whatsapp_service import wa_manager
@@ -316,12 +322,18 @@ async def _disparar_alerta_critico(
             return
 
         sessao = conectadas[0]["id"]
-        ok, err = await wa_manager.send_text(sessao, empresa_id, fone_envio, mensagem)
-        if ok:
-            logger.info("[alerta_critico] alerta enviado via sessao=%s nota=%d empresa=%d", sessao, nota, empresa_id)
-        else:
-            # Falha no envio → também vai para a fila
-            logger.warning("[alerta_critico] falha ao enviar (%s) → enfileirando", err)
+        enviou_algum = False
+        for fone_envio in telefones_destino:
+            envio = fone_envio[2:] if fone_envio.startswith("55") else fone_envio
+            ok, err = await wa_manager.send_text(sessao, empresa_id, envio, mensagem)
+            if ok:
+                enviou_algum = True
+                logger.info("[alerta_critico] alerta enviado p/ %s (nota=%d empresa=%d)", envio, nota, empresa_id)
+            else:
+                logger.warning("[alerta_critico] falha ao enviar p/ %s (%s)", envio, err)
+
+        if not enviou_algum:
+            # Nenhum destino recebeu → enfileira para reenvio automático
             await _salvar_alerta_pendente(empresa_id, nome, telefone, nota, vendedor, comentario)
 
     except Exception as exc:

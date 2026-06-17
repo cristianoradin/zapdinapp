@@ -372,6 +372,15 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
             )
             log_event_sync(empresa_id=empresa_id, nivel="error", modulo="worker", acao="msg_erro",
                            mensagem=f"Erro ao enviar: {msg['destinatario']} — {str(err or '')[:100]}")
+            # Alerta de falha por número inválido (cadastro) → avisa os adms
+            try:
+                from .alerta_service import disparar_falha_cadastro
+                nome_dest = msg["nome_destinatario"] if "nome_destinatario" in msg.keys() else ""
+                asyncio.create_task(
+                    disparar_falha_cadastro(empresa_id, msg["destinatario"], nome_dest or "", str(err or ""))
+                )
+            except Exception:
+                pass
         logger.info("Queue: mensagem %s → %s", msg["id"], st)
         if ok:
             log_event_sync(empresa_id=empresa_id, nivel="info", modulo="worker", acao="msg_enviada",
@@ -492,6 +501,14 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
             )
             log_event_sync(empresa_id=empresa_id, nivel="error", modulo="worker", acao="msg_erro",
                            mensagem=f"Erro ao enviar: {arq['destinatario']} — {str(err or '')[:100]}")
+            try:
+                from .alerta_service import disparar_falha_cadastro
+                nome_dest = arq["nome_destinatario"] if "nome_destinatario" in arq.keys() else ""
+                asyncio.create_task(
+                    disparar_falha_cadastro(empresa_id, arq["destinatario"], nome_dest or "", str(err or ""))
+                )
+            except Exception:
+                pass
         logger.info("Queue: arquivo %s → %s", arq["id"], st)
         if ok:
             log_event_sync(empresa_id=empresa_id, nivel="info", modulo="worker", acao="msg_enviada",

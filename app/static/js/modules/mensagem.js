@@ -323,6 +323,44 @@ window.mensagemModule = (() => {
     '📅 *Data:* {data}\n\n' +
     '⚠️ Entre em contato com o cliente para resolver a situação!';
 
+  const _FALHA_DEFAULT_MSG =
+    '⚠️ *Falha ao enviar mensagem!*\n\n' +
+    '📞 *Número:* {numero}\n' +
+    '👤 *Nome:* {nome}\n' +
+    '❌ *Motivo:* {erro}\n' +
+    '📅 *Data:* {data}\n\n' +
+    '🔎 Verifique o cadastro deste número (pode estar incorreto ou sem WhatsApp).';
+
+  // Lista de telefones de destino (multi-número)
+  let _alertaTelefones = [];
+
+  function _alertaRenderTelefones() {
+    const box = document.getElementById('alertaCriticoTelefonesList');
+    if (!box) return;
+    box.innerHTML = _alertaTelefones.map((t, i) =>
+      `<span style="display:inline-flex;align-items:center;gap:6px;background:var(--red-bg);border:1px solid #fca5a5;color:var(--red);padding:5px 10px;border-radius:999px;font-size:13px;font-weight:600">`
+      + `+55 ${t}`
+      + `<span style="cursor:pointer;font-weight:800;line-height:1" onclick="alertaRemoveTelefone(${i})" title="Remover">✕</span></span>`
+    ).join('');
+  }
+
+  function alertaAddTelefone() {
+    const inp = document.getElementById('alertaCriticoTelefone');
+    if (!inp) return;
+    const t = (inp.value || '').replace(/\D/g, '');
+    if (t.length < 10) { return; }
+    if (!_alertaTelefones.includes(t)) _alertaTelefones.push(t);
+    inp.value = '';
+    _alertaRenderTelefones();
+    _alertaSetSalvo(false);
+  }
+
+  function alertaRemoveTelefone(i) {
+    _alertaTelefones.splice(i, 1);
+    _alertaRenderTelefones();
+    _alertaSetSalvo(false);
+  }
+
   function _avaliacaoAtiva() {
     return document.getElementById('toggleAvaliacao')?.checked === true;
   }
@@ -357,20 +395,28 @@ window.mensagemModule = (() => {
       const res = await fetch('/api/config/alerta-critico');
       if (!res.ok) return;
       const cfg = await res.json();
-      const chk = document.getElementById('alertaCriticoAtivo');
-      const tel = document.getElementById('alertaCriticoTelefone');
-      const msg = document.getElementById('alertaCriticoMensagem');
-      if (tel) tel.value = cfg.telefone || '';
-      if (msg) msg.value = cfg.mensagem || _ALERTA_DEFAULT_MSG;
+      const chk   = document.getElementById('alertaCriticoAtivo');
+      const msg   = document.getElementById('alertaCriticoMensagem');
+      const fChk  = document.getElementById('alertaFalhaAtivo');
+      const fMsg  = document.getElementById('alertaFalhaMensagem');
+      // Telefones: usa lista nova; cai pro legado se vier só `telefone`
+      _alertaTelefones = Array.isArray(cfg.telefones) && cfg.telefones.length
+        ? cfg.telefones.slice()
+        : (cfg.telefone ? [cfg.telefone] : []);
+      _alertaRenderTelefones();
+      if (msg)  msg.value  = cfg.mensagem || _ALERTA_DEFAULT_MSG;
       if (chk && _avaliacaoAtiva()) chk.checked = !!cfg.ativo;
+      if (fChk) fChk.checked = !!cfg.falha_ativo;
+      if (fMsg) fMsg.value   = cfg.falha_mensagem || _FALHA_DEFAULT_MSG;
       _syncAlertaToggleState();
       // Mostra "salvo" ao carregar se já houver config no banco
       _alertaSetSalvo(true);
       // Ao editar qualquer campo, volta ao estado "não salvo"
       const _onchange = () => _alertaSetSalvo(false);
-      if (tel) tel.addEventListener('input', _onchange);
-      if (msg) msg.addEventListener('input', _onchange);
-      if (chk) chk.addEventListener('change', _onchange);
+      if (msg)  msg.addEventListener('input', _onchange);
+      if (chk)  chk.addEventListener('change', _onchange);
+      if (fChk) fChk.addEventListener('change', _onchange);
+      if (fMsg) fMsg.addEventListener('input', _onchange);
     } catch(e) {}
   }
 
@@ -378,8 +424,14 @@ window.mensagemModule = (() => {
     const btn   = document.getElementById('btnSalvarAlertaCritico');
     const resEl = document.getElementById('alertaCriticoResult');
     const ativo = document.getElementById('alertaCriticoAtivo')?.checked || false;
-    const tel   = document.getElementById('alertaCriticoTelefone')?.value?.trim().replace(/\D/g,'') || '';
     const msg   = document.getElementById('alertaCriticoMensagem')?.value || '';
+    const falhaAtivo = document.getElementById('alertaFalhaAtivo')?.checked || false;
+    const falhaMsg   = document.getElementById('alertaFalhaMensagem')?.value || '';
+
+    // Garante que um número digitado mas não adicionado também conte
+    const pend = document.getElementById('alertaCriticoTelefone')?.value?.replace(/\D/g,'') || '';
+    if (pend.length >= 10 && !_alertaTelefones.includes(pend)) _alertaTelefones.push(pend);
+    const telefones = _alertaTelefones.slice();
 
     const show = (type, txt) => {
       if (type === 'ok') {
@@ -392,12 +444,17 @@ window.mensagemModule = (() => {
       }
     };
 
-    if (ativo && tel.length < 10) { show('error', 'Informe o telefone de destino com DDD (ex: 11999998888).'); return; }
+    if ((ativo || falhaAtivo) && telefones.length === 0) {
+      show('error', 'Adicione ao menos um telefone para receber os alertas.'); return;
+    }
 
     if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
     try {
-      const res = await _fetch('POST', '/api/config/alerta-critico', { ativo, telefone: tel, mensagem: msg });
-      if (res && res.ok) _alertaSetSalvo(true);
+      const res = await _fetch('POST', '/api/config/alerta-critico', {
+        ativo, telefones, mensagem: msg,
+        falha_ativo: falhaAtivo, falha_mensagem: falhaMsg,
+      });
+      if (res && res.ok) { _alertaTelefones = telefones; _alertaRenderTelefones(); _alertaSetSalvo(true); }
       else show('error', 'Erro ao salvar configuração.');
     } finally {
       if (btn) {
@@ -430,11 +487,14 @@ window.mensagemModule = (() => {
     });
   }
 
-  return { init, salvarAvaliacaoCfg, salvarAlertaCritico, insertAlertaVar, initTesteEnvio };
+  return { init, salvarAvaliacaoCfg, salvarAlertaCritico, insertAlertaVar, initTesteEnvio,
+           alertaAddTelefone, alertaRemoveTelefone };
 })();
 
 // ── Globais para chamadas inline no HTML ─────────────────────────────────────
-window.salvarAvaliacaoCfg  = () => mensagemModule.salvarAvaliacaoCfg();
-window.salvarAlertaCritico = () => mensagemModule.salvarAlertaCritico();
-window.insertAlertaVar     = (v) => mensagemModule.insertAlertaVar(v);
-window.initTesteEnvio      = () => mensagemModule.initTesteEnvio();
+window.salvarAvaliacaoCfg   = () => mensagemModule.salvarAvaliacaoCfg();
+window.salvarAlertaCritico  = () => mensagemModule.salvarAlertaCritico();
+window.insertAlertaVar      = (v) => mensagemModule.insertAlertaVar(v);
+window.initTesteEnvio       = () => mensagemModule.initTesteEnvio();
+window.alertaAddTelefone    = () => mensagemModule.alertaAddTelefone();
+window.alertaRemoveTelefone = (i) => mensagemModule.alertaRemoveTelefone(i);

@@ -631,9 +631,20 @@ async def _processar_alertas_pendentes() -> None:
                     await db.commit()
                 continue
 
-            telefone_destino = cfg.get("telefone", "").strip().lstrip("+").lstrip("55")
+            # Destinos: novo `telefones` ou legado `telefone`
+            brutos = list(cfg.get("telefones") or [])
+            if cfg.get("telefone"):
+                brutos.append(cfg["telefone"])
+            vistos, telefones_destino = set(), []
+            for t in brutos:
+                d = "".join(ch for ch in (str(t) or "") if ch.isdigit())
+                if d:
+                    d = d[2:] if d.startswith("55") else d
+                    if d and d not in vistos:
+                        vistos.add(d)
+                        telefones_destino.append(d)
             template = cfg.get("mensagem", "")
-            if not telefone_destino or not template:
+            if not telefones_destino or not template:
                 continue
 
             tel_exibir = (row["telefone_cliente"] or "").lstrip("+").lstrip("55") or "—"
@@ -650,21 +661,29 @@ async def _processar_alertas_pendentes() -> None:
             )
 
             sessao_id = conectadas[0]["id"]
-            ok, err = await wa_manager.send_text(sessao_id, empresa_id, telefone_destino, mensagem)
+            enviou_algum = False
+            ultimo_err = ""
+            for fone in telefones_destino:
+                ok, err = await wa_manager.send_text(sessao_id, empresa_id, fone, mensagem)
+                if ok:
+                    enviou_algum = True
+                else:
+                    ultimo_err = err or ""
 
             async with get_db_direct() as db:
-                if ok:
+                if enviou_algum:
                     await db.execute(
                         "UPDATE alertas_criticos_pendentes SET enviado_em = NOW() WHERE id = ?",
                         (row["id"],)
                     )
-                    logger.info("[alertas_pendentes] enviado id=%d empresa=%d", row["id"], empresa_id)
+                    logger.info("[alertas_pendentes] enviado id=%d empresa=%d destinos=%d",
+                                row["id"], empresa_id, len(telefones_destino))
                 else:
                     await db.execute(
                         "UPDATE alertas_criticos_pendentes SET tentativas = tentativas + 1 WHERE id = ?",
                         (row["id"],)
                     )
-                    logger.warning("[alertas_pendentes] falha id=%d: %s", row["id"], err)
+                    logger.warning("[alertas_pendentes] falha id=%d: %s", row["id"], ultimo_err)
                 await db.commit()
 
     except Exception as exc:

@@ -90,11 +90,38 @@ _ALERTA_DEFAULT_MSG = (
     "⚠️ Entre em contato com o cliente para resolver a situação!"
 )
 
+_FALHA_DEFAULT_MSG = (
+    "⚠️ *Falha ao enviar mensagem!*\n\n"
+    "📞 *Número:* {numero}\n"
+    "👤 *Nome:* {nome}\n"
+    "❌ *Motivo:* {erro}\n"
+    "📅 *Data:* {data}\n\n"
+    "🔎 Verifique o cadastro deste número (pode estar incorreto ou sem WhatsApp)."
+)
+
+
+def _norm_telefones(telefones, telefone_legacy: str = "") -> list:
+    """Normaliza lista de telefones: só dígitos, sem vazios, sem duplicados.
+    Aceita lista nova OU o campo legado `telefone` (string única)."""
+    brutos = list(telefones or [])
+    if telefone_legacy:
+        brutos.append(telefone_legacy)
+    vistos, out = set(), []
+    for t in brutos:
+        d = "".join(c for c in (t or "") if c.isdigit())
+        if d and d not in vistos:
+            vistos.add(d)
+            out.append(d)
+    return out
+
 
 class AlertaCriticoConfig(BaseModel):
     ativo: bool = False
-    telefone: Optional[str] = ""
+    telefone: Optional[str] = ""              # legado (1 número) — retrocompat
+    telefones: Optional[list] = None          # novo: vários números
     mensagem: Optional[str] = _ALERTA_DEFAULT_MSG
+    falha_ativo: bool = False                 # alerta de falha de envio (mesmos números)
+    falha_mensagem: Optional[str] = _FALHA_DEFAULT_MSG
 
 
 @router.get("/alerta-critico")
@@ -118,10 +145,14 @@ async def get_alerta_critico(
     else:
         data = {}
 
+    telefones = _norm_telefones(data.get("telefones"), data.get("telefone", ""))
     return {
-        "ativo":    data.get("ativo", False),
-        "telefone": data.get("telefone", ""),
-        "mensagem": data.get("mensagem", _ALERTA_DEFAULT_MSG),
+        "ativo":          data.get("ativo", False),
+        "telefone":       telefones[0] if telefones else "",   # retrocompat
+        "telefones":      telefones,
+        "mensagem":       data.get("mensagem", _ALERTA_DEFAULT_MSG),
+        "falha_ativo":    data.get("falha_ativo", False),
+        "falha_mensagem": data.get("falha_mensagem", _FALHA_DEFAULT_MSG),
     }
 
 
@@ -133,10 +164,14 @@ async def set_alerta_critico(
 ):
     """Salva a configuração do alerta crítico de avaliação."""
     empresa_id = user["empresa_id"]
+    telefones = _norm_telefones(body.telefones, body.telefone or "")
     value = _json.dumps({
-        "ativo":    body.ativo,
-        "telefone": body.telefone or "",
-        "mensagem": body.mensagem or _ALERTA_DEFAULT_MSG,
+        "ativo":          body.ativo,
+        "telefone":       telefones[0] if telefones else "",   # mantém legado preenchido
+        "telefones":      telefones,
+        "mensagem":       body.mensagem or _ALERTA_DEFAULT_MSG,
+        "falha_ativo":    body.falha_ativo,
+        "falha_mensagem": body.falha_mensagem or _FALHA_DEFAULT_MSG,
     })
     await db.execute(
         """INSERT INTO config (empresa_id, key, value) VALUES (?, ?, ?)
