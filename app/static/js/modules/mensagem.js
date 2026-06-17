@@ -248,10 +248,6 @@ window.mensagemModule = (() => {
     document.getElementById('inputMensagem')?.addEventListener('input', () => {
       _setTemplateStatus(false);
     });
-
-    // Quando avaliação é ligada/desligada, sincroniza estado do alerta crítico
-    const toggleAval = document.getElementById('toggleAvaliacao');
-    if (toggleAval) toggleAval.addEventListener('change', _syncAlertaToggleState);
   }
 
   // ── Teste de Envio (montado na página Conectar WhatsApp) ──────────────────
@@ -311,169 +307,6 @@ window.mensagemModule = (() => {
     } catch {}
   }
 
-  // ── Alerta Crítico de Avaliação ───────────────────────────────────────────────
-
-  const _ALERTA_DEFAULT_MSG =
-    '🚨 *Avaliação Negativa Recebida!*\n\n' +
-    '👤 *Cliente:* {nome}\n' +
-    '📞 *Telefone:* {telefone}\n' +
-    '⭐ *Nota:* {nota} estrela(s)\n' +
-    '👨‍💼 *Vendedor:* {vendedor}\n' +
-    '💬 *Comentário:* {comentario}\n' +
-    '📅 *Data:* {data}\n\n' +
-    '⚠️ Entre em contato com o cliente para resolver a situação!';
-
-  const _FALHA_DEFAULT_MSG =
-    '⚠️ *Falha ao enviar mensagem!*\n\n' +
-    '📞 *Número:* {numero}\n' +
-    '👤 *Nome:* {nome}\n' +
-    '❌ *Motivo:* {erro}\n' +
-    '📅 *Data:* {data}\n\n' +
-    '🔎 Verifique o cadastro deste número (pode estar incorreto ou sem WhatsApp).';
-
-  // Lista de telefones de destino (multi-número)
-  let _alertaTelefones = [];
-
-  function _alertaRenderTelefones() {
-    const box = document.getElementById('alertaCriticoTelefonesList');
-    if (!box) return;
-    box.innerHTML = _alertaTelefones.map((t, i) =>
-      `<span style="display:inline-flex;align-items:center;gap:6px;background:var(--red-bg);border:1px solid #fca5a5;color:var(--red);padding:5px 10px;border-radius:999px;font-size:13px;font-weight:600">`
-      + `+55 ${t}`
-      + `<span style="cursor:pointer;font-weight:800;line-height:1" onclick="alertaRemoveTelefone(${i})" title="Remover">✕</span></span>`
-    ).join('');
-  }
-
-  function alertaAddTelefone() {
-    const inp = document.getElementById('alertaCriticoTelefone');
-    if (!inp) return;
-    const t = (inp.value || '').replace(/\D/g, '');
-    if (t.length < 10) { return; }
-    if (!_alertaTelefones.includes(t)) _alertaTelefones.push(t);
-    inp.value = '';
-    _alertaRenderTelefones();
-    _alertaSetSalvo(false);
-  }
-
-  function alertaRemoveTelefone(i) {
-    _alertaTelefones.splice(i, 1);
-    _alertaRenderTelefones();
-    _alertaSetSalvo(false);
-  }
-
-  function _avaliacaoAtiva() {
-    return document.getElementById('toggleAvaliacao')?.checked === true;
-  }
-
-  function _syncAlertaToggleState() {
-    const chk     = document.getElementById('alertaCriticoAtivo');
-    const aviso   = document.getElementById('alertaCriticoAvisoAval');
-    if (!chk) return;
-    if (!_avaliacaoAtiva()) {
-      chk.checked  = false;
-      chk.disabled = true;
-      if (aviso) aviso.style.display = 'flex';
-    } else {
-      chk.disabled = false;
-      if (aviso) aviso.style.display = 'none';
-    }
-  }
-
-  function _alertaSetSalvo(salvo) {
-    const resEl = document.getElementById('alertaCriticoResult');
-    if (!resEl) return;
-    if (salvo) {
-      resEl.style.cssText = 'display:flex;align-items:center;gap:.45rem;font-size:.8rem;font-weight:600;padding:.5rem .75rem;border-radius:8px;background:var(--primary-soft);border:1px solid #86efac;color:#15803d';
-      resEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg>Configuração salva com sucesso`;
-    } else {
-      resEl.style.display = 'none';
-    }
-  }
-
-  async function loadAlertaCritico() {
-    try {
-      const res = await fetch('/api/config/alerta-critico');
-      if (!res.ok) return;
-      const cfg = await res.json();
-      const chk   = document.getElementById('alertaCriticoAtivo');
-      const msg   = document.getElementById('alertaCriticoMensagem');
-      const fChk  = document.getElementById('alertaFalhaAtivo');
-      const fMsg  = document.getElementById('alertaFalhaMensagem');
-      // Telefones: usa lista nova; cai pro legado se vier só `telefone`
-      _alertaTelefones = Array.isArray(cfg.telefones) && cfg.telefones.length
-        ? cfg.telefones.slice()
-        : (cfg.telefone ? [cfg.telefone] : []);
-      _alertaRenderTelefones();
-      if (msg)  msg.value  = cfg.mensagem || _ALERTA_DEFAULT_MSG;
-      if (chk && _avaliacaoAtiva()) chk.checked = !!cfg.ativo;
-      if (fChk) fChk.checked = !!cfg.falha_ativo;
-      if (fMsg) fMsg.value   = cfg.falha_mensagem || _FALHA_DEFAULT_MSG;
-      _syncAlertaToggleState();
-      // Mostra "salvo" ao carregar se já houver config no banco
-      _alertaSetSalvo(true);
-      // Ao editar qualquer campo, volta ao estado "não salvo"
-      const _onchange = () => _alertaSetSalvo(false);
-      if (msg)  msg.addEventListener('input', _onchange);
-      if (chk)  chk.addEventListener('change', _onchange);
-      if (fChk) fChk.addEventListener('change', _onchange);
-      if (fMsg) fMsg.addEventListener('input', _onchange);
-    } catch(e) {}
-  }
-
-  async function salvarAlertaCritico() {
-    const btn   = document.getElementById('btnSalvarAlertaCritico');
-    const resEl = document.getElementById('alertaCriticoResult');
-    const ativo = document.getElementById('alertaCriticoAtivo')?.checked || false;
-    const msg   = document.getElementById('alertaCriticoMensagem')?.value || '';
-    const falhaAtivo = document.getElementById('alertaFalhaAtivo')?.checked || false;
-    const falhaMsg   = document.getElementById('alertaFalhaMensagem')?.value || '';
-
-    // Garante que um número digitado mas não adicionado também conte
-    const pend = document.getElementById('alertaCriticoTelefone')?.value?.replace(/\D/g,'') || '';
-    if (pend.length >= 10 && !_alertaTelefones.includes(pend)) _alertaTelefones.push(pend);
-    const telefones = _alertaTelefones.slice();
-
-    const show = (type, txt) => {
-      if (type === 'ok') {
-        resEl.style.cssText = 'display:flex;align-items:center;gap:.45rem;font-size:.8rem;font-weight:600;padding:.5rem .75rem;border-radius:8px;background:var(--primary-soft);border:1px solid #86efac;color:#15803d';
-        resEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg>${txt}`;
-      } else {
-        resEl.style.cssText = 'display:flex;align-items:center;gap:.45rem;font-size:.8rem;font-weight:600;padding:.5rem .75rem;border-radius:8px;background:var(--red-bg);border:1px solid #fca5a5;color:var(--red)';
-        resEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>${txt}`;
-        setTimeout(() => { resEl.style.display = 'none'; }, 5000);
-      }
-    };
-
-    if ((ativo || falhaAtivo) && telefones.length === 0) {
-      show('error', 'Adicione ao menos um telefone para receber os alertas.'); return;
-    }
-
-    if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
-    try {
-      const res = await _fetch('POST', '/api/config/alerta-critico', {
-        ativo, telefones, mensagem: msg,
-        falha_ativo: falhaAtivo, falha_mensagem: falhaMsg,
-      });
-      if (res && res.ok) { _alertaTelefones = telefones; _alertaRenderTelefones(); _alertaSetSalvo(true); }
-      else show('error', 'Erro ao salvar configuração.');
-    } finally {
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Salvar Configuração';
-      }
-    }
-  }
-
-  // Insere variável no textarea do alerta na posição do cursor
-  function insertAlertaVar(v) {
-    const ta = document.getElementById('alertaCriticoMensagem');
-    if (!ta) return;
-    const s = ta.selectionStart, e = ta.selectionEnd;
-    ta.value = ta.value.slice(0, s) + v + ta.value.slice(e);
-    ta.selectionStart = ta.selectionEnd = s + v.length;
-    ta.focus();
-  }
-
   // ── Ponto de entrada ─────────────────────────────────────────────────────────
 
   function init() {
@@ -483,18 +316,12 @@ window.mensagemModule = (() => {
     }
     Promise.all([loadAvaliacaoCfg(), _carregarLinkDemo()]).then(() => {
       loadMensagem();
-      loadAlertaCritico();
     });
   }
 
-  return { init, salvarAvaliacaoCfg, salvarAlertaCritico, insertAlertaVar, initTesteEnvio,
-           alertaAddTelefone, alertaRemoveTelefone };
+  return { init, salvarAvaliacaoCfg, initTesteEnvio };
 })();
 
 // ── Globais para chamadas inline no HTML ─────────────────────────────────────
 window.salvarAvaliacaoCfg   = () => mensagemModule.salvarAvaliacaoCfg();
-window.salvarAlertaCritico  = () => mensagemModule.salvarAlertaCritico();
-window.insertAlertaVar      = (v) => mensagemModule.insertAlertaVar(v);
 window.initTesteEnvio       = () => mensagemModule.initTesteEnvio();
-window.alertaAddTelefone    = () => mensagemModule.alertaAddTelefone();
-window.alertaRemoveTelefone = (i) => mensagemModule.alertaRemoveTelefone(i);

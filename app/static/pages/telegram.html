@@ -19,7 +19,7 @@
     </button>
     <button class="wa-tab on" onclick="navigate('telegram')">
       <span class="wa-tab-ic"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></span>
-      <span class="wa-tab-label">Telegram</span>
+      <span class="wa-tab-label">Alerta Crítico</span>
       <span class="wa-tab-go"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span>
     </button>
   </div>
@@ -85,6 +85,68 @@
       <span class="badge ok" style="flex:none" id="tgAlertCountBadge">6 de 6 ativos</span>
       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-3);flex:none"><polyline points="9 18 15 12 9 6"/></svg>
     </button>
+
+    <!-- ── Alerta Crítico (WhatsApp) ─────────────────────────────────── -->
+    <div class="card pad">
+      <div class="card-head" style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+        <span class="ci t-red" style="width:40px;height:40px;flex:none">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>
+        </span>
+        <span>
+          <span style="display:block;font-size:16px;font-weight:800;color:var(--red)">Alerta Crítico (WhatsApp)</span>
+          <span style="font-size:12.5px;color:var(--text-3)">Avisos enviados no WhatsApp dos administradores</span>
+        </span>
+      </div>
+
+      <div id="alertaCriticoAvisoAval" style="display:none;background:var(--amber-bg);border:1px solid color-mix(in srgb,var(--amber) 30%,transparent);color:var(--amber);padding:.6rem .9rem;border-radius:10px;font-size:13px;margin:10px 0 14px"></div>
+
+      <div class="crit-toggle">
+        <div>
+          <b>Alerta de avaliação negativa (notas 1, 2 e 3)</b>
+          <div style="font-size:13px;color:var(--text-2)">Envia mensagem WA imediatamente ao receber avaliação negativa</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="alertaCriticoAtivo">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <label class="flbl" style="margin-top:16px">Telefones que receberão os alertas</label>
+      <div style="display:flex;gap:10px">
+        <span class="phone-prefix red">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.93 3.36 2 2 0 0 1 3.91 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 5.93 5.93l1.18-1.18a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          +55
+        </span>
+        <input type="text" id="alertaCriticoTelefone" placeholder="11999998888" class="field" onkeydown="if(event.key==='Enter'){event.preventDefault();alertaAddTelefone();}">
+        <button type="button" class="btn btn-red" style="white-space:nowrap" onclick="alertaAddTelefone()">+ Adicionar</button>
+      </div>
+      <div id="alertaCriticoTelefonesList" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px"></div>
+      <div style="font-size:12px;color:var(--text-3);margin-top:6px">Adicione um ou mais números. Todos recebem os alertas.</div>
+
+      <label class="flbl" style="margin-top:16px">Mensagem do alerta de avaliação negativa</label>
+      <textarea class="editor-area" id="alertaCriticoMensagem" rows="6" style="min-height:130px" spellcheck="false"></textarea>
+
+      <div class="crit-toggle" style="margin-top:20px">
+        <div>
+          <b>Avisar quando o envio falhar por número inválido</b>
+          <div style="font-size:13px;color:var(--text-2)">Envia alerta aos mesmos telefones acima quando uma mensagem não for entregue por número incorreto/sem WhatsApp</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="alertaFalhaAtivo">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <label class="flbl" style="margin-top:16px">Mensagem do alerta de falha de envio</label>
+      <textarea class="editor-area" id="alertaFalhaMensagem" rows="5" style="min-height:110px" spellcheck="false"></textarea>
+      <div style="font-size:12px;color:var(--text-3);margin-top:6px">Variáveis: <code>{numero}</code> <code>{nome}</code> <code>{erro}</code> <code>{data}</code></div>
+
+      <button class="btn btn-red" style="width:100%;margin-top:16px" onclick="salvarAlertaCritico()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Salvar Configuração
+      </button>
+      <div id="alertaCriticoResult" style="display:none;padding:.65rem 1rem;border-radius:8px;font-size:.84rem;margin-top:14px"></div>
+    </div>
 
   </div>
 

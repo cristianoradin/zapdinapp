@@ -61,7 +61,7 @@
     teste:            'Teste de Envio',
     token:            'Token API',
     docs:             'Documentações',
-    telegram:         'Telegram',
+    telegram:         'Alerta Crítico',
     'dm-dashboard':   'Campanhas',
     'dm-contatos':    'Contatos',
     'dm-campanha':    'Criar Campanhas',
