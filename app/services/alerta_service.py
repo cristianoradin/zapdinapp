@@ -67,17 +67,33 @@ async def _get_alerta_cfg(empresa_id: int) -> dict:
         return {}
 
 
-def _telefones(cfg: dict) -> list:
-    """Lista de números de destino (novo `telefones` ou legado `telefone`), só dígitos."""
-    brutos = list(cfg.get("telefones") or [])
-    if cfg.get("telefone"):
-        brutos.append(cfg["telefone"])
+def destinos_por_tipo(cfg: dict, tipo: str) -> list:
+    """Números (só dígitos) que recebem alertas do `tipo` ('avaliacao' ou 'falha').
+    Usa `destinos[]` (cada um com flags por número). Cai pro legado se ausente:
+    `telefones`/`telefone` + `ativo` (avaliacao) / `falha_ativo` (falha)."""
     vistos, out = set(), []
-    for t in brutos:
-        d = "".join(c for c in (str(t) or "") if c.isdigit())
+
+    def _add(numero):
+        d = "".join(c for c in (str(numero) or "") if c.isdigit())
         if d and d not in vistos:
             vistos.add(d)
             out.append(d)
+
+    destinos = cfg.get("destinos")
+    if destinos:
+        for item in destinos:
+            if isinstance(item, dict) and item.get(tipo):
+                _add(item.get("numero", ""))
+        return out
+
+    # Legado: telefones recebem conforme o toggle global do tipo
+    ligado = cfg.get("ativo") if tipo == "avaliacao" else cfg.get("falha_ativo")
+    if ligado:
+        brutos = list(cfg.get("telefones") or [])
+        if cfg.get("telefone"):
+            brutos.append(cfg["telefone"])
+        for t in brutos:
+            _add(t)
     return out
 
 
@@ -127,9 +143,7 @@ async def disparar_falha_cadastro(empresa_id: int, numero: str, nome: str, erro:
             return
 
         cfg = await _get_alerta_cfg(empresa_id)
-        if not cfg.get("falha_ativo"):
-            return
-        destinos = _telefones(cfg)
+        destinos = destinos_por_tipo(cfg, "falha")
         if not destinos:
             return
 

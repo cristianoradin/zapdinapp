@@ -621,8 +621,14 @@ async def _processar_alertas_pendentes() -> None:
             except Exception:
                 cfg = {}
 
-            if not cfg.get("ativo"):
-                # Alerta foi desativado — descarta pendente
+            # Destinos que escolheram receber alerta de AVALIAÇÃO
+            from .alerta_service import destinos_por_tipo
+            telefones_destino = [
+                (d[2:] if d.startswith("55") else d)
+                for d in destinos_por_tipo(cfg, "avaliacao")
+            ]
+            if not telefones_destino:
+                # Ninguém recebe avaliação → descarta pendente
                 async with get_db_direct() as db:
                     await db.execute(
                         "UPDATE alertas_criticos_pendentes SET enviado_em = NOW() WHERE id = ?",
@@ -630,21 +636,8 @@ async def _processar_alertas_pendentes() -> None:
                     )
                     await db.commit()
                 continue
-
-            # Destinos: novo `telefones` ou legado `telefone`
-            brutos = list(cfg.get("telefones") or [])
-            if cfg.get("telefone"):
-                brutos.append(cfg["telefone"])
-            vistos, telefones_destino = set(), []
-            for t in brutos:
-                d = "".join(ch for ch in (str(t) or "") if ch.isdigit())
-                if d:
-                    d = d[2:] if d.startswith("55") else d
-                    if d and d not in vistos:
-                        vistos.add(d)
-                        telefones_destino.append(d)
             template = cfg.get("mensagem", "")
-            if not telefones_destino or not template:
+            if not template:
                 continue
 
             tel_exibir = (row["telefone_cliente"] or "").lstrip("+").lstrip("55") or "—"

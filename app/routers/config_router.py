@@ -100,28 +100,55 @@ _FALHA_DEFAULT_MSG = (
 )
 
 
-def _norm_telefones(telefones, telefone_legacy: str = "") -> list:
-    """Normaliza lista de telefones: só dígitos, sem vazios, sem duplicados.
-    Aceita lista nova OU o campo legado `telefone` (string única)."""
-    brutos = list(telefones or [])
-    if telefone_legacy:
-        brutos.append(telefone_legacy)
-    vistos, out = set(), []
+def _norm_destinos(destinos, data: dict = None) -> list:
+    """Normaliza a lista de destinos. Cada destino: {numero, avaliacao, falha}.
+    `numero` só dígitos, sem duplicados. Se `destinos` vier vazio, deriva da config
+    legada (`telefones`/`telefone` + `ativo`/`falha_ativo`)."""
+    data = data or {}
+    out, vistos = [], set()
+
+    def _add(numero, avaliacao, falha):
+        d = "".join(c for c in (str(numero) or "") if c.isdigit())
+        if not d or d in vistos:
+            return
+        vistos.add(d)
+        out.append({"numero": d, "avaliacao": bool(avaliacao), "falha": bool(falha)})
+
+    if destinos:
+        for item in destinos:
+            if isinstance(item, dict):
+                _add(item.get("numero", ""), item.get("avaliacao", False), item.get("falha", False))
+            else:  # string solta → recebe os dois por padrão
+                _add(item, True, True)
+        return out
+
+    # Retrocompat: deriva dos campos legados
+    legado_av    = bool(data.get("ativo"))
+    legado_falha = bool(data.get("falha_ativo"))
+    brutos = list(data.get("telefones") or [])
+    if data.get("telefone"):
+        brutos.append(data["telefone"])
     for t in brutos:
-        d = "".join(c for c in (t or "") if c.isdigit())
-        if d and d not in vistos:
-            vistos.add(d)
-            out.append(d)
+        _add(t, legado_av, legado_falha)
     return out
 
 
+class AlertaDestino(BaseModel):
+    numero: str = ""
+    avaliacao: bool = False
+    falha: bool = False
+
+
 class AlertaCriticoConfig(BaseModel):
-    ativo: bool = False
-    telefone: Optional[str] = ""              # legado (1 número) — retrocompat
-    telefones: Optional[list] = None          # novo: vários números
+    # Novo: cada número escolhe o que recebe
+    destinos: Optional[list] = None
     mensagem: Optional[str] = _ALERTA_DEFAULT_MSG
-    falha_ativo: bool = False                 # alerta de falha de envio (mesmos números)
     falha_mensagem: Optional[str] = _FALHA_DEFAULT_MSG
+    # Legado (retrocompat de clientes antigos) — aceitos no input
+    ativo: bool = False
+    telefone: Optional[str] = ""
+    telefones: Optional[list] = None
+    falha_ativo: bool = False
 
 
 @router.get("/alerta-critico")
@@ -129,7 +156,7 @@ async def get_alerta_critico(
     db=Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
-    """Retorna a configuração atual do alerta crítico de avaliação."""
+    """Retorna a configuração atual do alerta crítico (destinos por número)."""
     empresa_id = user["empresa_id"]
     async with db.execute(
         "SELECT value FROM config WHERE empresa_id=? AND key=?",
@@ -145,14 +172,15 @@ async def get_alerta_critico(
     else:
         data = {}
 
-    telefones = _norm_telefones(data.get("telefones"), data.get("telefone", ""))
+    destinos = _norm_destinos(data.get("destinos"), data)
     return {
-        "ativo":          data.get("ativo", False),
-        "telefone":       telefones[0] if telefones else "",   # retrocompat
-        "telefones":      telefones,
+        "destinos":       destinos,
         "mensagem":       data.get("mensagem", _ALERTA_DEFAULT_MSG),
-        "falha_ativo":    data.get("falha_ativo", False),
         "falha_mensagem": data.get("falha_mensagem", _FALHA_DEFAULT_MSG),
+        # derivados p/ retrocompat de leitores antigos
+        "ativo":          any(d["avaliacao"] for d in destinos),
+        "falha_ativo":    any(d["falha"] for d in destinos),
+        "telefones":      [d["numero"] for d in destinos],
     }
 
 
@@ -162,16 +190,22 @@ async def set_alerta_critico(
     db=Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
-    """Salva a configuração do alerta crítico de avaliação."""
+    """Salva a configuração do alerta crítico (destinos por número)."""
     empresa_id = user["empresa_id"]
-    telefones = _norm_telefones(body.telefones, body.telefone or "")
+    destinos = _norm_destinos(
+        body.destinos,
+        {"ativo": body.ativo, "falha_ativo": body.falha_ativo,
+         "telefones": body.telefones, "telefone": body.telefone},
+    )
     value = _json.dumps({
-        "ativo":          body.ativo,
-        "telefone":       telefones[0] if telefones else "",   # mantém legado preenchido
-        "telefones":      telefones,
+        "destinos":       destinos,
         "mensagem":       body.mensagem or _ALERTA_DEFAULT_MSG,
-        "falha_ativo":    body.falha_ativo,
         "falha_mensagem": body.falha_mensagem or _FALHA_DEFAULT_MSG,
+        # espelho legado (clientes/leitores antigos)
+        "ativo":          any(d["avaliacao"] for d in destinos),
+        "falha_ativo":    any(d["falha"] for d in destinos),
+        "telefones":      [d["numero"] for d in destinos],
+        "telefone":       destinos[0]["numero"] if destinos else "",
     })
     await db.execute(
         """INSERT INTO config (empresa_id, key, value) VALUES (?, ?, ?)

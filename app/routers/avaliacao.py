@@ -272,23 +272,12 @@ async def _disparar_alerta_critico(
         except Exception:
             return
 
-        if not cfg.get("ativo"):
-            return
-
-        # Lista de destinos: novo `telefones` ou legado `telefone` (1 só)
-        brutos = list(cfg.get("telefones") or [])
-        if cfg.get("telefone"):
-            brutos.append(cfg["telefone"])
-        vistos, telefones_destino = set(), []
-        for t in brutos:
-            d = "".join(c for c in (str(t) or "") if c.isdigit())
-            if d and d not in vistos:
-                vistos.add(d)
-                telefones_destino.append(d)
+        # Destinos que escolheram receber alerta de AVALIAÇÃO
+        from ..services.alerta_service import destinos_por_tipo
+        telefones_destino = destinos_por_tipo(cfg, "avaliacao")
 
         template = cfg.get("mensagem", "")
         if not telefones_destino or not template:
-            logger.warning("[alerta_critico] config incompleta — destinos=%d", len(telefones_destino))
             return
 
         # Remove DDI 55 do telefone do cliente para exibição

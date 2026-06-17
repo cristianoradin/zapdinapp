@@ -102,35 +102,48 @@ class TestAlertaCritico:
         r = await client.get("/api/config/alerta-critico")
         assert r.status_code == 401
 
-    async def test_roundtrip_telefones_e_falha(self, auth_client):
+    async def test_roundtrip_destinos_por_numero(self, auth_client):
         payload = {
-            "ativo": True,
-            "telefones": ["11999998888", "(67) 98888-7777", "11999998888"],  # dup + máscara
+            "destinos": [
+                {"numero": "11999998888", "avaliacao": True,  "falha": False},
+                {"numero": "(67) 98888-7777", "avaliacao": False, "falha": True},
+                {"numero": "11999998888", "avaliacao": True, "falha": True},  # dup → ignora
+            ],
             "mensagem": "Nota baixa de {nome}",
-            "falha_ativo": True,
             "falha_mensagem": "Falhou {numero} ({nome}): {erro}",
         }
         r = await auth_client.post("/api/config/alerta-critico", json=payload)
         assert r.status_code == 200 and r.json().get("ok")
 
-        g = await auth_client.get("/api/config/alerta-critico")
-        assert g.status_code == 200
-        cfg = g.json()
-        # normaliza: só dígitos, sem duplicados
-        assert cfg["telefones"] == ["11999998888", "67988887777"]
-        assert cfg["telefone"] == "11999998888"      # legado = primeiro
-        assert cfg["ativo"] is True
-        assert cfg["falha_ativo"] is True
+        cfg = (await auth_client.get("/api/config/alerta-critico")).json()
+        assert cfg["destinos"] == [
+            {"numero": "11999998888", "avaliacao": True,  "falha": False},
+            {"numero": "67988887777", "avaliacao": False, "falha": True},
+        ]
+        # derivados p/ retrocompat
+        assert cfg["ativo"] is True          # algum recebe avaliação
+        assert cfg["falha_ativo"] is True    # algum recebe falha
         assert cfg["falha_mensagem"] == "Falhou {numero} ({nome}): {erro}"
 
-    async def test_retrocompat_telefone_legado(self, auth_client):
-        # Salva só o campo legado `telefone` → deve virar telefones[]
+    async def test_retrocompat_telefone_legado_vira_destino(self, auth_client):
+        # Cliente antigo: só `telefone` + `ativo` → vira destino com avaliacao=true
         r = await auth_client.post("/api/config/alerta-critico", json={
             "ativo": True, "telefone": "11955554444", "mensagem": "x",
         })
         assert r.status_code == 200
         cfg = (await auth_client.get("/api/config/alerta-critico")).json()
-        assert cfg["telefones"] == ["11955554444"]
+        assert cfg["destinos"] == [
+            {"numero": "11955554444", "avaliacao": True, "falha": False},
+        ]
+
+    async def test_destinos_por_tipo_helper(self):
+        from app.services.alerta_service import destinos_por_tipo
+        cfg = {"destinos": [
+            {"numero": "111", "avaliacao": True,  "falha": False},
+            {"numero": "222", "avaliacao": False, "falha": True},
+        ]}
+        assert destinos_por_tipo(cfg, "avaliacao") == ["111"]
+        assert destinos_por_tipo(cfg, "falha") == ["222"]
 
 
 class TestAlertaService:

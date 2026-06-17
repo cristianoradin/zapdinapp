@@ -100,18 +100,11 @@
 
       <div id="alertaCriticoAvisoAval" style="display:none;background:var(--amber-bg);border:1px solid color-mix(in srgb,var(--amber) 30%,transparent);color:var(--amber);padding:.6rem .9rem;border-radius:10px;font-size:13px;margin:10px 0 14px"></div>
 
-      <div class="crit-toggle">
-        <div>
-          <b>Alerta de avaliação negativa (notas 1, 2 e 3)</b>
-          <div style="font-size:13px;color:var(--text-2)">Envia mensagem WA imediatamente ao receber avaliação negativa</div>
-        </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="alertaCriticoAtivo">
-          <span class="toggle-slider"></span>
-        </label>
+      <div id="alertaCriticoAvisoFalha" style="background:var(--bg-2,#f6f7f9);border:1px solid var(--border);color:var(--text-2);padding:.6rem .9rem;border-radius:10px;font-size:12.5px;margin:10px 0 14px;line-height:1.5">
+        Adicione os números e marque, em cada um, <b>o que ele recebe</b>: <b style="color:var(--red)">Avaliação</b> (nota baixa) e/ou <b style="color:var(--red)">Falha</b> (número inválido no envio).
       </div>
 
-      <label class="flbl" style="margin-top:16px">Telefones que receberão os alertas</label>
+      <label class="flbl">Adicionar telefone</label>
       <div style="display:flex;gap:10px">
         <span class="phone-prefix red">
           <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.93 3.36 2 2 0 0 1 3.91 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 5.93 5.93l1.18-1.18a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
@@ -120,22 +113,13 @@
         <input type="text" id="alertaCriticoTelefone" placeholder="11999998888" class="field" onkeydown="if(event.key==='Enter'){event.preventDefault();alertaAddTelefone();}">
         <button type="button" class="btn btn-red" style="white-space:nowrap" onclick="alertaAddTelefone()">+ Adicionar</button>
       </div>
-      <div id="alertaCriticoTelefonesList" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px"></div>
-      <div style="font-size:12px;color:var(--text-3);margin-top:6px">Adicione um ou mais números. Todos recebem os alertas.</div>
+
+      <div id="alertaCriticoAvisoAval" style="display:none;background:var(--amber-bg);border:1px solid color-mix(in srgb,var(--amber) 30%,transparent);color:var(--amber);padding:.6rem .9rem;border-radius:10px;font-size:12.5px;margin-top:10px"></div>
+
+      <div id="alertaCriticoTelefonesList" style="display:flex;flex-direction:column;gap:8px;margin-top:12px"></div>
 
       <label class="flbl" style="margin-top:16px">Mensagem do alerta de avaliação negativa</label>
       <textarea class="editor-area" id="alertaCriticoMensagem" rows="6" style="min-height:130px" spellcheck="false"></textarea>
-
-      <div class="crit-toggle" style="margin-top:20px">
-        <div>
-          <b>Avisar quando o envio falhar por número inválido</b>
-          <div style="font-size:13px;color:var(--text-2)">Envia alerta aos mesmos telefones acima quando uma mensagem não for entregue por número incorreto/sem WhatsApp</div>
-        </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="alertaFalhaAtivo">
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
 
       <label class="flbl" style="margin-top:16px">Mensagem do alerta de falha de envio</label>
       <textarea class="editor-area" id="alertaFalhaMensagem" rows="5" style="min-height:110px" spellcheck="false"></textarea>
