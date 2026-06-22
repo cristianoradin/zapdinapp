@@ -223,21 +223,8 @@ async def apply_baseline(conn) -> None:
     await conn.execute("CREATE INDEX IF NOT EXISTS idx_usuarios_email_app ON usuarios(LOWER(email)) WHERE email IS NOT NULL")
     await conn.execute("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT FALSE")
 
-    # ── Multi-tenant isolation no módulo Contábil ────────────────────────
-    # `empresas_contabil.id` é PK da empresa contábil cadastrada (cliente do posto).
-    # `empresas.id` (singular) é o POSTO (tenant). Sem tenant_id, todos postos
-    # viam todas as empresas contábeis. Backfill: existentes vão pro posto 1.
-    await conn.execute("ALTER TABLE empresas_contabil ADD COLUMN IF NOT EXISTS tenant_id BIGINT REFERENCES empresas(id) ON DELETE CASCADE")
-    await conn.execute("ALTER TABLE documentos_fiscais ADD COLUMN IF NOT EXISTS tenant_id BIGINT REFERENCES empresas(id) ON DELETE CASCADE")
-    await conn.execute("ALTER TABLE contabil_feed ADD COLUMN IF NOT EXISTS tenant_id BIGINT REFERENCES empresas(id) ON DELETE CASCADE")
-    await conn.execute("ALTER TABLE contabil_wa_pendentes ADD COLUMN IF NOT EXISTS tenant_id BIGINT REFERENCES empresas(id) ON DELETE CASCADE")
-    await conn.execute("UPDATE empresas_contabil SET tenant_id = (SELECT MIN(id) FROM empresas) WHERE tenant_id IS NULL")
-    await conn.execute("UPDATE documentos_fiscais SET tenant_id = (SELECT MIN(id) FROM empresas) WHERE tenant_id IS NULL")
-    await conn.execute("UPDATE contabil_feed SET tenant_id = (SELECT MIN(id) FROM empresas) WHERE tenant_id IS NULL")
-    await conn.execute("UPDATE contabil_wa_pendentes SET tenant_id = (SELECT MIN(id) FROM empresas) WHERE tenant_id IS NULL")
-    await conn.execute("CREATE INDEX IF NOT EXISTS idx_empresas_contabil_tenant ON empresas_contabil(tenant_id)")
-    await conn.execute("CREATE INDEX IF NOT EXISTS idx_docs_fiscais_tenant ON documentos_fiscais(tenant_id)")
-    await conn.execute("CREATE INDEX IF NOT EXISTS idx_contabil_feed_tenant ON contabil_feed(tenant_id)")
+    # (Multi-tenant do módulo Contábil movido p/ DEPOIS dos CREATE TABLE contábeis
+    #  — senão o ALTER roda antes da tabela existir e quebra em DB zerado.)
 
     # Índices (seguros mesmo se coluna empresa_id foi adicionada agora)
     await conn.execute("CREATE INDEX IF NOT EXISTS idx_mensagens_empresa ON mensagens(empresa_id)")
@@ -700,6 +687,20 @@ async def apply_baseline(conn) -> None:
         CREATE INDEX IF NOT EXISTS idx_ctb_wa_pendentes_status
         ON contabil_wa_pendentes(status, criado_em)
     """)
+
+    # ── Multi-tenant isolation no módulo Contábil (APÓS os CREATE acima) ──
+    # tenant_id liga empresa_contábil ao POSTO (empresas.id). Backfill → posto 1.
+    await conn.execute("ALTER TABLE empresas_contabil ADD COLUMN IF NOT EXISTS tenant_id BIGINT REFERENCES empresas(id) ON DELETE CASCADE")
+    await conn.execute("ALTER TABLE documentos_fiscais ADD COLUMN IF NOT EXISTS tenant_id BIGINT REFERENCES empresas(id) ON DELETE CASCADE")
+    await conn.execute("ALTER TABLE contabil_feed ADD COLUMN IF NOT EXISTS tenant_id BIGINT REFERENCES empresas(id) ON DELETE CASCADE")
+    await conn.execute("ALTER TABLE contabil_wa_pendentes ADD COLUMN IF NOT EXISTS tenant_id BIGINT REFERENCES empresas(id) ON DELETE CASCADE")
+    await conn.execute("UPDATE empresas_contabil SET tenant_id = (SELECT MIN(id) FROM empresas) WHERE tenant_id IS NULL")
+    await conn.execute("UPDATE documentos_fiscais SET tenant_id = (SELECT MIN(id) FROM empresas) WHERE tenant_id IS NULL")
+    await conn.execute("UPDATE contabil_feed SET tenant_id = (SELECT MIN(id) FROM empresas) WHERE tenant_id IS NULL")
+    await conn.execute("UPDATE contabil_wa_pendentes SET tenant_id = (SELECT MIN(id) FROM empresas) WHERE tenant_id IS NULL")
+    await conn.execute("CREATE INDEX IF NOT EXISTS idx_empresas_contabil_tenant ON empresas_contabil(tenant_id)")
+    await conn.execute("CREATE INDEX IF NOT EXISTS idx_docs_fiscais_tenant ON documentos_fiscais(tenant_id)")
+    await conn.execute("CREATE INDEX IF NOT EXISTS idx_contabil_feed_tenant ON contabil_feed(tenant_id)")
 
     # 4) Tabela de tracking de migrações aplicadas
     await conn.execute("""
