@@ -260,6 +260,9 @@ async def apply_baseline(conn) -> None:
     """)
     await conn.execute("CREATE INDEX IF NOT EXISTS idx_contatos_empresa ON contatos(empresa_id)")
     await conn.execute("ALTER TABLE contatos ADD COLUMN IF NOT EXISTS origem TEXT DEFAULT 'manual'")
+    # Opt-out: contato que pediu PARE/SAIR não recebe mais envios (anti-ban)
+    await conn.execute("ALTER TABLE contatos ADD COLUMN IF NOT EXISTS opt_out BOOLEAN DEFAULT FALSE")
+    await conn.execute("ALTER TABLE contatos ADD COLUMN IF NOT EXISTS opt_out_em TIMESTAMPTZ")
 
     await conn.execute("""
         CREATE TABLE IF NOT EXISTS campanhas (

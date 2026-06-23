@@ -60,15 +60,28 @@ class ContatoRepository(BaseRepository):
 
     async def list_ativos(self, empresa_id: int) -> list:
         return await self._fetchall(
-            "SELECT phone, nome FROM contatos WHERE empresa_id=? AND ativo=TRUE ORDER BY nome",
+            "SELECT phone, nome FROM contatos WHERE empresa_id=? AND ativo=TRUE "
+            "AND COALESCE(opt_out,FALSE)=FALSE ORDER BY nome",
             (empresa_id,),
         )
 
     async def list_by_ids(self, empresa_id: int, ids: list[int]) -> list:
         placeholders = ",".join("?" * len(ids))
         return await self._fetchall(
-            f"SELECT phone, nome FROM contatos WHERE empresa_id=? AND ativo=TRUE AND id IN ({placeholders})",
+            f"SELECT phone, nome FROM contatos WHERE empresa_id=? AND ativo=TRUE "
+            f"AND COALESCE(opt_out,FALSE)=FALSE AND id IN ({placeholders})",
             (empresa_id, *ids),
+        )
+
+    async def marcar_opt_out(self, empresa_id: int, phone: str, opted: bool = True) -> None:
+        """Marca/desmarca opt-out de um número (cria o contato se não existir)."""
+        await self._execute(
+            "INSERT INTO contatos (empresa_id, phone, nome, origem, opt_out, opt_out_em) "
+            "VALUES (?, ?, '', 'optout', ?, CASE WHEN ? THEN NOW() ELSE NULL END) "
+            "ON CONFLICT (empresa_id, phone) DO UPDATE SET "
+            "opt_out=EXCLUDED.opt_out, "
+            "opt_out_em=CASE WHEN EXCLUDED.opt_out THEN NOW() ELSE NULL END",
+            (empresa_id, phone, opted, opted),
         )
 
     # ── Grupos ────────────────────────────────────────────────────────────────
@@ -120,7 +133,8 @@ class ContatoRepository(BaseRepository):
         return await self._fetchall(
             "SELECT c.phone, c.nome FROM contatos c "
             "JOIN grupo_contatos gc ON gc.contato_id = c.id "
-            "WHERE gc.grupo_id=? AND c.empresa_id=? AND c.ativo=TRUE ORDER BY c.nome",
+            "WHERE gc.grupo_id=? AND c.empresa_id=? AND c.ativo=TRUE "
+            "AND COALESCE(c.opt_out,FALSE)=FALSE ORDER BY c.nome",
             (grupo_id, empresa_id),
         )
 

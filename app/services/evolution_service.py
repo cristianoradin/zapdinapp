@@ -1210,6 +1210,13 @@ class EvoManager:
             else:
                 eff = remote_jid
             phone_full = eff.split("@")[0]
+            # Opt-out automático (PARE/SAIR) — se for comando, trata e NÃO passa pro chatbot
+            try:
+                from ..services.opt_out_service import handle_inbound as _optout
+                if await _optout(tenant_id, phone_full, texto):
+                    return
+            except Exception as exc:
+                logger.debug("[opt-out] inbound erro: %s", exc)
             from ..services.chatbot_service import responder_mensagem
             asyncio.create_task(responder_mensagem(tenant_id, phone_full, texto, inst, ""))
         except Exception as exc:
