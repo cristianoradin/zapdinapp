@@ -347,6 +347,27 @@ async def admin_queue_stats(
     return {"empresas": rows, "agentes": agentes}
 
 
+class SysWhatsBody(BaseModel):
+    numero: str = Field(min_length=8, max_length=20)
+    mensagem: str = Field(min_length=1, max_length=4096)
+    empresa_id: int = 1   # SGA Petro (número central) por padrão
+
+
+@router.post("/api/admin/send-whatsapp")
+async def admin_send_whatsapp(
+    body: SysWhatsBody,
+    x_monitor_token: Optional[str] = Header(default=None, alias="X-Monitor-Token"),
+):
+    """Envio de WhatsApp do SISTEMA (monitor → app), via número central (SGA=empresa 1).
+    Enfileira como tipo 'sistema' (prioritário). Usado por cadastro de cliente, etc."""
+    expected = settings.monitor_client_token
+    if not expected or not x_monitor_token or x_monitor_token != expected:
+        raise HTTPException(401, "X-Monitor-Token inválido")
+    from ..services.alerta_service import enviar_para_numeros
+    ok = await enviar_para_numeros(body.empresa_id, [body.numero], body.mensagem, tipo="sistema")
+    return {"ok": bool(ok)}
+
+
 class EmpresaUpsertPayload(BaseModel):
     nome: str
     cnpj: str
