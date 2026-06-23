@@ -394,19 +394,33 @@ class EvoSession:
             if r.status_code != 200:
                 return
             for item in r.json():
-                # Suporta dois formatos da Evolution API: {instance:{...}} e {...} flat
+                # Suporta formatos: {instance:{...}} e {...} flat; nome em instanceName OU name
                 i = item.get("instance") or item
-                if i.get("instanceName") != inst:
+                nome_inst = i.get("instanceName") or i.get("name")
+                if nome_inst != inst:
                     continue
                 raw = (
                     i.get("owner")
+                    or i.get("ownerJid")     # evoapicloud v2.3.x usa ownerJid
                     or i.get("wuid")
                     or i.get("phone")
+                    or i.get("number")
                     or ""
                 ).strip()
                 if raw:
                     self.phone = raw.split("@")[0]
                     logger.info("[evo] [%s] Número extraído via API: %s", self.session_id, self.phone)
+                    # Persiste no banco pra aparecer no app e no monitor
+                    try:
+                        from ..core.database import get_db_direct
+                        async with get_db_direct() as db:
+                            await db.execute(
+                                "UPDATE sessoes_wa SET phone=?, status='connected' WHERE empresa_id=? AND id=?",
+                                (self.phone, self.empresa_id, self.session_id),
+                            )
+                            await db.commit()
+                    except Exception as _e:
+                        logger.debug("[evo] persist phone erro: %s", _e)
                 return
         except Exception as exc:
             logger.debug("[evo] _try_fetch_phone [%s]: %s", self.session_id, exc)
@@ -441,7 +455,9 @@ class EvoSession:
         data  = r.json()
         state = (
             data.get("instance", {}).get("state")
+            or data.get("instance", {}).get("connectionStatus")
             or data.get("state")
+            or data.get("connectionStatus")
             or "close"
         )
         # Só atualiza se mudou — evita log desnecessário
@@ -817,14 +833,19 @@ class EvoManager:
             state = (
                 data.get("state")
                 or data.get("instance", {}).get("state")
+                or data.get("connectionStatus")
+                or data.get("instance", {}).get("connectionStatus")
                 or ""
             )
             phone = (
                 data.get("wuid")
+                or data.get("ownerJid")     # evoapicloud v2.3.x
                 or data.get("phone")
                 or data.get("number")
                 or None
             )
+            if phone:
+                phone = str(phone).split("@")[0]
 
             # statusReason=401 indica que o WhatsApp revogou a sessão (logout real)
             status_reason = data.get("statusReason") or data.get("status_reason") or 0
