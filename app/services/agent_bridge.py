@@ -136,14 +136,21 @@ async def send_command(sio, empresa_id: int, command: str, payload: dict,
         raise RuntimeError(f"Agente da empresa {empresa_id}{extra} não está conectado")
     sid = agent["sid"]
 
-    # Socket.IO call() (request/response com timeout)
+    # Socket.IO call() (request/response com timeout).
+    # IMPORTANTE: o timeout INTERNO do sio.call() NÃO dispara de forma confiável em
+    # certas condições (agente ACKa parcial / loop ocupado) → o await trava pra sempre
+    # e o WORKER PARA (loop single-thread bloqueado num envio). asyncio.wait_for é um
+    # teto RÍGIDO que SEMPRE libera o await, garantindo que o worker nunca congela.
     try:
-        result = await sio.call(
-            command,
-            {"command": command, "payload": payload},
-            to=sid,
-            namespace="/agent",
-            timeout=timeout,
+        result = await asyncio.wait_for(
+            sio.call(
+                command,
+                {"command": command, "payload": payload},
+                to=sid,
+                namespace="/agent",
+                timeout=timeout,
+            ),
+            timeout=timeout + 5,
         )
     except asyncio.TimeoutError:
         raise RuntimeError(f"Timeout ({timeout:.0f}s) no comando '{command}' — agente empresa={empresa_id} não respondeu a tempo")
