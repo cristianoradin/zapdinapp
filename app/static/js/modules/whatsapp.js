@@ -197,7 +197,20 @@ window.whatsappModule = (() => {
            .map(el => el.id.replace('qrarea-', ''))
     );
     Object.keys(_qrPollers).forEach(_stopQrPoller);
-    cont.innerHTML = sessoes.map(_renderSessao).join('');
+    // Aviso: propósito sem nenhum número conectado → envios desse tipo ficam parados
+    const _PROPS = { envios:'📤 Disparos', chatbot:'🤖 Chatbot', chamados:'🎫 Chamados', sistema:'🛠️ Sistema' };
+    const cobertos = new Set();
+    sessoes.forEach(s => { if (s.status === 'connected') (s.usos || []).forEach(u => cobertos.add(u)); });
+    const faltando = Object.keys(_PROPS).filter(k => !cobertos.has(k));
+    let bannerHtml = '';
+    if (faltando.length) {
+      bannerHtml = `<div class="note" style="background:var(--amber-bg);border:1px solid color-mix(in srgb,var(--amber) 35%,transparent);margin-bottom:var(--gap);padding:.7rem .9rem;border-radius:10px">
+        <b style="color:var(--amber)">⚠️ Propósito sem número conectado:</b>
+        <span style="color:var(--text-2)">${faltando.map(k => _PROPS[k]).join(' · ')}</span>
+        <div style="font-size:12.5px;color:var(--text-3);margin-top:3px">Envios desse tipo ficam <b>parados na fila</b> até um número conectado ter esse propósito (em "Configurar propósito").</div>
+      </div>`;
+    }
+    cont.innerHTML = bannerHtml + sessoes.map(_renderSessao).join('');
     sessoes.forEach(s => {
       if (s.status === 'connected') return;
       const area = document.getElementById('qrarea-' + s.id);

@@ -125,10 +125,11 @@ async def live_status(db=Depends(get_db), user: dict = Depends(get_current_user)
     mem = {s["id"]: s for s in wa_manager.get_status(empresa_id)}
     out, seen = [], set()
     async with db.execute(
-        "SELECT id, nome, status, phone, evolution_url FROM sessoes_wa WHERE empresa_id=? ORDER BY created_at",
+        "SELECT id, nome, status, phone, evolution_url, usos FROM sessoes_wa WHERE empresa_id=? ORDER BY created_at",
         (empresa_id,),
     ) as cur:
         rows = await cur.fetchall()
+    import json as _json
     for r in rows:
         sid = r["id"]; evo = (r["evolution_url"] or "").strip()
         is_agent = evo.lower().startswith("agent://")
@@ -138,8 +139,12 @@ async def live_status(db=Depends(get_db), user: dict = Depends(get_current_user)
         else:
             status = (m or {}).get("status") or r["status"]
             phone = (m or {}).get("phone") or r["phone"]
+        try:
+            usos = _json.loads(r["usos"]) if r["usos"] else []
+        except Exception:
+            usos = []
         out.append({"id": sid, "nome": r["nome"], "status": status, "phone": phone,
-                    "evolution_url": evo,
+                    "evolution_url": evo, "usos": usos,
                     "modo": "agente" if is_agent else ("local" if evo else "servidor")})
         seen.add(sid)
     for sid, m in mem.items():
