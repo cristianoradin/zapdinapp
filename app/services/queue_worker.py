@@ -427,11 +427,17 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
         c_delay = _composing_delay(texto) if composing_on else 0.0
 
         ok, err = await wa_manager.send_text(sessao_id, empresa_id, msg["destinatario"], texto, composing_delay=c_delay)
-        st = "sent" if ok else "failed"
+        # Status de entrega reportado pelo backend (agente lê o tiquinho; Evolution = 'sent')
+        entrega = getattr(wa_manager, "_last_send_status", None) if ok else None
+        st = "failed" if not ok else (entrega if entrega in ("sent", "delivered", "read") else "sent")
+        _agora = now_dt() if ok else None
+        _deliv = _agora if st in ("delivered", "read") else None
+        _read = _agora if st == "read" else None
         async with get_db_direct() as db:
             await db.execute(
-                "UPDATE mensagens SET status=?, sessao_id=?, sent_at=?, erro=? WHERE id=? AND empresa_id=?",
-                (st, sessao_id, now_dt() if ok else None, err, msg["id"], empresa_id),
+                "UPDATE mensagens SET status=?, sessao_id=?, sent_at=?, delivered_at=?, read_at=?, erro=? "
+                "WHERE id=? AND empresa_id=?",
+                (st, sessao_id, _agora, _deliv, _read, err, msg["id"], empresa_id),
             )
             await db.commit()
         if not ok:

@@ -1024,6 +1024,8 @@ class EvoManager:
         """Envia mensagem de texto para um número."""
         inst   = _instance_name(empresa_id, session_id)
         number = phone.strip().lstrip("+").replace(" ", "")
+        # Status de entrega do último envio (lido pelo queue_worker). 'sent'|'delivered'|'read'
+        self._last_send_status = None
 
         # Modo agente: roteia comando via WebSocket /agent
         if self._is_agent_session(empresa_id, session_id):
@@ -1039,6 +1041,8 @@ class EvoManager:
                 # composer. Default 30s estourava antes e mascarava o erro real.
                 resp = await _ab.send_command(_sio, empresa_id, "send_text", payload_agent, timeout=90.0)
                 if resp.get("ok"):
+                    # Agente reporta o tiquinho lido na tela (sent/delivered/read)
+                    self._last_send_status = resp.get("status") or "sent"
                     try:
                         from . import telegram_service
                         telegram_service.record_sent("text")
@@ -1060,6 +1064,7 @@ class EvoManager:
                     headers=_h(),
                 )
             if r.status_code in (200, 201):
+                self._last_send_status = "sent"  # delivered/read vêm depois via webhook MESSAGES_UPDATE
                 try:
                     from . import telegram_service
                     telegram_service.record_sent("text")
