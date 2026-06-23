@@ -327,7 +327,24 @@ async def admin_queue_stats(
                 rows = [dict(r) for r in await cur.fetchall()]
     except Exception as exc:
         raise HTTPException(503, f"DB: {exc}")
-    return {"empresas": rows}
+
+    # Contagem de agentes: empresas com sessão modo agente vs online no agent_bridge
+    agentes = {"online": 0, "offline": 0, "total": 0}
+    try:
+        async with get_db_direct() as db:
+            async with db.execute(
+                "SELECT DISTINCT empresa_id FROM sessoes_wa WHERE evolution_url='agent://'",
+                (),
+            ) as cur:
+                com_agente = {r["empresa_id"] for r in await cur.fetchall()}
+        from ..services import agent_bridge as _ab
+        online_ids = {a["empresa_id"] for a in _ab.list_agents()}
+        online = len(com_agente & online_ids)
+        agentes = {"online": online, "offline": len(com_agente) - online, "total": len(com_agente)}
+    except Exception:
+        pass  # contagem de agentes é best-effort
+
+    return {"empresas": rows, "agentes": agentes}
 
 
 class EmpresaUpsertPayload(BaseModel):
