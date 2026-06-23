@@ -34,7 +34,7 @@ async def requeue_offline_failures(empresa_id: int) -> None:
     ('Composer não encontrado'/'não está no WhatsApp') — essas não têm como entregar.
     Janela de 7 dias pra não ressuscitar envios antigos."""
     from ..core.database import get_db_direct
-    cond = (
+    cond_base = (
         "status='failed' AND empresa_id=? "
         "AND created_at > NOW() - INTERVAL '7 days' "
         "AND (erro ILIKE '%não está conectado%' OR erro ILIKE '%sem sess%' "
@@ -43,17 +43,25 @@ async def requeue_offline_failures(empresa_id: int) -> None:
         "AND erro NOT ILIKE '%não está no WhatsApp%' "
         "AND erro NOT ILIKE '%inválid%'"
     )
+    # mensagens respeita o teto de tentativas (não ressuscita dead-letter) e limpa o backoff
+    cond_msg = cond_base + f" AND COALESCE(tentativas,0) < {_MAX_RETRIES}"
     try:
         async with get_db_direct() as db:
             total = 0
-            for tbl in ("mensagens", "arquivos"):
-                async with db.execute(f"SELECT count(*) AS n FROM {tbl} WHERE {cond}", (empresa_id,)) as cur:
-                    row = await cur.fetchone()
-                    total += (row["n"] if row else 0)
-                await db.execute(
-                    f"UPDATE {tbl} SET status='queued', erro=NULL, sent_at=NULL WHERE {cond}",
-                    (empresa_id,),
-                )
+            async with db.execute(f"SELECT count(*) AS n FROM mensagens WHERE {cond_msg}", (empresa_id,)) as cur:
+                row = await cur.fetchone()
+                total += (row["n"] if row else 0)
+            await db.execute(
+                f"UPDATE mensagens SET status='queued', erro=NULL, sent_at=NULL, proximo_retry=NULL WHERE {cond_msg}",
+                (empresa_id,),
+            )
+            async with db.execute(f"SELECT count(*) AS n FROM arquivos WHERE {cond_base}", (empresa_id,)) as cur:
+                row = await cur.fetchone()
+                total += (row["n"] if row else 0)
+            await db.execute(
+                f"UPDATE arquivos SET status='queued', erro=NULL, sent_at=NULL WHERE {cond_base}",
+                (empresa_id,),
+            )
             await db.commit()
             if total:
                 logger.info("[requeue] empresa=%s reenfileiradas %s falhas-offline (agente reconectou)", empresa_id, total)
@@ -90,6 +98,14 @@ def start_requeue_sweep(interval: int = 3600) -> None:
         return
     _sweep_task = asyncio.create_task(_requeue_sweep_loop(interval))
     logger.info("[requeue-sweep] iniciada (intervalo=%ss)", interval)
+
+
+# ── Retry inteligente ──────────────────────────────────────────────────────────
+# Falha recuperável (offline/timeout/servidor) → reenfileira com backoff crescente
+# até _MAX_RETRIES; depois vira 'failed' definitivo (dead-letter). Falha permanente
+# (número inválido) NÃO faz retry. proximo_retry segura a mensagem até a hora.
+_MAX_RETRIES = 5
+_RETRY_BACKOFF = {1: 60, 2: 300, 3: 900, 4: 1800}  # segundos por nº de tentativa
 
 
 # ── Heartbeat (P2) ────────────────────────────────────────────────────────────
@@ -364,13 +380,15 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
     # ── Mensagens de texto (round-robin por empresa) ──────────────────────────
     empresas_msg = await _empresas_queued(
         get_db_direct,
-        "SELECT DISTINCT empresa_id FROM mensagens WHERE status='queued' ORDER BY empresa_id",
+        "SELECT DISTINCT empresa_id FROM mensagens WHERE status='queued' "
+        "AND (proximo_retry IS NULL OR proximo_retry <= NOW()) ORDER BY empresa_id",
     )
     for empresa_id in _rotate(empresas_msg, "msg"):
         async with get_db_direct() as db:
             async with db.execute(
-                "SELECT id, empresa_id, destinatario, nome_destinatario, mensagem, tipo FROM mensagens "
-                "WHERE status='queued' AND empresa_id=? ORDER BY id LIMIT 1",
+                "SELECT id, empresa_id, destinatario, nome_destinatario, mensagem, tipo, tentativas FROM mensagens "
+                "WHERE status='queued' AND empresa_id=? "
+                "AND (proximo_retry IS NULL OR proximo_retry <= NOW()) ORDER BY id LIMIT 1",
                 (empresa_id,),
             ) as cur:
                 msg = await cur.fetchone()
@@ -427,36 +445,64 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
         c_delay = _composing_delay(texto) if composing_on else 0.0
 
         ok, err = await wa_manager.send_text(sessao_id, empresa_id, msg["destinatario"], texto, composing_delay=c_delay)
-        # Status de entrega reportado pelo backend (agente lê o tiquinho; Evolution = 'sent')
-        entrega = getattr(wa_manager, "_last_send_status", None) if ok else None
-        st = "failed" if not ok else (entrega if entrega in ("sent", "delivered", "read") else "sent")
-        _agora = now_dt() if ok else None
-        _deliv = _agora if st in ("delivered", "read") else None
-        _read = _agora if st == "read" else None
-        async with get_db_direct() as db:
-            await db.execute(
-                "UPDATE mensagens SET status=?, sessao_id=?, sent_at=?, delivered_at=?, read_at=?, erro=? "
-                "WHERE id=? AND empresa_id=?",
-                (st, sessao_id, _agora, _deliv, _read, err, msg["id"], empresa_id),
-            )
-            await db.commit()
-        if not ok:
-            logger.error(
-                "Queue: FALHA ao enviar mensagem %s para %s via sessão %s: %s",
-                msg["id"], msg["destinatario"], sessao_id, err,
-            )
-            log_event_sync(empresa_id=empresa_id, nivel="error", modulo="worker", acao="msg_erro",
-                           mensagem=f"Erro ao enviar: {msg['destinatario']} — {str(err or '')[:100]}")
-            # Alerta de falha por número inválido (cadastro) → avisa os adms
-            try:
-                from .alerta_service import disparar_falha_cadastro
-                nome_dest = msg["nome_destinatario"] if "nome_destinatario" in msg.keys() else ""
-                asyncio.create_task(
-                    disparar_falha_cadastro(empresa_id, msg["destinatario"], nome_dest or "", str(err or ""))
+        tent = (msg["tentativas"] if "tentativas" in msg.keys() else 0) or 0
+
+        if ok:
+            # Status de entrega reportado pelo backend (agente lê o tiquinho; Evolution = 'sent')
+            entrega = getattr(wa_manager, "_last_send_status", None)
+            st = entrega if entrega in ("sent", "delivered", "read") else "sent"
+            _agora = now_dt()
+            _deliv = _agora if st in ("delivered", "read") else None
+            _read = _agora if st == "read" else None
+            async with get_db_direct() as db:
+                await db.execute(
+                    "UPDATE mensagens SET status=?, sessao_id=?, sent_at=?, delivered_at=?, read_at=?, "
+                    "erro=NULL, proximo_retry=NULL WHERE id=? AND empresa_id=?",
+                    (st, sessao_id, _agora, _deliv, _read, msg["id"], empresa_id),
                 )
-            except Exception:
-                pass
-        logger.info("Queue: mensagem %s → %s", msg["id"], st)
+                await db.commit()
+            logger.info("Queue: mensagem %s → %s", msg["id"], st)
+        else:
+            # Falha: retry com backoff (recuperável) OU dead-letter (permanente / máx tentativas)
+            from .alerta_service import is_invalid_number_error
+            permanente = is_invalid_number_error(err)
+            novo_tent = tent + 1
+            if permanente or novo_tent >= _MAX_RETRIES:
+                st = "failed"
+                erro_fin = str(err or "")
+                if not permanente:
+                    erro_fin = f"[parou após {novo_tent} tentativas] " + erro_fin
+                async with get_db_direct() as db:
+                    await db.execute(
+                        "UPDATE mensagens SET status='failed', sessao_id=?, sent_at=NULL, erro=?, "
+                        "tentativas=?, proximo_retry=NULL WHERE id=? AND empresa_id=?",
+                        (sessao_id, erro_fin, novo_tent, msg["id"], empresa_id),
+                    )
+                    await db.commit()
+                logger.error("Queue: mensagem %s FALHOU (def.) para %s: %s", msg["id"], msg["destinatario"], err)
+                log_event_sync(empresa_id=empresa_id, nivel="error", modulo="worker", acao="msg_erro",
+                               mensagem=f"Falhou: {msg['destinatario']} — {str(err or '')[:100]}")
+                # Alerta de falha (número inválido) → avisa os adms só na falha definitiva
+                try:
+                    from .alerta_service import disparar_falha_cadastro
+                    nome_dest = msg["nome_destinatario"] if "nome_destinatario" in msg.keys() else ""
+                    asyncio.create_task(
+                        disparar_falha_cadastro(empresa_id, msg["destinatario"], nome_dest or "", str(err or ""))
+                    )
+                except Exception:
+                    pass
+            else:
+                backoff = _RETRY_BACKOFF.get(novo_tent, 1800)
+                async with get_db_direct() as db:
+                    await db.execute(
+                        "UPDATE mensagens SET status='queued', erro=?, tentativas=?, sent_at=NULL, "
+                        "proximo_retry = NOW() + make_interval(secs => ?) WHERE id=? AND empresa_id=?",
+                        (str(err or ""), novo_tent, backoff, msg["id"], empresa_id),
+                    )
+                    await db.commit()
+                logger.warning("Queue: mensagem %s falha %s/%s → retry em %ss (%s)",
+                               msg["id"], novo_tent, _MAX_RETRIES, backoff, err)
+            ok = False
         if ok:
             log_event_sync(empresa_id=empresa_id, nivel="info", modulo="worker", acao="msg_enviada",
                            mensagem=f"Mensagem enviada: {msg['destinatario']}")

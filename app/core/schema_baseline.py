@@ -526,6 +526,9 @@ async def apply_baseline(conn) -> None:
         # Migration delivered_at/read_at em mensagens + campanha_envios
         "ALTER TABLE mensagens ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMPTZ",
         "ALTER TABLE mensagens ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ",
+        # Retry inteligente: nº de tentativas + quando pode tentar de novo
+        "ALTER TABLE mensagens ADD COLUMN IF NOT EXISTS tentativas INTEGER DEFAULT 0",
+        "ALTER TABLE mensagens ADD COLUMN IF NOT EXISTS proximo_retry TIMESTAMPTZ",
         "ALTER TABLE campanha_envios ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMPTZ",
         "ALTER TABLE campanha_envios ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ",
         # Atualiza constraint chk_envios_status se já existir com lista antiga
