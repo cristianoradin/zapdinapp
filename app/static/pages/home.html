@@ -299,4 +299,40 @@
     </div>
   </div>
 
+  <!-- ── MODAL: Configurar alertas/agenda do usuário (Agenda WA) ──────────── -->
+  <div class="modal-backdrop" id="agwa-cfg-overlay" onclick="agwaFecharConfig(event)">
+    <div class="modal" style="max-width:460px;width:100%">
+      <div class="modal-head plain">
+        <span style="display:flex;align-items:center;gap:10px">
+          <span class="ci t-amber" style="width:38px;height:38px"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
+          <span>
+            <span style="display:block;font-size:17px;font-weight:800">Configurar alertas</span>
+            <span style="font-size:12.5px;color:var(--text-3)" id="agwa-cfg-nome">—</span>
+          </span>
+        </span>
+        <button class="icon-btn" style="width:34px;height:34px" onclick="agwaFecharConfig(null, true)">✕</button>
+      </div>
+      <div class="modal-body">
+        <label class="flbl">Resumo da agenda — horário (opcional)</label>
+        <input type="time" class="field" id="agwa-cfg-digest-hora">
+        <div class="fhint">Hora do resumo diário dos compromissos. Vazio = não envia.</div>
+
+        <label class="flbl" style="margin-top:16px">Avisar antes do compromisso</label>
+        <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:6px">
+          <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="agwa-cfg-ant-15"> 15 min</label>
+          <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="agwa-cfg-ant-30"> 30 min</label>
+          <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="agwa-cfg-ant-60"> 1 hora</label>
+          <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="agwa-cfg-ant-120"> 2 horas</label>
+        </div>
+        <label class="flbl" style="margin-top:14px">Outros tempos (min, separados por vírgula)</label>
+        <input type="text" class="field" id="agwa-cfg-ant-custom" placeholder="ex: 5, 45, 1440">
+
+        <button class="btn" style="width:100%;margin-top:18px" onclick="agwaSalvarConfig()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Salvar
+        </button>
+      </div>
+    </div>
+  </div>
+
 </div>
