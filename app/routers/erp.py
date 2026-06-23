@@ -48,13 +48,33 @@ _last_call: dict = {}
 
 
 def _record_call(empresa_id: int, request: Request, endpoint: str, ok: bool) -> None:
-    _last_call[empresa_id] = {
+    info = {
         "timestamp": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
         "ip": request.client.host if request.client else "?",
         "endpoint": endpoint,
         "status": "ok" if ok else "error",
         "total_calls": _last_call.get(empresa_id, {}).get("total_calls", 0) + 1,
     }
+    _last_call[empresa_id] = info
+    # Persiste no banco (sobrevive restart do app — antes o status sumia a cada deploy)
+    import asyncio as _aio
+    import json as _json
+    async def _persist():
+        try:
+            from ..core.database import get_db_direct
+            async with get_db_direct() as _db:
+                await _db.execute(
+                    "INSERT INTO config (empresa_id, key, value) VALUES (?, 'erp_last_call', ?) "
+                    "ON CONFLICT (empresa_id, key) DO UPDATE SET value = EXCLUDED.value",
+                    (empresa_id, _json.dumps(info)),
+                )
+                await _db.commit()
+        except Exception:
+            pass
+    try:
+        _aio.create_task(_persist())
+    except Exception:
+        pass
 
 
 async def _verify_token(x_token: Optional[str], db, request: Request = None) -> int:
@@ -384,11 +404,22 @@ async def receber_arquivo(
 
 
 @router.get("/status")
-async def erp_status(user: dict = Depends(get_current_user)):
+async def erp_status(user: dict = Depends(get_current_user), db=Depends(get_db)):
     empresa_id = user["empresa_id"]
-    return _last_call.get(empresa_id, {
-        "timestamp": None, "ip": None, "endpoint": None, "status": None, "total_calls": 0,
-    })
+    # Memória (mais recente) tem prioridade; senão lê do banco (sobrevive restart).
+    if empresa_id in _last_call:
+        return _last_call[empresa_id]
+    try:
+        import json as _json
+        async with db.execute(
+            "SELECT value FROM config WHERE empresa_id=? AND key='erp_last_call'", (empresa_id,)
+        ) as cur:
+            row = await cur.fetchone()
+        if row and row["value"]:
+            return _json.loads(row["value"])
+    except Exception:
+        pass
+    return {"timestamp": None, "ip": None, "endpoint": None, "status": None, "total_calls": 0}
 
 
 @router.get("/config")

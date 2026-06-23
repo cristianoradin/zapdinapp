@@ -385,6 +385,43 @@ async def _empresas_queued(get_db_direct, sql: str) -> list:
             return [r["empresa_id"] for r in await cur.fetchall()]
 
 
+# ── Concorrência por empresa (fairness + throughput) ─────────────────────────
+# O worker é single-thread. Antes processava UMA empresa por vez (serial): uma
+# empresa lenta/zumbi (envio até ~95s) atrasava TODAS. Agora cada empresa roda
+# em paralelo (gather + semáforo). Per-empresa continua serial (1 item/ciclo =
+# anti-ban preservado); só o paralelismo ENTRE empresas muda.
+_WORKER_SEM = None
+
+
+def _worker_sem():
+    global _WORKER_SEM
+    if _WORKER_SEM is None:
+        import os
+        n = max(2, min(16, (os.cpu_count() or 4)))
+        _WORKER_SEM = asyncio.Semaphore(n)
+    return _WORKER_SEM
+
+
+async def _gather_empresas(empresas: list, fn) -> bool:
+    """Roda fn(empresa_id) para cada empresa em PARALELO (cap pelo semáforo).
+    Exceção/lentidão de uma empresa não afeta as outras. Retorna True se alguma
+    despachou algo."""
+    if not empresas:
+        return False
+    sem = _worker_sem()
+
+    async def _guarded(e):
+        async with sem:
+            try:
+                return bool(await fn(e))
+            except Exception as exc:
+                logger.error("[worker] empresa=%s erro no processamento: %s", e, exc, exc_info=True)
+                return False
+
+    results = await asyncio.gather(*[_guarded(e) for e in empresas])
+    return any(results)
+
+
 async def _process_next(wa_manager, settings, get_db_direct) -> bool:
     """Processa o próximo item na fila. Retorna True se processou algo."""
     now_dt = lambda: datetime.now()
@@ -430,7 +467,7 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
         "SELECT DISTINCT empresa_id FROM mensagens WHERE status='queued' "
         "AND (proximo_retry IS NULL OR proximo_retry <= NOW()) ORDER BY empresa_id",
     )
-    for empresa_id in _rotate(empresas_msg, "msg"):
+    async def _one_msg(empresa_id):
         async with get_db_direct() as db:
             async with db.execute(
                 "SELECT id, empresa_id, destinatario, nome_destinatario, mensagem, tipo, tentativas FROM mensagens "
@@ -444,7 +481,7 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
             ) as cur:
                 msg = await cur.fetchone()
         if not msg:
-            continue
+            return False
 
         cfg = await _load_cfg(empresa_id, get_db_direct)
 
@@ -453,7 +490,7 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
         _prio = (msg["tipo"] or "") in ("alerta", "resumo", "sistema", "teste")
 
         if not _prio and not _within_hours(cfg):
-            continue  # só esta empresa fora do horário — tenta a próxima
+            return False  # esta empresa fora do horário
 
         delay_min    = _cfg_float(cfg, "wa_delay_min", settings.dispatch_min_delay)
         delay_max    = _cfg_float(cfg, "wa_delay_max", settings.dispatch_max_delay)
@@ -474,7 +511,7 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
                 asyncio.create_task(telegram_service.notify_queue_blocked(1))
             except Exception:
                 pass
-            continue  # empresa sem sessão não trava as outras
+            return False  # empresa sem sessão
 
         # Checa limite diário (prioritários — alerta/resumo — ignoram)
         if not _prio and daily_limit > 0:
@@ -485,7 +522,7 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
                     "Queue: sessão %s empresa %s atingiu limite diário (%d) — envios pausados até meia-noite",
                     sessao_id, empresa_id, daily_limit,
                 )
-                continue  # limite só desta empresa
+                return False  # limite só desta empresa
 
         _rr_ptrs["msg"] = empresa_id
         delay = random.uniform(delay_min, delay_max)
@@ -579,12 +616,15 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
             wa_manager.schedule_status_check(msg["id"], sessao_id, empresa_id, msg["destinatario"], table="mensagens")
         return True
 
+    disp_msg = await _gather_empresas(_rotate(empresas_msg, "msg"), _one_msg)
+
     # ── Arquivos (round-robin por empresa) ────────────────────────────────────
     empresas_arq = await _empresas_queued(
         get_db_direct,
         "SELECT DISTINCT empresa_id FROM arquivos WHERE status='queued' ORDER BY empresa_id",
     )
-    for empresa_id in _rotate(empresas_arq, "arq"):
+
+    async def _one_arq(empresa_id):
         async with get_db_direct() as db:
             async with db.execute(
                 "SELECT id, empresa_id, destinatario, nome_destinatario, nome_arquivo, nome_original, caption "
@@ -593,12 +633,12 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
             ) as cur:
                 arq = await cur.fetchone()
         if not arq:
-            continue
+            return False
 
         cfg = await _load_cfg(empresa_id, get_db_direct)
 
         if not _within_hours(cfg):
-            continue
+            return False
 
         delay_min    = _cfg_float(cfg, "wa_delay_min", settings.dispatch_min_delay)
         delay_max    = _cfg_float(cfg, "wa_delay_max", settings.dispatch_max_delay)
@@ -618,7 +658,7 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
                 asyncio.create_task(telegram_service.notify_queue_blocked(1))
             except Exception:
                 pass
-            continue
+            return False
 
         # Checa limite diário
         if daily_limit > 0:
@@ -629,7 +669,7 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
                     "Queue: sessão %s empresa %s atingiu limite diário (%d) — envios pausados até meia-noite",
                     sessao_id, empresa_id, daily_limit,
                 )
-                continue
+                return False
 
         _rr_ptrs["arq"] = empresa_id
         delay = random.uniform(delay_min, delay_max)
@@ -707,6 +747,8 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
             wa_manager.schedule_status_check(arq["id"], sessao_id, empresa_id, arq["destinatario"])
         return True
 
+    disp_arq = await _gather_empresas(_rotate(empresas_arq, "arq"), _one_arq)
+
     # ── Campanha Envios (round-robin por empresa) ─────────────────────────────
     empresas_camp = await _empresas_queued(
         get_db_direct,
@@ -714,7 +756,8 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
         "JOIN campanhas c ON c.id = ce.campanha_id "
         "WHERE ce.status='queued' AND c.status='running' ORDER BY ce.empresa_id",
     )
-    for empresa_id in _rotate(empresas_camp, "camp"):
+
+    async def _one_camp(empresa_id):
         async with get_db_direct() as db:
             async with db.execute(
                 "SELECT ce.id, ce.campanha_id, ce.empresa_id, ce.phone, ce.nome, "
@@ -727,13 +770,13 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
             ) as cur:
                 env = await cur.fetchone()
         if not env:
-            continue
+            return False
 
         campanha_id = env["campanha_id"]
         cfg = await _load_cfg(empresa_id, get_db_direct)
 
         if not _within_hours(cfg):
-            continue
+            return False
 
         delay_min    = _cfg_float(cfg, "wa_delay_min", settings.dispatch_min_delay)
         delay_max    = _cfg_float(cfg, "wa_delay_max", settings.dispatch_max_delay)
@@ -747,7 +790,7 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
                 asyncio.create_task(telegram_service.notify_queue_blocked(1))
             except Exception:
                 pass
-            continue
+            return False
 
         _rr_ptrs["camp"] = empresa_id
         delay = random.uniform(delay_min, delay_max)
@@ -829,7 +872,9 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
             wa_manager.schedule_status_check(env["id"], sessao_id, empresa_id, env["phone"], table="campanha_envios")
         return True
 
-    return False
+    disp_camp = await _gather_empresas(_rotate(empresas_camp, "camp"), _one_camp)
+
+    return disp_msg or disp_arq or disp_camp
 
 
 def start() -> None:

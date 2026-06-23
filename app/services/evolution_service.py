@@ -115,6 +115,11 @@ class EvoSession:
         self._heartbeat_task:  Optional[asyncio.Task] = None
         self._reconnect_task:  Optional[asyncio.Task] = None
 
+        # Detecção de "zumbi parcial" (modo agente): sessão reporta connected mas
+        # os envios dão timeout (página do WhatsApp travada). Conta timeouts seguidos.
+        self._send_fail_streak = 0
+        self._last_reauth = 0.0   # timestamp do último re-QR forçado (throttle)
+
     def _url(self, path: str) -> str:
         """URL da Evolution API: usa custom desta sessão ou fallback ao settings."""
         base = (self.evolution_url or settings.evolution_url).rstrip("/")
@@ -1214,6 +1219,52 @@ class EvoManager:
             logger.debug("[evo] number_exists erro: %s", exc)
             return None
 
+    def _note_agent_send(self, inst: str, ok: bool, err: str = "") -> None:
+        """Conta envios sem resposta do agente. 3 seguidos (com a sessão ainda
+        'connected') = zumbi parcial → força re-QR."""
+        sess = self._inst_index.get(inst)
+        if not sess:
+            return
+        if ok:
+            sess._send_fail_streak = 0
+            return
+        e = err or ""
+        if "Timeout" in e or "não respondeu" in e or "agent:" in e:
+            sess._send_fail_streak = getattr(sess, "_send_fail_streak", 0) + 1
+            if sess._send_fail_streak >= 3 and sess.status == "connected":
+                asyncio.create_task(self._force_agent_reauth(sess))
+
+    async def _force_agent_reauth(self, sess) -> None:
+        """Zumbi parcial: agente reporta connected mas não envia (página WA travada).
+        Manda delete_instance (logout + limpa perfil no agente) → QR novo aparece
+        sozinho, sem limpeza manual. Throttle de 10min evita loop."""
+        import time as _t
+        now = _t.time()
+        if now - getattr(sess, "_last_reauth", 0.0) < 600:
+            return
+        sess._last_reauth = now
+        sess._send_fail_streak = 0
+        inst = _instance_name(sess.empresa_id, sess.session_id)
+        logger.warning("[evo] [%s] zumbi parcial (3 envios sem resposta) → forçando re-QR", sess.session_id)
+        sess.status = "disconnected"
+        sess.phone = None
+        await sess._persist_status()
+        try:
+            from . import agent_bridge as _ab
+            await _ab.send_command(_sio, sess.empresa_id, "delete_instance", {"instance": inst}, timeout=30.0)
+        except Exception as exc:
+            logger.debug("[evo] force_reauth delete_instance erro: %s", exc)
+        try:
+            asyncio.create_task(sess.fetch_qr_now())   # já busca o QR novo
+        except Exception:
+            pass
+        try:
+            from . import telegram_service
+            asyncio.create_task(telegram_service.notify_send_failure(
+                sess.nome, "—", "WhatsApp travado — re-QR forçado, reescanear no painel"))
+        except Exception:
+            pass
+
     async def send_text(
         self, session_id: str, empresa_id: int, phone: str, message: str,
         composing_delay: float = 0.0,
@@ -1241,15 +1292,20 @@ class EvoManager:
                 if resp.get("ok"):
                     # Agente reporta o tiquinho lido na tela (sent/delivered/read)
                     self._last_send_status = resp.get("status") or "sent"
+                    self._note_agent_send(inst, True)
                     try:
                         from . import telegram_service
                         telegram_service.record_sent("text")
                     except Exception:
                         pass
                     return True, None
-                return False, str(resp.get("error") or "agent error")
+                _err = str(resp.get("error") or "agent error")
+                self._note_agent_send(inst, False, _err)
+                return False, _err
             except Exception as exc:
-                return False, f"agent: {exc}"
+                _err = f"agent: {exc}"
+                self._note_agent_send(inst, False, _err)
+                return False, _err
 
         try:
             payload: dict = {"number": number, "text": message}
