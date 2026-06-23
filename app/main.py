@@ -510,7 +510,7 @@ _static_dir = os.path.join(os.path.dirname(__file__), "static")
 _logo_dir = os.path.join(_static_dir, "logo")
 
 _NO_CACHE = {"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
-APP_BUILD = "20260616e"
+APP_BUILD = "20260622a"
 
 
 from starlette.middleware.base import BaseHTTPMiddleware

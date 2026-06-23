@@ -34,6 +34,30 @@
     return `<span class="${cls}">${label}</span>`;
   }
 
+  // Classifica o texto do erro num motivo amigável (espelha alerta_service do backend)
+  function _motivoFalha(erro) {
+    const e = (erro || '').toLowerCase();
+    if (!e) return { icon: '❔', titulo: 'Motivo não registrado',
+                     dica: 'Sem detalhe do erro. Tente reenviar.' };
+    // número inexistente no WhatsApp
+    if (/n[ãa]o est[áa] no whats|numero inv[áa]lid|n[úu]mero inv[áa]lid|invalid number|composer n[ãa]o encontrad|n[ãa]o (foi )?encontrad.*(whats|chat)|exists.*false|not.*on whatsapp/.test(e))
+      return { icon: '🚫', titulo: 'Número não existe no WhatsApp',
+               dica: 'O número não tem conta no WhatsApp. Corrija o cadastro do contato.' };
+    // agente / sessão offline
+    if (/n[ãa]o est[áa] conectad|agent:|agente.*desconect|sem sess[ãa]o|cancelad|desconect|timeout|n[ãa]o respond/.test(e))
+      return { icon: '📴', titulo: 'WhatsApp/Agente offline',
+               dica: 'A sessão ou o agente do posto estava fora do ar. Reenvia sozinho quando reconectar.' };
+    // limite diário / horário
+    if (/limite di[áa]rio|daily limit/.test(e))
+      return { icon: '⏳', titulo: 'Limite diário atingido', dica: 'Aguarde o próximo dia ou ajuste o limite.' };
+    if (/hor[áa]rio|fora de hor/.test(e))
+      return { icon: '🕐', titulo: 'Fora do horário de envio', dica: 'Envio bloqueado pela janela de horário configurada.' };
+    // erro do servidor de envio (Evolution/HTTP)
+    if (/http \d+|internal server|evolution|502|500/.test(e))
+      return { icon: '🛠️', titulo: 'Falha no servidor de envio', dica: 'Erro temporário no backend de WhatsApp. Tente reenviar.' };
+    return { icon: '⚠️', titulo: 'Falha no envio', dica: '' };
+  }
+
   function _renderVazio() {
     return `
       <tr>
@@ -97,6 +121,19 @@
       ['Status', _statusChip(r.status)],
       ['Data', _fmtTs(r.created_at)],
     ].map(([k, v]) => `<div style="font-size:.78rem;color:var(--text-2)"><b>${k}:</b> ${v}</div>`).join('');
+
+    // Bloco de motivo da falha (só quando falhou/erro)
+    let falhaHtml = '';
+    if (r.status === 'failed' || r.status === 'error') {
+      const m = _motivoFalha(r.erro);
+      const raw = (r.erro || '').trim();
+      falhaHtml = `
+        <div style="margin:.6rem 1.2rem;padding:.7rem .9rem;border:1px solid var(--border);border-left:3px solid #e11d48;border-radius:8px;background:rgba(225,29,72,.05)">
+          <div style="font-weight:700;font-size:.86rem;color:#be123c">${m.icon} ${m.titulo}</div>
+          ${m.dica ? `<div style="font-size:.78rem;color:var(--text-2);margin-top:.25rem">${m.dica}</div>` : ''}
+          ${raw ? `<div style="font-size:.72rem;color:var(--text-3);margin-top:.4rem;font-family:monospace;word-break:break-word"><b>Detalhe técnico:</b> ${escHtml(raw)}</div>` : ''}
+        </div>`;
+    }
     const ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:1rem';
     ov.innerHTML = `
@@ -106,6 +143,7 @@
           <button id="vmClose" style="border:none;background:none;font-size:1.3rem;cursor:pointer;color:var(--text-2);line-height:1">×</button>
         </div>
         <div style="padding:.8rem 1.2rem;display:flex;flex-direction:column;gap:.2rem;border-bottom:1px solid var(--border)">${meta}</div>
+        ${falhaHtml}
         <div style="padding:1.2rem;overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:.88rem;line-height:1.5;color:var(--text)">${_wppToHtml(r.mensagem || '—')}</div>
       </div>`;
     const close = () => ov.remove();
