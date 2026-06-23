@@ -87,9 +87,10 @@ async def create_sessao(
                    f"Permitidos: {', '.join(permitidos)}.",
         )
     await db.execute(
-        "INSERT INTO sessoes_wa (empresa_id, id, nome, status, evolution_url) "
-        "VALUES (?, ?, ?, 'disconnected', ?)",
-        (empresa_id, sessao_id, body.nome, evo_url),
+        "INSERT INTO sessoes_wa (empresa_id, id, nome, status, evolution_url, usos) "
+        "VALUES (?, ?, ?, 'disconnected', ?, ?)",
+        (empresa_id, sessao_id, body.nome, evo_url,
+         '["envios","chatbot","chamados","sistema"]'),
     )
     await db.commit()
     await wa_manager.add_session(sessao_id, body.nome, empresa_id, evolution_url=evo_url)

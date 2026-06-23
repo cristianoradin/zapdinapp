@@ -979,9 +979,13 @@ async def apply_baseline(conn) -> None:
     # arquivos, agenda, pdv, chamados (SGAdesk), sistema (monitor/cadastro/alertas))
     await conn.execute(
         "ALTER TABLE sessoes_wa ADD COLUMN IF NOT EXISTS usos "
-        "TEXT DEFAULT '[\"chatbot\",\"campanhas\",\"arquivos\",\"agenda\",\"envios\",\"chamados\",\"sistema\"]'"
+        "TEXT DEFAULT '[\"envios\",\"chatbot\",\"chamados\",\"sistema\"]'"
     )
-    # (Sessões existentes foram semeadas uma vez manualmente; novas usam o default acima.)
+    # ADD COLUMN IF NOT EXISTS NÃO altera o default de coluna que já existe → força aqui:
+    await conn.execute(
+        "ALTER TABLE sessoes_wa ALTER COLUMN usos SET DEFAULT "
+        "'[\"envios\",\"chatbot\",\"chamados\",\"sistema\"]'"
+    )
     # Modo híbrido: sessão pode usar Evolution local do cliente (URL custom) ou
     # a Evolution global do servidor (NULL → fallback settings.evolution_url).
     await conn.execute(
