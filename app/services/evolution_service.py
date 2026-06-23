@@ -20,6 +20,9 @@ Fluxo de reconexão automática:
 """
 import asyncio
 import base64
+import hashlib
+import hmac
+import json
 import logging
 import os
 import secrets
@@ -580,24 +583,135 @@ class EvoManager:
             return False, str(exc)
 
     async def _forward_chat(self, empresa_id: int, payload: dict) -> None:
-        """Repassa evento de chat (inbound/presence) pro sistema externo do cliente.
-        URL em config.chat_webhook_url (por empresa). Best-effort."""
+        """Repassa evento de chat (inbound/presence/mídia) pro sistema externo do cliente.
+        URL + segredo em config (chat_webhook_url / chat_webhook_secret), por empresa.
+
+        - Assina o corpo com HMAC-SHA256 (header X-Zapdin-Signature) se houver segredo.
+        - Reentrega: tenta até 4x (0s, 2s, 10s, 30s) enquanto a resposta não for 200,
+          pra não perder mensagem do cliente se o sistema externo estiver reiniciando."""
         try:
             from ..core.database import get_db_direct
+            url, secret = "", ""
             async with get_db_direct() as db:
                 async with db.execute(
-                    "SELECT value FROM config WHERE empresa_id=? AND key='chat_webhook_url'",
+                    "SELECT key, value FROM config WHERE empresa_id=? "
+                    "AND key IN ('chat_webhook_url', 'chat_webhook_secret')",
                     (empresa_id,),
                 ) as cur:
-                    row = await cur.fetchone()
-            url = (row["value"] if row else "") or ""
+                    rows = await cur.fetchall()
+            for r in rows:
+                if r["key"] == "chat_webhook_url":
+                    url = (r["value"] or "")
+                elif r["key"] == "chat_webhook_secret":
+                    secret = (r["value"] or "")
             if not url:
                 return
+
             payload = {**payload, "empresa_id": empresa_id}
-            async with httpx.AsyncClient(timeout=8.0) as client:
-                await client.post(url, json=payload)
+            # corpo canônico (mesmo formato que o receptor reconstrói pra validar o HMAC)
+            body = json.dumps(payload, separators=(",", ":")).encode()
+            headers = {"Content-Type": "application/json"}
+            if secret:
+                sig = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+                headers["X-Zapdin-Signature"] = f"sha256={sig}"
+
+            delays = (0, 2, 10, 30)
+            for i, d in enumerate(delays):
+                if d:
+                    await asyncio.sleep(d)
+                try:
+                    async with httpx.AsyncClient(timeout=8.0) as client:
+                        resp = await client.post(url, content=body, headers=headers)
+                    if resp.status_code == 200:
+                        return
+                    logger.debug("[chat] webhook empresa=%s HTTP %s (tentativa %s)",
+                                 empresa_id, resp.status_code, i + 1)
+                except Exception as exc:
+                    logger.debug("[chat] webhook empresa=%s erro (tentativa %s): %s",
+                                 empresa_id, i + 1, exc)
+            logger.warning("[chat] webhook empresa=%s falhou após %s tentativas", empresa_id, len(delays))
         except Exception as exc:
             logger.debug("[chat] forward falhou empresa=%s: %s", empresa_id, exc)
+
+    async def _fetch_media_b64(self, inst: str, data: dict):
+        """Busca o base64 de uma mídia recebida via Evolution (server mode).
+        Retorna (base64, mimetype, filename) ou (None,None,None). Modo agente não suporta."""
+        sess = self._inst_index.get(inst)
+        if sess and _is_agent_mode(sess.evolution_url):
+            return None, None, None
+        try:
+            # Evolution v2 aceita o objeto da mensagem (usa message.key pra localizar);
+            # passar o data completo é mais robusto entre versões.
+            body = {"message": data, "convertToMp4": False}
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                r = await client.post(
+                    self._url_for_inst(inst, f"chat/getBase64FromMediaMessage/{inst}"),
+                    json=body, headers=_h(),
+                )
+            if r.status_code in (200, 201):
+                j = r.json()
+                return j.get("base64"), j.get("mimetype"), j.get("fileName")
+            logger.debug("[chat] getBase64 HTTP %s: %s", r.status_code, r.text[:160])
+        except Exception as exc:
+            logger.debug("[chat] getBase64 falhou: %s", exc)
+        return None, None, None
+
+    async def _forward_chat_media(self, empresa_id: int, inst: str, data: dict) -> None:
+        """Inbound de mídia (imagem/áudio/documento) → evento tipo:'midia' no webhook."""
+        key = data.get("key") or {}
+        msg = data.get("message") or {}
+        node = (
+            msg.get("imageMessage")
+            or msg.get("documentMessage")
+            or ((msg.get("documentWithCaptionMessage") or {}).get("message") or {}).get("documentMessage")
+            or msg.get("audioMessage")
+            or msg.get("videoMessage")
+            or msg.get("stickerMessage")
+            or {}
+        )
+        caption = node.get("caption") or ""
+        mime = node.get("mimetype") or ""
+        fname = node.get("fileName") or ""
+        b64, mime2, fname2 = await self._fetch_media_b64(inst, data)
+        de = (key.get("remoteJid") or "").split("@", 1)[0]
+        payload = {
+            "tipo": "midia",
+            "de": de,
+            "message_id": key.get("id") or "",
+            "mime": mime2 or mime,
+            "nome_arquivo": fname2 or fname or "arquivo",
+            "caption": caption,
+            "nome": data.get("pushName") or "",
+        }
+        if b64:
+            payload["media_base64"] = b64
+        await self._forward_chat(empresa_id, payload)
+
+    async def send_file_b64(self, empresa_id: int, number: str, media_base64: str,
+                            filename: str, caption: str = "") -> Tuple[bool, Optional[str]]:
+        """Envia arquivo recebido em base64 (usado pela API /api/chat/send-file).
+        Decodifica num temp, reaproveita o send_file existente, apaga o temp."""
+        sid = self._first_session_id(empresa_id)
+        if not sid:
+            return False, "Nenhuma sessão WhatsApp da empresa."
+        try:
+            raw = base64.b64decode(media_base64, validate=False)
+        except Exception:
+            return False, "media_base64 inválido"
+        import tempfile
+        ext = os.path.splitext(filename)[1].lower()
+        fd, tmp = tempfile.mkstemp(suffix=ext or "")
+        try:
+            def _w():
+                with os.fdopen(fd, "wb") as f:
+                    f.write(raw)
+            await asyncio.to_thread(_w)
+            return await self.send_file(sid, empresa_id, number, tmp, filename, caption or "")
+        finally:
+            try:
+                os.remove(tmp)
+            except Exception:
+                pass
 
     async def add_session(self, session_id: str, nome: str, empresa_id: int,
                           evolution_url: Optional[str] = None) -> None:
@@ -722,18 +836,27 @@ class EvoManager:
         elif event == "MESSAGES_UPSERT":
             # Nova mensagem recebida — rota para o módulo contábil se for mídia de cliente
             asyncio.create_task(self._processar_inbound(inst, data, sess.empresa_id))
-            # Chat/chamados: repassa texto recebido pro sistema externo (best-effort)
+            # Chat/chamados: repassa texto E mídia recebidos pro sistema externo (best-effort)
             try:
                 key = data.get("key") or {}
                 if not key.get("fromMe") and "@g.us" not in (key.get("remoteJid") or ""):
                     msg = data.get("message") or {}
-                    texto = msg.get("conversation") or (msg.get("extendedTextMessage") or {}).get("text") or ""
                     de = (key.get("remoteJid") or "").split("@", 1)[0]
-                    if texto:
-                        asyncio.create_task(self._forward_chat(sess.empresa_id, {
-                            "tipo": "mensagem", "de": de, "texto": texto,
-                            "nome": data.get("pushName") or "",
-                        }))
+                    mtype = data.get("messageType") or ""
+                    _MEDIA = {
+                        "imageMessage", "documentMessage", "documentWithCaptionMessage",
+                        "audioMessage", "videoMessage", "ptvMessage", "stickerMessage",
+                    }
+                    if mtype in _MEDIA:
+                        asyncio.create_task(self._forward_chat_media(sess.empresa_id, inst, data))
+                    else:
+                        texto = msg.get("conversation") or (msg.get("extendedTextMessage") or {}).get("text") or ""
+                        if texto:
+                            asyncio.create_task(self._forward_chat(sess.empresa_id, {
+                                "tipo": "mensagem", "de": de, "texto": texto,
+                                "nome": data.get("pushName") or "",
+                                "message_id": key.get("id") or "",
+                            }))
             except Exception:
                 pass
 

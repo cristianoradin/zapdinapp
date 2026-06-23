@@ -35,8 +35,16 @@ class TypingBody(BaseModel):
     state: str = "composing"   # composing | paused | available
 
 
+class SendFileBody(BaseModel):
+    number: str = Field(min_length=8, max_length=20)
+    media_base64: str = Field(min_length=1)             # arquivo em base64 (sem data URI)
+    filename: str = Field(min_length=1, max_length=255)
+    caption: Optional[str] = Field(default="", max_length=1024)
+
+
 class WebhookCfg(BaseModel):
     webhook_url: str = Field(default="", max_length=500)
+    webhook_secret: str = Field(default="", max_length=200)   # segredo HMAC do webhook
 
 
 @router.post("/send")
@@ -49,6 +57,23 @@ async def chat_send(body: SendBody, request: Request,
     ok, err = await evo_manager.send_text(sid, empresa_id, body.number, body.text)
     if not ok:
         raise HTTPException(502, err or "Falha ao enviar")
+    return {"ok": True}
+
+
+@router.post("/send-file")
+async def chat_send_file(body: SendFileBody, request: Request,
+                        x_token: Optional[str] = Header(default=None), db=Depends(get_db)):
+    empresa_id = await _verify_token(x_token, db, request)
+    ok, err = await evo_manager.send_file_b64(
+        empresa_id, body.number,
+        media_base64=body.media_base64,
+        filename=body.filename,
+        caption=body.caption or "",
+    )
+    if not ok:
+        # 409 = sem sessão; 502 = falha de envio
+        code = 409 if (err or "").startswith("Nenhuma sessão") else 502
+        raise HTTPException(code, err or "Falha ao enviar arquivo")
     return {"ok": True}
 
 
@@ -73,5 +98,12 @@ async def chat_config(body: WebhookCfg, request: Request,
            ON CONFLICT (empresa_id, key) DO UPDATE SET value = EXCLUDED.value""",
         (empresa_id, url),
     )
+    secret = (body.webhook_secret or "").strip()
+    if secret:
+        await db.execute(
+            """INSERT INTO config (empresa_id, key, value) VALUES (?, 'chat_webhook_secret', ?)
+               ON CONFLICT (empresa_id, key) DO UPDATE SET value = EXCLUDED.value""",
+            (empresa_id, secret),
+        )
     await db.commit()
-    return {"ok": True, "webhook_url": url}
+    return {"ok": True, "webhook_url": url, "secret_set": bool(secret)}
