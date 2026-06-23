@@ -1275,10 +1275,21 @@ class EvoManager:
                 except Exception as exc:
                     return False, f"agent: {exc}"
 
+            # Áudio: WhatsApp só toca nota de voz se enviada via sendWhatsAppAudio
+            # (Evolution converte p/ opus). sendMedia manda como anexo e não toca.
+            if mtype == "audio":
+                endpoint = f"message/sendWhatsAppAudio/{inst}"
+                audio_payload = {"number": number, "audio": b64}
+                if composing_delay > 0:
+                    audio_payload["delay"] = int(composing_delay * 1000)
+                send_payload = audio_payload
+            else:
+                endpoint = f"message/sendMedia/{inst}"
+                send_payload = payload
             async with httpx.AsyncClient(timeout=90.0) as client:
                 r = await client.post(
-                    self._url_for_inst(inst, f"message/sendMedia/{inst}"),
-                    json=payload,
+                    self._url_for_inst(inst, endpoint),
+                    json=send_payload,
                     headers=_h(),
                 )
             if r.status_code in (200, 201):
