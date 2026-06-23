@@ -350,9 +350,9 @@ async def enviar_mensagem_manual(
         raise HTTPException(400, "phone e mensagem obrigatórios")
 
     jid = phone if "@" in phone else f"{phone}@s.whatsapp.net"
-    session_id = evo_manager.pick_session(empresa_id)
+    session_id = await evo_manager.pick_session_uso(empresa_id, "chatbot", strict=True)
     if not session_id:
-        raise HTTPException(503, "Nenhuma sessão WhatsApp ativa")
+        raise HTTPException(503, "Nenhum número de WhatsApp com propósito 'chatbot' conectado")
 
     ok, err = await evo_manager.send_text(session_id, empresa_id, jid, mensagem)
     if not ok:

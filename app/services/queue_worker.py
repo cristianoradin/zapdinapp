@@ -108,6 +108,23 @@ _MAX_RETRIES = 5
 _RETRY_BACKOFF = {1: 60, 2: 300, 3: 900, 4: 1800}  # segundos por nº de tentativa
 
 
+def _uso_por_tipo(tipo: str) -> str:
+    """Mapeia o tipo da mensagem pro PROPÓSITO do número (roteamento por função)."""
+    t = (tipo or "").lower()
+    if t in ("alerta", "resumo", "sistema"):
+        return "sistema"
+    return "envios"   # text, erp, campanha, teste → número de envios
+
+
+async def _pick_uso(wa_manager, empresa_id: int, uso: str):
+    """Escolhe sessão pelo propósito (strict). Cai pro pick_session simples se o
+    manager não suportar (modo playwright puro)."""
+    fn = getattr(wa_manager, "pick_session_uso", None)
+    if fn:
+        return await fn(empresa_id, uso, strict=True)
+    return wa_manager.pick_session(empresa_id)
+
+
 # ── Heartbeat (P2) ────────────────────────────────────────────────────────────
 _HEARTBEAT_INTERVAL = 30   # escreve no banco a cada 30 iterações de ~1s
 
@@ -444,7 +461,7 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
         spintax_on   = cfg.get("wa_spintax",    "1") not in ("0", "false", "")
         composing_on = cfg.get("wa_composing",  "1") not in ("0", "false", "")
 
-        sessao_id = wa_manager.pick_session(empresa_id)
+        sessao_id = await _pick_uso(wa_manager, empresa_id, _uso_por_tipo(msg["tipo"] if "tipo" in msg.keys() else ""))
         if not sessao_id:
             logger.warning(
                 "Queue: NENHUMA sessão WhatsApp conectada para empresa=%s — mensagem %s aguardando. "
@@ -589,7 +606,7 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
         spintax_on   = cfg.get("wa_spintax",   "1") not in ("0", "false", "")
         composing_on = cfg.get("wa_composing", "1") not in ("0", "false", "")
 
-        sessao_id = wa_manager.pick_session(empresa_id)
+        sessao_id = await _pick_uso(wa_manager, empresa_id, "envios")
         if not sessao_id:
             logger.warning(
                 "Queue: NENHUMA sessão WhatsApp conectada para empresa=%s — arquivo %s aguardando. "
@@ -723,7 +740,7 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
         spintax_on   = cfg.get("wa_spintax",   "1") not in ("0", "false", "")
         composing_on = cfg.get("wa_composing", "1") not in ("0", "false", "")
 
-        sessao_id = wa_manager.pick_session(empresa_id)
+        sessao_id = await _pick_uso(wa_manager, empresa_id, "envios")
         if not sessao_id:
             try:
                 from . import telegram_service

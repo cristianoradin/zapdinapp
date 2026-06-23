@@ -712,10 +712,10 @@ class EvoManager:
         await self._forward_chat(empresa_id, payload)
 
     async def send_file_b64(self, empresa_id: int, number: str, media_base64: str,
-                            filename: str, caption: str = "") -> Tuple[bool, Optional[str]]:
+                            filename: str, caption: str = "", session_id: Optional[str] = None) -> Tuple[bool, Optional[str]]:
         """Envia arquivo recebido em base64 (usado pela API /api/chat/send-file).
         Decodifica num temp, reaproveita o send_file existente, apaga o temp."""
-        sid = self._first_session_id(empresa_id)
+        sid = session_id or self._first_session_id(empresa_id)
         if not sid:
             return False, "Nenhuma sessão WhatsApp da empresa."
         try:
@@ -1024,22 +1024,55 @@ class EvoManager:
     #  Interface pública
     # ─────────────────────────────────────────────────────────────────────────
 
-    def pick_session(self, empresa_id: int) -> Optional[str]:
-        """
-        Retorna o ID de uma sessão conectada para esta empresa (round-robin).
-        Usado pelo worker de envio para balancear entre múltiplas sessões.
-        """
+    def _connected_ids(self, empresa_id: int) -> list:
         prefix = f"{empresa_id}:"
-        connected = [
+        return [
             k.split(":", 1)[1]
             for k, s in self._sessions.items()
             if k.startswith(prefix) and s.status == "connected"
         ]
-        if not connected:
+
+    def _rr_pick(self, ids: list) -> Optional[str]:
+        if not ids:
             return None
-        idx = self._rr_index % len(connected)
+        idx = self._rr_index % len(ids)
         self._rr_index += 1
-        return connected[idx]
+        return ids[idx]
+
+    def pick_session(self, empresa_id: int) -> Optional[str]:
+        """Sessão conectada (round-robin), sem filtro de propósito."""
+        return self._rr_pick(self._connected_ids(empresa_id))
+
+    async def pick_session_uso(self, empresa_id: int, uso: Optional[str] = None,
+                               strict: bool = False) -> Optional[str]:
+        """Escolhe sessão conectada por PROPÓSITO (usos). strict=True → só envia se
+        houver número com aquele propósito (senão None). strict=False → cai em qualquer."""
+        conectadas = self._connected_ids(empresa_id)
+        if not conectadas or not uso:
+            return self._rr_pick(conectadas)
+        # Lê usos das sessões conectadas no banco
+        import json as _json
+        usos_map = {}
+        try:
+            from ..core.database import get_db_direct
+            async with get_db_direct() as db:
+                async with db.execute(
+                    "SELECT id, usos FROM sessoes_wa WHERE empresa_id=? AND status='connected'",
+                    (empresa_id,),
+                ) as cur:
+                    for r in await cur.fetchall():
+                        try:
+                            usos_map[r["id"]] = _json.loads(r["usos"]) if r["usos"] else []
+                        except Exception:
+                            usos_map[r["id"]] = []
+        except Exception as exc:
+            logger.debug("[evo] pick_session_uso DB erro: %s", exc)
+        match = [sid for sid in conectadas if uso in (usos_map.get(sid) or [])]
+        if match:
+            return self._rr_pick(match)
+        if strict:
+            return None
+        return self._rr_pick(conectadas)
 
     def get_qr(self, session_id: str, empresa_id: int) -> Optional[str]:
         """

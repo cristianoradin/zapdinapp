@@ -639,14 +639,17 @@ async function agwaSalvarConfig() {
 // ── Config propósito da sessão WA ──────────────────────────────────────────
 let _sessaoUsoId = null;
 const _USOS_LABELS = {
+  envios:    { label: 'Envios (campanha/ERP/mensagem)', icon: '📤' },
   chatbot:   { label: 'Chatbot IA',         icon: '🤖' },
   campanhas: { label: 'Envio de Campanhas', icon: '📢' },
   arquivos:  { label: 'Gestão de Arquivos', icon: '📎' },
   agenda:    { label: 'Agenda WA',          icon: '📅' },
   pdv:       { label: 'PDV / Avaliação',    icon: '⭐' },
+  chamados:  { label: 'Chamados (SGAdesk)', icon: '🎫' },
+  sistema:   { label: 'Sistema (monitor / alertas / cadastro)', icon: '🛠️' },
 };
 
-const _SESSAO_USOS_KEYS = ['chatbot','campanhas','arquivos','agenda','pdv'];
+const _SESSAO_USOS_KEYS = ['envios','chatbot','campanhas','arquivos','agenda','pdv','chamados','sistema'];
 
 async function sessaoAbrirUsos(sessaoId) {
   _sessaoUsoId = sessaoId;

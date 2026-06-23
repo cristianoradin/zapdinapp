@@ -975,11 +975,26 @@ async def apply_baseline(conn) -> None:
         """
     )
 
-    # Coluna usos na sessão WA (propósito: chatbot, campanhas, arquivos, agenda, pdv)
+    # Coluna usos na sessão WA (propósito do número: chatbot, campanhas/envios,
+    # arquivos, agenda, pdv, chamados (SGAdesk), sistema (monitor/cadastro/alertas))
     await conn.execute(
         "ALTER TABLE sessoes_wa ADD COLUMN IF NOT EXISTS usos "
-        "TEXT DEFAULT '[\"chatbot\",\"campanhas\",\"arquivos\",\"agenda\"]'"
+        "TEXT DEFAULT '[\"chatbot\",\"campanhas\",\"arquivos\",\"agenda\",\"envios\",\"chamados\",\"sistema\"]'"
     )
+    # Semente one-time: anexa os propósitos novos (envios/chamados/sistema) às sessões
+    # que ainda não os têm — sem remover nada. Assim nada quebra ao ligar o roteamento
+    # estrito; o usuário depois desmarca pra dedicar cada número.
+    try:
+        await conn.execute(
+            "UPDATE sessoes_wa SET usos = ("
+            "  to_jsonb(ARRAY(SELECT DISTINCT unnest("
+            "    (SELECT array_agg(x) FROM jsonb_array_elements_text(usos::jsonb) x)"
+            "    || ARRAY['envios','chamados','sistema']"
+            "  )))::text"
+            ") WHERE usos IS NOT NULL AND usos NOT LIKE '%sistema%'"
+        )
+    except Exception:
+        pass
     # Modo híbrido: sessão pode usar Evolution local do cliente (URL custom) ou
     # a Evolution global do servidor (NULL → fallback settings.evolution_url).
     await conn.execute(

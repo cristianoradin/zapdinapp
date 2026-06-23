@@ -51,9 +51,10 @@ class WebhookCfg(BaseModel):
 async def chat_send(body: SendBody, request: Request,
                     x_token: Optional[str] = Header(default=None), db=Depends(get_db)):
     empresa_id = await _verify_token(x_token, db, request)
-    sid = evo_manager._first_session_id(empresa_id)
+    # Roteia pro número de propósito 'chamados' (SGAdesk). Strict: precisa de um número dedicado.
+    sid = await evo_manager.pick_session_uso(empresa_id, "chamados", strict=True)
     if not sid:
-        raise HTTPException(409, "Nenhuma sessão WhatsApp da empresa.")
+        raise HTTPException(409, "Nenhum número de WhatsApp com propósito 'chamados' conectado.")
     ok, err = await evo_manager.send_text(sid, empresa_id, body.number, body.text)
     if not ok:
         raise HTTPException(502, err or "Falha ao enviar")
@@ -64,11 +65,15 @@ async def chat_send(body: SendBody, request: Request,
 async def chat_send_file(body: SendFileBody, request: Request,
                         x_token: Optional[str] = Header(default=None), db=Depends(get_db)):
     empresa_id = await _verify_token(x_token, db, request)
+    sid = await evo_manager.pick_session_uso(empresa_id, "chamados", strict=True)
+    if not sid:
+        raise HTTPException(409, "Nenhum número de WhatsApp com propósito 'chamados' conectado.")
     ok, err = await evo_manager.send_file_b64(
         empresa_id, body.number,
         media_base64=body.media_base64,
         filename=body.filename,
         caption=body.caption or "",
+        session_id=sid,
     )
     if not ok:
         # 409 = sem sessão; 502 = falha de envio
