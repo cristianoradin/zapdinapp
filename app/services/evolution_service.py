@@ -78,7 +78,13 @@ def _instance_name(empresa_id: int, session_id: str) -> str:
 
 
 def _webhook_url() -> str:
-    """URL que a Evolution API vai chamar quando houver eventos."""
+    """URL que a Evolution API vai chamar quando houver eventos.
+    Override por env EVO_WEBHOOK_URL (ex: http://zapdin-app:4545/api/evo-webhook)
+    quando a Evolution roda em outro container/rede e não enxerga 127.0.0.1."""
+    import os as _os
+    base = _os.environ.get("EVO_WEBHOOK_URL", "").strip()
+    if base:
+        return base
     return f"http://127.0.0.1:{settings.port}/api/evo-webhook"
 
 
