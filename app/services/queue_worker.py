@@ -388,7 +388,11 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
             async with db.execute(
                 "SELECT id, empresa_id, destinatario, nome_destinatario, mensagem, tipo, tentativas FROM mensagens "
                 "WHERE status='queued' AND empresa_id=? "
-                "AND (proximo_retry IS NULL OR proximo_retry <= NOW()) ORDER BY id LIMIT 1",
+                "AND (proximo_retry IS NULL OR proximo_retry <= NOW()) "
+                # Prioridade real: alerta/sistema > teste/resumo > campanha/texto; depois ordem de chegada
+                "ORDER BY CASE WHEN tipo IN ('alerta','sistema') THEN 0 "
+                "              WHEN tipo IN ('resumo','teste') THEN 1 ELSE 2 END, id "
+                "LIMIT 1",
                 (empresa_id,),
             ) as cur:
                 msg = await cur.fetchone()
