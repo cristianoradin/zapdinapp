@@ -97,42 +97,36 @@ def destinos_por_tipo(cfg: dict, tipo: str) -> list:
     return out
 
 
-async def enviar_para_numeros(empresa_id: int, telefones: list, mensagem: str) -> bool:
-    """Envia `mensagem` para cada número (best-effort). Retorna True se enviou ao menos um.
-    Usa o MESMO manager que o app selecionou (evolution/agente ou playwright) e o
-    `pick_session` (resolve sessão do DB, inclusive modo agente) — não o get_status
-    em memória, que fica vazio em modo agente."""
+async def enviar_para_numeros(empresa_id: int, telefones: list, mensagem: str,
+                              tipo: str = "alerta") -> bool:
+    """Enfileira `mensagem` para cada número (status='queued') → o worker envia.
+    Tudo passa pela fila (consistência, retry, anti-ban). `tipo` ('alerta'/'resumo')
+    é PRIORITÁRIO: o worker ignora horário e limite diário pra esses.
+    Retorna True se enfileirou ao menos um."""
     if not telefones or not mensagem:
         return False
-    from ..core.config import settings as _settings
-    if getattr(_settings, "use_evolution", False):
-        from .evolution_service import evo_manager as wa_manager
-    else:
-        from .whatsapp_service import wa_manager
-
-    sessao = None
+    from ..core.database import get_db_direct
+    from ..repositories import MensagemRepository
+    n = 0
     try:
-        sessao = wa_manager.pick_session(empresa_id)
+        async with get_db_direct() as db:
+            repo = MensagemRepository(db)
+            for fone in telefones:
+                envio = fone.lstrip("+")
+                if envio.startswith("55"):
+                    envio = envio[2:]
+                try:
+                    await repo.enqueue(empresa_id, envio, "", mensagem, tipo=tipo)
+                    n += 1
+                except Exception as exc:
+                    logger.warning("[alerta] erro ao enfileirar p/ %s: %s", fone, exc)
+            await db.commit()
     except Exception as exc:
-        logger.warning("[alerta] pick_session erro empresa=%s: %s", empresa_id, exc)
-    if not sessao:
-        logger.warning("[alerta] empresa=%s sem sessão disponível — alerta não enviado", empresa_id)
+        logger.warning("[alerta] empresa=%s erro ao enfileirar: %s", empresa_id, exc)
         return False
-
-    enviou = False
-    for fone in telefones:
-        envio = fone.lstrip("+")
-        if envio.startswith("55"):
-            envio = envio[2:]
-        try:
-            ok, err = await wa_manager.send_text(sessao, empresa_id, envio, mensagem)
-            if ok:
-                enviou = True
-            else:
-                logger.warning("[alerta] falha ao enviar p/ %s: %s", fone, err)
-        except Exception as exc:
-            logger.warning("[alerta] erro ao enviar p/ %s: %s", fone, exc)
-    return enviou
+    if n:
+        logger.info("[alerta] empresa=%s %s msg(s) enfileiradas (tipo=%s)", empresa_id, n, tipo)
+    return n > 0
 
 
 async def disparar_falha_cadastro(empresa_id: int, numero: str, nome: str, erro: str) -> None:

@@ -369,7 +369,7 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
     for empresa_id in _rotate(empresas_msg, "msg"):
         async with get_db_direct() as db:
             async with db.execute(
-                "SELECT id, empresa_id, destinatario, nome_destinatario, mensagem FROM mensagens "
+                "SELECT id, empresa_id, destinatario, nome_destinatario, mensagem, tipo FROM mensagens "
                 "WHERE status='queued' AND empresa_id=? ORDER BY id LIMIT 1",
                 (empresa_id,),
             ) as cur:
@@ -379,7 +379,11 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
 
         cfg = await _load_cfg(empresa_id, get_db_direct)
 
-        if not _within_hours(cfg):
+        # Mensagens prioritárias (alerta/resumo/sistema) ignoram horário e limite diário —
+        # um alerta crítico não pode esperar a janela comercial.
+        _prio = (msg["tipo"] or "") in ("alerta", "resumo", "sistema")
+
+        if not _prio and not _within_hours(cfg):
             continue  # só esta empresa fora do horário — tenta a próxima
 
         delay_min    = _cfg_float(cfg, "wa_delay_min", settings.dispatch_min_delay)
@@ -403,8 +407,8 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
                 pass
             continue  # empresa sem sessão não trava as outras
 
-        # Checa limite diário
-        if daily_limit > 0:
+        # Checa limite diário (prioritários — alerta/resumo — ignoram)
+        if not _prio and daily_limit > 0:
             async with get_db_direct() as db:
                 sent_today = await _daily_sent(db, sessao_id, empresa_id)
             if sent_today >= daily_limit:
@@ -419,7 +423,7 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
         logger.info("Queue: mensagem %s (empresa %s) → delay %.1fs", msg["id"], empresa_id, delay)
         await asyncio.sleep(delay)
 
-        texto = process_spintax(msg["mensagem"]) if spintax_on else msg["mensagem"]
+        texto = process_spintax(msg["mensagem"]) if (spintax_on and not _prio) else msg["mensagem"]
         c_delay = _composing_delay(texto) if composing_on else 0.0
 
         ok, err = await wa_manager.send_text(sessao_id, empresa_id, msg["destinatario"], texto, composing_delay=c_delay)
