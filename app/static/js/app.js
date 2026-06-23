@@ -680,7 +680,7 @@
 
     _testeResult(resEl, 'loading', 'Enviando mensagem…');
     const res = await api('POST', `/api/sessoes/${sessaoId}/send-text`, { phone, message: msg });
-    if (res && res.ok) _testeResult(resEl, 'ok', '✅ Mensagem enviada com sucesso!');
+    if (res && res.ok) _testeResult(resEl, 'ok', '✅ Mensagem enviada para a fila — chega em instantes.');
     else _testeResult(resEl, 'error', '❌ ' + (res?.detail || 'Erro ao enviar mensagem.'));
   });
 

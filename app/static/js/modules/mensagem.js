@@ -273,7 +273,7 @@ window.mensagemModule = (() => {
       const message = _buildTesteMsg();
       show('loading','Enviando mensagem de teste…');
       const res = await _fetch('POST', `/api/sessoes/${sessaoId}/send-text`, { phone, message });
-      if (res && res.ok) show('ok','✅ Mensagem enviada com sucesso!');
+      if (res && res.ok) show('ok','✅ Mensagem enviada para a fila — chega em instantes.');
       else {
         const m = window.traduzirErro ? window.traduzirErro(res?.detail || '') : null;
         show('error', m ? `❌ ${m.titulo} — ${m.acao || m.descricao}` : '❌ ' + (res?.detail || 'Erro ao enviar mensagem.'));

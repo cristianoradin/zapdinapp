@@ -272,16 +272,16 @@ async def send_text(
     sessao_id: str,
     body: SendTextBody,
     user: dict = Depends(get_current_user),
+    db=Depends(get_db),
 ):
+    """Envio de teste — vai pela FILA (tipo='teste', prioritário). O worker envia
+    (ignora horário/limite, com delay anti-ban). Resultado aparece no dashboard."""
     empresa_id = user["empresa_id"]
-    ok, err = await wa_manager.send_text(sessao_id, empresa_id, body.phone, body.message)
-    if not ok:
-        logger.error(
-            "[whatsapp] Falha ao enviar texto: sessao=%s empresa=%s fone=%s erro=%s",
-            sessao_id, empresa_id, body.phone, err,
-        )
-        raise HTTPException(status_code=400, detail=err or "Erro ao enviar mensagem")
-    return {"ok": True}
+    from ..repositories import MensagemRepository
+    repo = MensagemRepository(db)
+    mid = await repo.enqueue(empresa_id, body.phone, "", body.message, tipo="teste")
+    await db.commit()
+    return {"ok": True, "queued": True, "id": mid}
 
 
 @router.post("/{sessao_id}/send-file")

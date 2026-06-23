@@ -444,7 +444,7 @@ window.whatsappModule = (() => {
       const msg   = document.getElementById('testeMsg').value.trim();
       if (phone.length < 12 || !msg) { _setModalResult('error', 'Preencha o número (DDD + número) e a mensagem.'); return; }
       const res = await _post(`/api/sessoes/${_modalSessaoId}/send-text`, { phone, message: msg });
-      if (res && res.ok) _setModalResult('ok', 'Mensagem enviada com sucesso!');
+      if (res && res.ok) _setModalResult('ok', 'Mensagem enviada para a fila — chega em instantes.');
       else _setModalResult('error', (res && (res.detail || res.error)) || 'Erro ao enviar mensagem.');
     });
 

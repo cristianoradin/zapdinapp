@@ -381,7 +381,7 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
 
         # Mensagens prioritárias (alerta/resumo/sistema) ignoram horário e limite diário —
         # um alerta crítico não pode esperar a janela comercial.
-        _prio = (msg["tipo"] or "") in ("alerta", "resumo", "sistema")
+        _prio = (msg["tipo"] or "") in ("alerta", "resumo", "sistema", "teste")
 
         if not _prio and not _within_hours(cfg):
             continue  # só esta empresa fora do horário — tenta a próxima
