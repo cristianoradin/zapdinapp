@@ -242,6 +242,36 @@ def process_spintax(text: str) -> str:
     return text
 
 
+# ── Saudação automática por horário (token {saudacao}) ──────────────────────────
+# Padrão pra TODOS: substitui {saudacao} por Bom dia/Boa tarde/Boa noite conforme a
+# hora (fuso BR) + variação aleatória — saudação muda de msg pra msg, texto fixo fica.
+def _saudacao_agora() -> str:
+    try:
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        h = datetime.now(ZoneInfo("America/Sao_Paulo")).hour
+    except Exception:
+        h = 9
+    base = "Bom dia" if 6 <= h < 12 else ("Boa tarde" if 12 <= h < 18 else "Boa noite")
+    low = base.lower()
+    return random.choice([base, base + "!", f"Olá, {low}", f"Oi, {low}", f"{base}, tudo bem?"])
+
+
+def aplicar_saudacao(text: str) -> str:
+    if not text or "{saudacao}" not in text.lower():
+        return text
+    return re.sub(r"\{saudacao\}", lambda _m: _saudacao_agora(), text, flags=re.IGNORECASE)
+
+
+_SAUD_INICIO = ("bom dia", "boa tarde", "boa noite", "ola", "olá", "oi ", "oi,", "oi!",
+                "opa", "opá", "e aí", "e ai", "prezad", "salve")
+
+
+def _ja_tem_saudacao(text: str) -> bool:
+    t = (text or "").strip().lower()
+    return ("{saudacao}" in t) or any(t.startswith(s) for s in _SAUD_INICIO)
+
+
 # ── Business hours ────────────────────────────────────────────────────────────
 
 def _within_hours(cfg: dict) -> bool:
@@ -445,7 +475,14 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
         logger.info("Queue: mensagem %s (empresa %s) → delay %.1fs", msg["id"], empresa_id, delay)
         await asyncio.sleep(delay)
 
-        texto = process_spintax(msg["mensagem"]) if (spintax_on and not _prio) else msg["mensagem"]
+        # Saudação automática (padrão p/ todos): mensagens de venda/campanha sem saudação
+        # ganham "{saudacao} " no início (varia por horário). Prioritárias (alerta/resumo/
+        # teste) ficam intactas.
+        raw_txt = msg["mensagem"] or ""
+        if not _prio and not _ja_tem_saudacao(raw_txt):
+            raw_txt = "{saudacao} " + raw_txt
+        base_txt = aplicar_saudacao(raw_txt)
+        texto = process_spintax(base_txt) if (spintax_on and not _prio) else base_txt
         c_delay = _composing_delay(texto) if composing_on else 0.0
 
         # Validação prévia (modo servidor): número não existe no WhatsApp → nem tenta (anti-ban)
