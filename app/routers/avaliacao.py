@@ -293,37 +293,12 @@ async def _disparar_alerta_critico(
             .replace("{data}",       datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M"))
         )
 
-        try:
-            from ..services.whatsapp_service import wa_manager
-        except ImportError:
-            try:
-                from ..services.evolution_service import evo_manager as wa_manager
-            except ImportError:
-                logger.warning("[alerta_critico] wa_manager não disponível")
-                return
-
-        # Usa qualquer sessão conectada da empresa — não depende de config de sessão
-        sessoes = wa_manager.get_status(empresa_id)
-        conectadas = [s for s in sessoes if s["status"] == "connected"]
-        if not conectadas:
-            # Sem sessão conectada → salva na fila para reenvio automático
-            await _salvar_alerta_pendente(empresa_id, nome, telefone, nota, vendedor, comentario)
-            return
-
-        sessao = conectadas[0]["id"]
-        enviou_algum = False
-        for fone_envio in telefones_destino:
-            envio = fone_envio[2:] if fone_envio.startswith("55") else fone_envio
-            ok, err = await wa_manager.send_text(sessao, empresa_id, envio, mensagem)
-            if ok:
-                enviou_algum = True
-                logger.info("[alerta_critico] alerta enviado p/ %s (nota=%d empresa=%d)", envio, nota, empresa_id)
-            else:
-                logger.warning("[alerta_critico] falha ao enviar p/ %s (%s)", envio, err)
-
-        if not enviou_algum:
-            # Nenhum destino recebeu → enfileira para reenvio automático
-            await _salvar_alerta_pendente(empresa_id, nome, telefone, nota, vendedor, comentario)
+        # Vai pela FILA (status=queued, tipo=alerta, prioritário): consistência,
+        # retry, anti-ban e reenfileiramento automático se a sessão estiver offline.
+        from ..services.alerta_service import enviar_para_numeros
+        await enviar_para_numeros(empresa_id, telefones_destino, mensagem, tipo="alerta")
+        logger.info("[alerta_critico] alerta de avaliação enfileirado (nota=%d empresa=%d, %d destino(s))",
+                    nota, empresa_id, len(telefones_destino))
 
     except Exception as exc:
         logger.exception("[alerta_critico] erro inesperado: %s", exc)
