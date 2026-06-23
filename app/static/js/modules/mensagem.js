@@ -274,7 +274,10 @@ window.mensagemModule = (() => {
       show('loading','Enviando mensagem de teste…');
       const res = await _fetch('POST', `/api/sessoes/${sessaoId}/send-text`, { phone, message });
       if (res && res.ok) show('ok','✅ Mensagem enviada com sucesso!');
-      else show('error','❌ ' + (res?.detail || 'Erro ao enviar mensagem.'));
+      else {
+        const m = window.traduzirErro ? window.traduzirErro(res?.detail || '') : null;
+        show('error', m ? `❌ ${m.titulo} — ${m.acao || m.descricao}` : '❌ ' + (res?.detail || 'Erro ao enviar mensagem.'));
+      }
     });
     document.getElementById('testeMsgIncluirAval')?.addEventListener('change', atualizarPreviewTeste);
     document.getElementById('testeMsgPhone')?.addEventListener('input', atualizarPreviewTeste);
