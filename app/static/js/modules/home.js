@@ -638,18 +638,15 @@ async function agwaSalvarConfig() {
 
 // ── Config propósito da sessão WA ──────────────────────────────────────────
 let _sessaoUsoId = null;
+// Propósito = pra onde os envios daquele número vão (1 número pode ter mais de um).
 const _USOS_LABELS = {
-  envios:    { label: 'Envios (campanha/ERP/mensagem)', icon: '📤' },
-  chatbot:   { label: 'Chatbot IA',         icon: '🤖' },
-  campanhas: { label: 'Envio de Campanhas', icon: '📢' },
-  arquivos:  { label: 'Gestão de Arquivos', icon: '📎' },
-  agenda:    { label: 'Agenda WA',          icon: '📅' },
-  pdv:       { label: 'PDV / Avaliação',    icon: '⭐' },
-  chamados:  { label: 'Chamados (SGAdesk)', icon: '🎫' },
-  sistema:   { label: 'Sistema (monitor / alertas / cadastro)', icon: '🛠️' },
+  envios:   { label: 'Disparos — campanha, ERP, mensagens e arquivos', icon: '📤' },
+  chatbot:  { label: 'Chatbot — atendimento automático (IA)',          icon: '🤖' },
+  chamados: { label: 'Chamados — atendimento SGAdesk',                 icon: '🎫' },
+  sistema:  { label: 'Sistema — alertas, resumos e cadastro de cliente', icon: '🛠️' },
 };
 
-const _SESSAO_USOS_KEYS = ['envios','chatbot','campanhas','arquivos','agenda','pdv','chamados','sistema'];
+const _SESSAO_USOS_KEYS = ['envios','chatbot','chamados','sistema'];
 
 async function sessaoAbrirUsos(sessaoId) {
   _sessaoUsoId = sessaoId;
