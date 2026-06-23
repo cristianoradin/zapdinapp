@@ -35,6 +35,20 @@ class MensagemRepository(BaseRepository):
             (empresa_id, limit),
         )
 
+    async def requeue(self, empresa_id: int, msg_id: int) -> bool:
+        """Reenfileira UMA mensagem falhada (failed/error) da empresa → status=queued.
+        Worker reenvia. Retorna True se reenfileirou (era falha da própria empresa)."""
+        await self._execute(
+            "UPDATE mensagens SET status='queued', erro=NULL, sent_at=NULL "
+            "WHERE id=? AND empresa_id=? AND status IN ('failed','error')",
+            (msg_id, empresa_id),
+        )
+        row = await self._fetchone(
+            "SELECT status FROM mensagens WHERE id=? AND empresa_id=?",
+            (msg_id, empresa_id),
+        )
+        return bool(row and row["status"] == "queued")
+
     async def count_by_status(self, empresa_id: int) -> dict:
         rows = await self._fetchall(
             "SELECT status, COUNT(*) as cnt FROM mensagens WHERE empresa_id=? GROUP BY status",

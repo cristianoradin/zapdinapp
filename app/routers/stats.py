@@ -67,6 +67,19 @@ async def get_stats(db=Depends(get_db), user: dict = Depends(get_current_user)):
     }
 
 
+@router.post("/mensagens/{msg_id}/reenviar")
+async def reenviar_mensagem(msg_id: int, db=Depends(get_db),
+                            user: dict = Depends(get_current_user)):
+    """Reenfileira manualmente uma mensagem que falhou (failed/error) → o worker reenvia.
+    Escopo pela empresa do usuário logado."""
+    empresa_id = user["empresa_id"]
+    repo = MensagemRepository(db)
+    ok = await repo.requeue(empresa_id, msg_id)
+    if not ok:
+        raise HTTPException(409, "Mensagem não está em falha (ou não pertence à empresa).")
+    return {"ok": True, "status": "queued"}
+
+
 @router.get("/queue")
 async def get_queue_stats(
     db=Depends(get_db),

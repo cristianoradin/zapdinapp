@@ -100,25 +100,60 @@
     ].map(([k, v]) => `<div style="font-size:.78rem;color:var(--text-2)"><b>${k}:</b> ${v}</div>`).join('');
 
     // Bloco de motivo da falha (só quando falhou/erro) — usa catálogo central
+    const isFalha = (r.status === 'failed' || r.status === 'error');
     let falhaHtml = '';
-    if (r.status === 'failed' || r.status === 'error') {
+    let footerHtml = '';
+    if (isFalha) {
       falhaHtml = `<div style="margin:.6rem 1.2rem">${window.erroBoxHtml(r.erro)}</div>`;
+      footerHtml = `
+        <div style="padding:.8rem 1.2rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:.5rem">
+          <button id="vmReenviar" class="btn sm" style="display:inline-flex;align-items:center;gap:.4rem">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Reenviar mensagem
+          </button>
+        </div>`;
     }
     const ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:1rem';
     ov.innerHTML = `
       <div style="background:var(--surface);border-radius:12px;max-width:520px;width:100%;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,.3)">
         <div style="padding:1rem 1.2rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-          <b style="font-size:.95rem">Mensagem enviada</b>
+          <b style="font-size:.95rem">Mensagem ${isFalha ? 'que falhou' : 'enviada'}</b>
           <button id="vmClose" style="border:none;background:none;font-size:1.3rem;cursor:pointer;color:var(--text-2);line-height:1">×</button>
         </div>
         <div style="padding:.8rem 1.2rem;display:flex;flex-direction:column;gap:.2rem;border-bottom:1px solid var(--border)">${meta}</div>
         ${falhaHtml}
         <div style="padding:1.2rem;overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:.88rem;line-height:1.5;color:var(--text)">${_wppToHtml(r.mensagem || '—')}</div>
+        ${footerHtml}
       </div>`;
     const close = () => ov.remove();
     ov.addEventListener('click', (e) => { if (e.target === ov) close(); });
     ov.querySelector('#vmClose').addEventListener('click', close);
+
+    const btnRe = ov.querySelector('#vmReenviar');
+    if (btnRe) {
+      btnRe.addEventListener('click', async () => {
+        btnRe.disabled = true;
+        btnRe.textContent = 'Reenviando…';
+        try {
+          const res = await fetch(`/api/stats/mensagens/${r.id}/reenviar`, { method: 'POST' });
+          if (res.ok) {
+            if (typeof showToast === 'function') showToast('✅ Mensagem reenviada para a fila', 'success');
+            close();
+            if (typeof window.loadDashboard === 'function') window.loadDashboard();
+          } else {
+            const d = await res.json().catch(() => ({}));
+            if (typeof showToast === 'function') showToast('❌ ' + (d.detail || 'Falha ao reenviar'), 'error');
+            btnRe.disabled = false;
+            btnRe.textContent = 'Reenviar mensagem';
+          }
+        } catch (e) {
+          if (typeof showToast === 'function') showToast('❌ ' + e.message, 'error');
+          btnRe.disabled = false;
+          btnRe.textContent = 'Reenviar mensagem';
+        }
+      });
+    }
     document.body.appendChild(ov);
   };
 
