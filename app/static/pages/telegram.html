@@ -18,7 +18,7 @@
       <span class="wa-tab-go"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
     </button>
     <button class="wa-tab on" onclick="navigate('telegram')">
-      <span class="wa-tab-ic"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></span>
+      <span class="wa-tab-ic"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
       <span class="wa-tab-label">Alerta Crítico</span>
       <span class="wa-tab-go"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span>
     </button>
@@ -26,14 +26,84 @@
 
   <div style="max-width:940px;margin:0 auto;display:flex;flex-direction:column;gap:var(--gap)">
 
-    <!-- Configuração do Bot -->
-    <div class="card pad">
-      <div class="card-head">
-        <span class="ci t-blue">
+    <!-- ── Hero ───────────────────────────────────────────────────────── -->
+    <div style="display:flex;align-items:center;gap:15px;margin:2px 0 2px">
+      <span style="width:50px;height:50px;flex:none;border-radius:15px;display:grid;place-items:center;background:var(--grad);color:#fff;box-shadow:0 6px 18px rgba(61,127,31,.28)">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </span>
+      <div>
+        <h1 style="margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em">Central de Alertas</h1>
+        <div style="font-size:13px;color:var(--text-2);margin-top:2px">Defina <b>quem</b> é avisado e <b>por onde</b> — WhatsApp para o crítico, Telegram para o operacional.</div>
+      </div>
+    </div>
+
+    <!-- ════════════ 1. ALERTA CRÍTICO (WhatsApp) — PRIMÁRIO ════════════ -->
+    <div class="card pad" style="border-top:3px solid var(--red)">
+      <div class="card-head" style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
+        <span class="ci t-red" style="width:40px;height:40px;flex:none">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </span>
+        <span style="flex:1">
+          <span style="display:block;font-size:16px;font-weight:800;color:var(--red)">Alerta Crítico no WhatsApp</span>
+          <span style="font-size:12.5px;color:var(--text-3)">Avisos importantes direto no WhatsApp dos responsáveis</span>
+        </span>
+      </div>
+
+      <!-- Passo 1 — destinatários -->
+      <div class="ac-step">
+        <span class="ac-step-n">1</span>
+        <span>Quem recebe os alertas</span>
+      </div>
+      <div class="ac-hint">
+        Adicione os números e marque, em cada um, <b>o que ele recebe</b>:
+        <span class="ac-tag ac-tag-aval">Avaliação</span> nota baixa ·
+        <span class="ac-tag ac-tag-falha">Falha</span> número inválido no envio.
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:12px">
+        <span class="phone-prefix red">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.93 3.36 2 2 0 0 1 3.91 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 5.93 5.93l1.18-1.18a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          +55
+        </span>
+        <input type="text" id="alertaCriticoTelefone" placeholder="11999998888" class="field" onkeydown="if(event.key==='Enter'){event.preventDefault();alertaAddTelefone();}">
+        <button type="button" class="btn btn-red" style="white-space:nowrap" onclick="alertaAddTelefone()">+ Adicionar</button>
+      </div>
+
+      <div id="alertaCriticoAvisoAval" style="display:none;background:var(--amber-bg);border:1px solid color-mix(in srgb,var(--amber) 30%,transparent);color:var(--amber);padding:.6rem .9rem;border-radius:10px;font-size:12.5px;margin-top:12px;line-height:1.5"></div>
+
+      <div id="alertaCriticoTelefonesList" style="display:flex;flex-direction:column;gap:8px;margin-top:14px"></div>
+
+      <!-- Passo 2 — textos -->
+      <div class="ac-step" style="margin-top:22px">
+        <span class="ac-step-n">2</span>
+        <span>Textos das mensagens</span>
+      </div>
+
+      <label class="flbl" style="margin-top:12px">Alerta de avaliação negativa</label>
+      <textarea class="editor-area" id="alertaCriticoMensagem" rows="6" style="min-height:130px" spellcheck="false"></textarea>
+      <div class="ac-vars">Variáveis: <code>{nome}</code> <code>{telefone}</code> <code>{nota}</code> <code>{vendedor}</code> <code>{comentario}</code> <code>{data}</code></div>
+
+      <label class="flbl" style="margin-top:16px">Alerta de falha de envio</label>
+      <textarea class="editor-area" id="alertaFalhaMensagem" rows="5" style="min-height:110px" spellcheck="false"></textarea>
+      <div class="ac-vars">Variáveis: <code>{numero}</code> <code>{nome}</code> <code>{erro}</code> <code>{data}</code></div>
+
+      <button class="btn btn-red" style="width:100%;margin-top:18px" onclick="salvarAlertaCritico()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Salvar Alerta Crítico
+      </button>
+      <div id="alertaCriticoResult" style="display:none;margin-top:14px"></div>
+    </div>
+
+    <!-- ════════════ 2. TELEGRAM (operacional) — SECUNDÁRIO ════════════ -->
+    <div class="card pad" style="border-top:3px solid var(--blue)">
+      <div class="card-head" style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
+        <span class="ci t-blue" style="width:40px;height:40px;flex:none">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
         </span>
-        <h2>Configuração do Bot</h2>
-        <span class="grow"></span>
+        <span style="flex:1">
+          <span style="display:block;font-size:16px;font-weight:800">Canal Telegram <span style="font-weight:600;color:var(--text-3);font-size:13px">(opcional)</span></span>
+          <span style="font-size:12.5px;color:var(--text-3)">Relatórios e avisos operacionais num bot do Telegram</span>
+        </span>
         <button class="help-link" onclick="document.getElementById('tg-howto-overlay').classList.add('open')" title="Como configurar?">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           Como configurar?
@@ -71,85 +141,19 @@
       </div>
 
       <div id="tgStatus" style="display:none;margin-top:16px;padding:.65rem 1rem;border-radius:8px;font-size:.85rem"></div>
-    </div>
 
-    <!-- Alertas Automáticos (botão) -->
-    <button class="alerts-card-btn" onclick="document.getElementById('tg-alerts-overlay').classList.add('open');tgRefreshAlertCount()">
-      <span class="ci t-red" style="width:42px;height:42px;flex:none">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-      </span>
-      <span style="flex:1;text-align:left">
-        <span style="display:block;font-weight:750;font-size:16px">Alertas Automáticos</span>
-        <span style="display:block;font-size:13px;color:var(--text-2)">Escolha o que você quer ser alertado no Telegram</span>
-      </span>
-      <span class="badge ok" style="flex:none" id="tgAlertCountBadge">6 de 6 ativos</span>
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-3);flex:none"><polyline points="9 18 15 12 9 6"/></svg>
-    </button>
-
-    <!-- ── Alerta Crítico (WhatsApp) ─────────────────────────────────── -->
-    <div class="card pad">
-      <div class="card-head" style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
-        <span class="ci t-red" style="width:40px;height:40px;flex:none">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>
-        </span>
-        <span>
-          <span style="display:block;font-size:16px;font-weight:800;color:var(--red)">Alerta Crítico (WhatsApp)</span>
-          <span style="font-size:12.5px;color:var(--text-3)">Avisos enviados no WhatsApp dos administradores</span>
-        </span>
+      <!-- Alertas automáticos (inline) -->
+      <div class="ac-divider"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:2px">
+        <span style="font-size:14px;font-weight:750">Alertas automáticos</span>
+        <span class="badge ok" id="tgAlertCountBadge" style="flex:none">6 de 6 ativos</span>
+        <span style="flex:1"></span>
+        <button class="btn ghost sm" onclick="tgAlertAll(true)">Marcar todos</button>
+        <button class="btn ghost sm" onclick="tgAlertAll(false)">Desmarcar</button>
       </div>
+      <div style="font-size:12.5px;color:var(--text-3);margin-bottom:12px">Escolha o que o bot do Telegram deve te avisar (salva automático).</div>
 
-      <div id="alertaCriticoAvisoAval" style="display:none;background:var(--amber-bg);border:1px solid color-mix(in srgb,var(--amber) 30%,transparent);color:var(--amber);padding:.6rem .9rem;border-radius:10px;font-size:13px;margin:10px 0 14px"></div>
-
-      <div id="alertaCriticoAvisoFalha" style="background:var(--bg-2,#f6f7f9);border:1px solid var(--border);color:var(--text-2);padding:.6rem .9rem;border-radius:10px;font-size:12.5px;margin:10px 0 14px;line-height:1.5">
-        Adicione os números e marque, em cada um, <b>o que ele recebe</b>: <b style="color:var(--red)">Avaliação</b> (nota baixa) e/ou <b style="color:var(--red)">Falha</b> (número inválido no envio).
-      </div>
-
-      <label class="flbl">Adicionar telefone</label>
-      <div style="display:flex;gap:10px">
-        <span class="phone-prefix red">
-          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.93 3.36 2 2 0 0 1 3.91 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 5.93 5.93l1.18-1.18a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-          +55
-        </span>
-        <input type="text" id="alertaCriticoTelefone" placeholder="11999998888" class="field" onkeydown="if(event.key==='Enter'){event.preventDefault();alertaAddTelefone();}">
-        <button type="button" class="btn btn-red" style="white-space:nowrap" onclick="alertaAddTelefone()">+ Adicionar</button>
-      </div>
-
-      <div id="alertaCriticoAvisoAval" style="display:none;background:var(--amber-bg);border:1px solid color-mix(in srgb,var(--amber) 30%,transparent);color:var(--amber);padding:.6rem .9rem;border-radius:10px;font-size:12.5px;margin-top:10px"></div>
-
-      <div id="alertaCriticoTelefonesList" style="display:flex;flex-direction:column;gap:8px;margin-top:12px"></div>
-
-      <label class="flbl" style="margin-top:16px">Mensagem do alerta de avaliação negativa</label>
-      <textarea class="editor-area" id="alertaCriticoMensagem" rows="6" style="min-height:130px" spellcheck="false"></textarea>
-
-      <label class="flbl" style="margin-top:16px">Mensagem do alerta de falha de envio</label>
-      <textarea class="editor-area" id="alertaFalhaMensagem" rows="5" style="min-height:110px" spellcheck="false"></textarea>
-      <div style="font-size:12px;color:var(--text-3);margin-top:6px">Variáveis: <code>{numero}</code> <code>{nome}</code> <code>{erro}</code> <code>{data}</code></div>
-
-      <button class="btn btn-red" style="width:100%;margin-top:16px" onclick="salvarAlertaCritico()">
-        <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-        Salvar Configuração
-      </button>
-      <div id="alertaCriticoResult" style="display:none;padding:.65rem 1rem;border-radius:8px;font-size:.84rem;margin-top:14px"></div>
-    </div>
-
-  </div>
-
-  <!-- ── MODAL ALERTAS AUTOMÁTICOS ───────────────────────────────── -->
-  <div class="modal-backdrop" id="tg-alerts-overlay"  onclick="if(event.target===this)this.classList.remove('open')">
-    <div class="modal" style="max-width:560px;width:100%">
-      <div class="modal-head plain">
-        <span style="display:flex;align-items:center;gap:12px">
-          <span class="ci t-red" style="width:40px;height:40px">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          </span>
-          <span>
-            <span style="display:block;font-size:18px;font-weight:800">Alertas Automáticos</span>
-            <span style="font-size:12.5px;color:var(--text-3)">Marque tudo que você quer ser alertado no Telegram</span>
-          </span>
-        </span>
-        <button class="icon-btn" style="width:34px;height:34px" onclick="document.getElementById('tg-alerts-overlay').classList.remove('open')">✕</button>
-      </div>
-      <div class="modal-body">
+      <div id="tgAlertsList" style="display:flex;flex-direction:column;gap:8px">
         <div class="alert-row" data-alert-key="falha_envio">
           <span class="ci t-red" style="width:36px;height:36px"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg></span>
           <div style="flex:1"><div style="font-weight:700">Falha no envio</div><div style="font-size:13px;color:var(--text-2)">Notificação imediata quando uma mensagem ou arquivo falhar</div></div>
@@ -180,21 +184,13 @@
           <div style="flex:1"><div style="font-weight:700">Campanha concluída</div><div style="font-size:13px;color:var(--text-2)">Resumo ao terminar o disparo de uma campanha</div></div>
           <button class="sw" data-on="true" onclick="tgToggleAlert(this)"><span></span></button>
         </div>
-
-        <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
-          <button class="btn ghost sm" onclick="tgAlertAll(true)">Marcar todos</button>
-          <button class="btn ghost sm" onclick="tgAlertAll(false)">Desmarcar todos</button>
-          <button class="btn sm" style="margin-left:auto" onclick="document.getElementById('tg-alerts-overlay').classList.remove('open')">
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            Salvar Alertas
-          </button>
-        </div>
       </div>
     </div>
+
   </div>
 
   <!-- ── MODAL COMO CONFIGURAR ──────────────────────────────────── -->
-  <div class="modal-backdrop" id="tg-howto-overlay"  onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal-backdrop" id="tg-howto-overlay" onclick="if(event.target===this)this.classList.remove('open')">
     <div class="modal" style="max-width:500px;width:100%">
       <div class="modal-head plain">
         <span style="display:flex;align-items:center;gap:12px">
@@ -228,7 +224,7 @@
   <script>
     async function _tgSaveAlerts() {
       const state = {};
-      document.querySelectorAll('#tg-alerts-overlay .alert-row').forEach(row => {
+      document.querySelectorAll('#tgAlertsList .alert-row').forEach(row => {
         const k = row.dataset.alertKey;
         const sw = row.querySelector('.sw');
         if (k && sw) state[k] = sw.dataset.on === 'true';
@@ -246,9 +242,9 @@
         const r = await fetch('/api/config');
         const cfg = r.ok ? await r.json() : {};
         const raw = cfg.telegram_alerts;
-        if (!raw) return;
+        if (!raw) { tgRefreshAlertCount(); return; }
         const state = typeof raw === 'string' ? JSON.parse(raw) : raw;
-        document.querySelectorAll('#tg-alerts-overlay .alert-row').forEach(row => {
+        document.querySelectorAll('#tgAlertsList .alert-row').forEach(row => {
           const k = row.dataset.alertKey;
           const sw = row.querySelector('.sw');
           if (k && sw && k in state) sw.dataset.on = state[k] ? 'true' : 'false';
@@ -263,12 +259,12 @@
       _tgSaveAlerts();
     };
     window.tgAlertAll = function(state) {
-      document.querySelectorAll('#tg-alerts-overlay .alert-row .sw').forEach(sw => sw.dataset.on = state ? 'true' : 'false');
+      document.querySelectorAll('#tgAlertsList .alert-row .sw').forEach(sw => sw.dataset.on = state ? 'true' : 'false');
       tgRefreshAlertCount();
       _tgSaveAlerts();
     };
     window.tgRefreshAlertCount = function() {
-      const all = document.querySelectorAll('#tg-alerts-overlay .alert-row .sw');
+      const all = document.querySelectorAll('#tgAlertsList .alert-row .sw');
       const on = Array.from(all).filter(s => s.dataset.on === 'true').length;
       const badge = document.getElementById('tgAlertCountBadge');
       if (badge) badge.textContent = `${on} de ${all.length} ativos`;
