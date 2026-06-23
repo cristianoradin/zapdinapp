@@ -29,6 +29,8 @@ import secrets
 import threading
 from typing import Dict, List, Optional, Tuple
 
+from ..core.phone import phone_for_wa
+
 import httpx
 
 from ..core.config import settings
@@ -1023,7 +1025,7 @@ class EvoManager:
     ) -> Tuple[bool, Optional[str]]:
         """Envia mensagem de texto para um número."""
         inst   = _instance_name(empresa_id, session_id)
-        number = phone.strip().lstrip("+").replace(" ", "")
+        number = phone_for_wa(phone) or phone.strip().lstrip("+").replace(" ", "")
         # Status de entrega do último envio (lido pelo queue_worker). 'sent'|'delivered'|'read'
         self._last_send_status = None
 
@@ -1102,7 +1104,7 @@ class EvoManager:
     ) -> Tuple[bool, Optional[str]]:
         """Envia arquivo (imagem, PDF, áudio, etc.) para um número."""
         inst   = _instance_name(empresa_id, session_id)
-        number = phone.strip().lstrip("+").replace(" ", "")
+        number = phone_for_wa(phone) or phone.strip().lstrip("+").replace(" ", "")
         ext    = os.path.splitext(filename)[1].lower()
         mtype  = _media_type(ext)
         mime   = _mimetype(ext)
