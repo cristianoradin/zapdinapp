@@ -94,6 +94,50 @@
       <div id="alertaCriticoResult" style="display:none;margin-top:14px"></div>
     </div>
 
+    <!-- ════════════ 1b. RESUMO DIÁRIO DE AVALIAÇÕES ════════════ -->
+    <div class="card pad" style="border-top:3px solid var(--accent)">
+      <div class="card-head" style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
+        <span class="ci t-green" style="width:40px;height:40px;flex:none">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </span>
+        <span style="flex:1">
+          <span style="display:block;font-size:16px;font-weight:800;color:var(--accent)">Resumo diário de avaliações</span>
+          <span style="font-size:12.5px;color:var(--text-3)">Um resumo das notas, todo dia no horário escolhido</span>
+        </span>
+        <label class="toggle-switch"><input type="checkbox" id="resumoAtivo"><span class="toggle-slider"></span></label>
+      </div>
+
+      <div class="ac-hint">
+        Envia o resumo por WhatsApp para os números marcados
+        <span class="ac-tag ac-tag-aval">Avaliação</span> aqui em cima — média, positivas/negativas, ranking de vendedores e notas baixas.
+      </div>
+
+      <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-end;margin-top:16px">
+        <div>
+          <label class="flbl">Horário</label>
+          <input type="time" id="resumoHora" value="08:00" class="field" style="max-width:140px">
+        </div>
+        <div>
+          <label class="flbl">Período</label>
+          <select id="resumoPeriodo" class="field" style="max-width:220px">
+            <option value="ontem">Dia anterior</option>
+            <option value="hoje">Dia atual (até o envio)</option>
+            <option value="7dias">Últimos 7 dias</option>
+          </select>
+        </div>
+        <span style="flex:1"></span>
+        <button class="btn ghost" id="resumoTestar" onclick="testarResumo()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Enviar agora (teste)
+        </button>
+        <button class="btn" id="resumoSalvar" onclick="salvarResumoConfig()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Salvar
+        </button>
+      </div>
+      <div id="resumoMsg" style="font-size:.8rem;margin-top:12px"></div>
+    </div>
+
     <!-- ════════════ 2. TELEGRAM (operacional) — SECUNDÁRIO ════════════ -->
     <div class="card pad" style="border-top:3px solid var(--blue)">
       <div class="card-head" style="display:flex;align-items:center;gap:12px;margin-bottom:4px">

@@ -204,6 +204,51 @@ window.telegramModule = (() => {
     else show('error', 'Erro ao salvar configuração.');
   }
 
+  // ── Resumo diário de avaliações ─────────────────────────────────────────────
+  async function loadResumoConfig() {
+    try {
+      const r = await fetch('/api/avaliacao/resumo-config');
+      if (!r.ok) return;
+      const c = await r.json();
+      const at = document.getElementById('resumoAtivo');
+      const ho = document.getElementById('resumoHora');
+      const pe = document.getElementById('resumoPeriodo');
+      if (at) at.checked = !!c.ativo;
+      if (ho) ho.value = c.hora || '08:00';
+      if (pe) pe.value = c.periodo || 'ontem';
+    } catch (_) { /* best-effort */ }
+  }
+
+  function _resumoMsg(txt, cor) {
+    const el = document.getElementById('resumoMsg');
+    if (el) { el.textContent = txt; el.style.color = cor || 'var(--text-2)'; }
+  }
+
+  async function salvarResumoConfig() {
+    const ativo   = document.getElementById('resumoAtivo')?.checked || false;
+    const hora    = document.getElementById('resumoHora')?.value || '08:00';
+    const periodo = document.getElementById('resumoPeriodo')?.value || 'ontem';
+    _resumoMsg('Salvando…');
+    try {
+      const r = await fetch('/api/avaliacao/resumo-config', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ativo, hora, periodo }),
+      });
+      if (r.ok) _resumoMsg('✅ Configuração salva.', 'var(--accent)');
+      else _resumoMsg('❌ Erro ao salvar.', 'var(--red)');
+    } catch (e) { _resumoMsg('❌ ' + e.message, 'var(--red)'); }
+  }
+
+  async function testarResumo() {
+    _resumoMsg('Enviando resumo de teste…');
+    try {
+      const r = await fetch('/api/avaliacao/resumo-config/test', { method: 'POST' });
+      const d = await r.json().catch(() => ({}));
+      if (d.ok) _resumoMsg('✅ Resumo enfileirado! Chega no WhatsApp em instantes.', 'var(--accent)');
+      else _resumoMsg('⚠️ ' + (d.detail || 'Nada enviado.'), 'var(--red)');
+    } catch (e) { _resumoMsg('❌ ' + e.message, 'var(--red)'); }
+  }
+
   function init() {
     if (!_initialized) {
       _registerEvents();
@@ -211,9 +256,10 @@ window.telegramModule = (() => {
     }
     load();
     loadAlertaCritico();
+    loadResumoConfig();
   }
 
-  return { init, salvarAlertaCritico, alertaAddTelefone, alertaRemoveTelefone, alertaToggleFlag };
+  return { init, salvarAlertaCritico, alertaAddTelefone, alertaRemoveTelefone, alertaToggleFlag, salvarResumoConfig, testarResumo };
 })();
 
 // ── Globais para chamadas inline no HTML ─────────────────────────────────────
@@ -221,3 +267,5 @@ window.salvarAlertaCritico  = () => telegramModule.salvarAlertaCritico();
 window.alertaAddTelefone    = () => telegramModule.alertaAddTelefone();
 window.alertaRemoveTelefone = (i) => telegramModule.alertaRemoveTelefone(i);
 window.alertaToggleFlag     = (i, f, v) => telegramModule.alertaToggleFlag(i, f, v);
+window.salvarResumoConfig   = () => telegramModule.salvarResumoConfig();
+window.testarResumo         = () => telegramModule.testarResumo();
