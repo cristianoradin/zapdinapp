@@ -420,3 +420,71 @@ async def dashboard_avaliacoes(
         "ranking_vendedores": vendedores,
         "baixas": baixas,
     }
+
+
+# ── Resumo diário de avaliações (config por empresa) ───────────────────────────
+_RESUMO_DEFAULTS = {"resumo_aval_ativo": "0", "resumo_aval_hora": "08:00", "resumo_aval_periodo": "ontem"}
+
+
+@router.get("/api/avaliacao/resumo-config")
+async def get_resumo_config(db=Depends(get_db), user=Depends(get_current_user)):
+    empresa_id = user["empresa_id"]
+    async with db.execute(
+        "SELECT key, value FROM config WHERE empresa_id=? AND key IN "
+        "('resumo_aval_ativo','resumo_aval_hora','resumo_aval_periodo')",
+        (empresa_id,),
+    ) as cur:
+        rows = await cur.fetchall()
+    cfg = dict(_RESUMO_DEFAULTS)
+    for r in rows:
+        cfg[r["key"]] = r["value"]
+    return {
+        "ativo": cfg["resumo_aval_ativo"] == "1",
+        "hora": cfg["resumo_aval_hora"],
+        "periodo": cfg["resumo_aval_periodo"],
+    }
+
+
+class ResumoConfigBody(BaseModel):
+    ativo: bool = False
+    hora: str = Field(default="08:00", max_length=5)
+    periodo: str = Field(default="ontem", max_length=10)
+
+
+@router.post("/api/avaliacao/resumo-config")
+async def set_resumo_config(body: ResumoConfigBody, db=Depends(get_db),
+                            user=Depends(get_current_user)):
+    empresa_id = user["empresa_id"]
+    import re as _re
+    hora = body.hora if _re.match(r"^([01]\d|2[0-3]):[0-5]\d$", body.hora or "") else "08:00"
+    periodo = body.periodo if body.periodo in ("ontem", "hoje", "7dias") else "ontem"
+    vals = {"resumo_aval_ativo": "1" if body.ativo else "0",
+            "resumo_aval_hora": hora, "resumo_aval_periodo": periodo}
+    for k, v in vals.items():
+        await db.execute(
+            "INSERT INTO config (empresa_id, key, value) VALUES (?, ?, ?) "
+            "ON CONFLICT (empresa_id, key) DO UPDATE SET value = EXCLUDED.value",
+            (empresa_id, k, v),
+        )
+    await db.commit()
+    return {"ok": True, "ativo": body.ativo, "hora": hora, "periodo": periodo}
+
+
+@router.post("/api/avaliacao/resumo-config/test")
+async def test_resumo(db=Depends(get_db), user=Depends(get_current_user)):
+    """Envia o resumo agora (teste) pros destinos 'avaliacao'. Usa o período configurado."""
+    empresa_id = user["empresa_id"]
+    async with db.execute(
+        "SELECT value FROM config WHERE empresa_id=? AND key='resumo_aval_periodo'",
+        (empresa_id,),
+    ) as cur:
+        row = await cur.fetchone()
+    periodo = (row["value"] if row else "ontem") or "ontem"
+    from ..services import resumo_avaliacao_service as _ras
+    enviado = await _ras.enviar_resumo(empresa_id, periodo)
+    if not enviado:
+        return JSONResponse(
+            {"ok": False, "detail": "Nada enviado: confira se há número marcado 'Avaliação' no Alerta Crítico, WhatsApp conectado e avaliações no período."},
+            status_code=200,
+        )
+    return {"ok": True}

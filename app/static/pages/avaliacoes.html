@@ -45,6 +45,38 @@
     </div>
   </div>
 
+  <!-- Resumo diário de avaliações -->
+  <div class="card pad" style="margin-top:var(--gap)">
+    <div class="card-head" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:8px">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <h2 style="margin:0">Resumo diário automático</h2>
+      </div>
+      <label class="toggle-switch"><input type="checkbox" id="resumoAtivo"><span class="toggle-slider"></span></label>
+    </div>
+    <p style="font-size:.82rem;color:var(--text-2);margin:.4rem 0 1rem">
+      Envia um resumo das avaliações por WhatsApp, no horário escolhido, para os números marcados
+      <b>Avaliação</b> em <a href="#" onclick="showPage('telegram');return false" style="color:var(--accent)">Alerta Crítico</a>.
+    </p>
+    <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end">
+      <div>
+        <label class="lbl" style="display:block;margin-bottom:4px">Horário</label>
+        <input type="time" id="resumoHora" value="08:00" style="padding:.45rem .6rem;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)">
+      </div>
+      <div>
+        <label class="lbl" style="display:block;margin-bottom:4px">Período</label>
+        <select id="resumoPeriodo" style="padding:.5rem .6rem;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)">
+          <option value="ontem">Dia anterior</option>
+          <option value="hoje">Dia atual (até o envio)</option>
+          <option value="7dias">Últimos 7 dias</option>
+        </select>
+      </div>
+      <button class="btn" id="resumoSalvar" onclick="salvarResumoConfig()">Salvar</button>
+      <button class="btn ghost" id="resumoTestar" onclick="testarResumo()">Enviar agora (teste)</button>
+    </div>
+    <div id="resumoMsg" style="font-size:.8rem;margin-top:.6rem"></div>
+  </div>
+
   <!-- Alerta baixas notas -->
   <div id="avalAlertaBaixas" class="note" style="display:none;background:var(--red-bg);border:1px solid color-mix(in srgb,var(--red) 30%,transparent);margin-top:var(--gap)">
     <span class="ni" style="color:var(--red)">

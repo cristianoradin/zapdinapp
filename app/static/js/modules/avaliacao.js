@@ -190,9 +190,54 @@
     if (btnPro) btnPro.disabled = _page >= totalPages;
   }
 
+  // ── Resumo diário automático ─────────────────────────────────────────────────
+  async function _loadResumoConfig() {
+    try {
+      const r = await fetch('/api/avaliacao/resumo-config');
+      if (!r.ok) return;
+      const c = await r.json();
+      const at = document.getElementById('resumoAtivo');
+      const ho = document.getElementById('resumoHora');
+      const pe = document.getElementById('resumoPeriodo');
+      if (at) at.checked = !!c.ativo;
+      if (ho) ho.value = c.hora || '08:00';
+      if (pe) pe.value = c.periodo || 'ontem';
+    } catch (_) { /* best-effort */ }
+  }
+
+  function _resumoMsg(txt, cor) {
+    const el = document.getElementById('resumoMsg');
+    if (el) { el.textContent = txt; el.style.color = cor || 'var(--text-2)'; }
+  }
+
+  window.salvarResumoConfig = async function () {
+    const ativo   = document.getElementById('resumoAtivo')?.checked || false;
+    const hora    = document.getElementById('resumoHora')?.value || '08:00';
+    const periodo = document.getElementById('resumoPeriodo')?.value || 'ontem';
+    _resumoMsg('Salvando…');
+    try {
+      const r = await fetch('/api/avaliacao/resumo-config', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ativo, hora, periodo }),
+      });
+      if (r.ok) _resumoMsg('✅ Configuração salva.', 'var(--primary-deep)');
+      else _resumoMsg('❌ Erro ao salvar.', 'var(--red)');
+    } catch (e) { _resumoMsg('❌ ' + e.message, 'var(--red)'); }
+  };
+
+  window.testarResumo = async function () {
+    _resumoMsg('Enviando resumo de teste…');
+    try {
+      const r = await fetch('/api/avaliacao/resumo-config/test', { method: 'POST' });
+      const d = await r.json().catch(() => ({}));
+      if (d.ok) _resumoMsg('✅ Resumo enviado! Confira o WhatsApp.', 'var(--primary-deep)');
+      else _resumoMsg('⚠️ ' + (d.detail || 'Nada enviado.'), 'var(--red)');
+    } catch (e) { _resumoMsg('❌ ' + e.message, 'var(--red)'); }
+  };
+
   // ── API pública (chamada pelo HTML via onclick) ──────────────────────────────
   window.loadAvaliacoes = async function () {
-    await Promise.all([_loadDash(), _loadLista()]);
+    await Promise.all([_loadDash(), _loadLista(), _loadResumoConfig()]);
   };
 
   window.setAvalDias = function (dias) {

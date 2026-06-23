@@ -71,6 +71,7 @@ from .routers.home_router import router as home_router
 from .routers.agents import router as agents_router
 from .routers.chat_router import router as chat_router
 from .services import reporter, updater, telegram_service, queue_worker
+from .services import resumo_avaliacao_service
 from .services.log_service import log_event
 from .services.whatsapp_service import wa_manager as _playwright_manager
 from .services.evolution_service import evo_manager as _evo_manager
@@ -360,6 +361,7 @@ async def lifespan(app: FastAPI):
         telegram_service.start()
         queue_worker.start()  # processa mensagens, arquivos e campanha_envios
         queue_worker.start_requeue_sweep(3600)  # varre falhas-offline a cada 60min
+        resumo_avaliacao_service.start()  # resumo diário de avaliações por empresa
         _startup_logger.info("[startup] Todos os serviços iniciados — sistema pronto")
     else:
         _startup_logger.warning(
@@ -511,7 +513,7 @@ _static_dir = os.path.join(os.path.dirname(__file__), "static")
 _logo_dir = os.path.join(_static_dir, "logo")
 
 _NO_CACHE = {"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
-APP_BUILD = "20260622c"
+APP_BUILD = "20260622d"
 
 
 from starlette.middleware.base import BaseHTTPMiddleware
