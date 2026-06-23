@@ -36,7 +36,7 @@ def _bounds(periodo: str):
         ini, fim, label = (agora - timedelta(days=7)), agora, "últimos 7 dias"
     else:  # ontem (default)
         ini, fim, label = (hoje0 - timedelta(days=1)), hoje0, "ontem"
-    return ini.isoformat(), fim.isoformat(), label
+    return ini, fim, label  # datetime (asyncpg exige datetime, não string ISO)
 
 
 def _estrelas(n) -> str:
