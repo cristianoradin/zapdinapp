@@ -542,6 +542,41 @@ async def admin_push_update(
     return {"ok": True, "version": AGENT_LATEST_VERSION, "agent_response": res}
 
 
+@router.post("/api/admin/agents/update-all")
+async def admin_push_update_all(
+    request: Request,
+    x_monitor_token: Optional[str] = Header(default=None, alias="X-Monitor-Token"),
+):
+    """PUSH em massa: manda TODOS os agentes conectados (que não estejam na versão
+    atual) baixarem + instalarem o AGENT_LATEST_VERSION (silencioso). Disparado pelo
+    portal. Cada agente baixa, se mata pra instalar e reconecta sozinho."""
+    expected = settings.monitor_client_token
+    if not expected or not x_monitor_token or x_monitor_token != expected:
+        raise HTTPException(401, "X-Monitor-Token inválido")
+    from ..main import sio
+    base = (settings.public_url or "").rstrip("/")
+    dl_url = (base + AGENT_DOWNLOAD_URL) if base else _absolute_download_url(request)
+    sent, skipped = [], []
+    for ag in agent_bridge.list_agents():
+        eid = ag.get("empresa_id")
+        if (ag.get("version") or "") == AGENT_LATEST_VERSION:
+            skipped.append(eid)
+            continue
+        sid = ag.get("sid")
+        if not sid:
+            continue
+        try:
+            await sio.call(
+                "update_now",
+                {"command": "update_now", "payload": {"download_url": dl_url, "version": AGENT_LATEST_VERSION}},
+                to=sid, namespace="/agent", timeout=8,
+            )
+        except Exception:
+            pass  # agente baixa+se mata pra instalar — pode não dar ACK
+        sent.append(eid)
+    return {"ok": True, "latest": AGENT_LATEST_VERSION, "enviados": sent, "ja_atualizados": skipped}
+
+
 @router.get("/api/agents/all")
 async def list_all_agents(
     x_monitor_token: Optional[str] = Header(default=None, alias="X-Monitor-Token"),
