@@ -369,10 +369,10 @@ class EvoSession:
                 logger.debug("[evo] heartbeat [%s]: %s", self.session_id, exc)
 
             if self.status == "connected":
-                await asyncio.sleep(60)
+                await asyncio.sleep(30)   # estável: confere a cada 30s (detecta queda rápido)
             elif self._reconnecting:
                 # Loop de reconexão já está tratando a situação
-                await asyncio.sleep(30)
+                await asyncio.sleep(15)
             else:
                 # Desconectado sem reconexão ativa — pode ter perdido o webhook
                 # Força tentativa de reconexão se não for logout real
