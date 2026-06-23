@@ -562,6 +562,58 @@ class EvoSession:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+#  Resolução LID → PN (Evolution v2.3+ manda presença com <lid>@lid)
+# ─────────────────────────────────────────────────────────────────────────────
+import re as _re
+
+_LID_PN_CACHE: dict = {}        # lid(dígitos) → pn(dígitos, com 55)
+_LID_PN_MAX = 5000
+
+
+def _remember_lid_pn(*objs) -> None:
+    """Aprende o mapa LID→PN de qualquer payload que traga os dois (ex: mensagens
+    inbound, que vêm com remoteJid PN). Depois a presença (que só traz o LID)
+    resolve o número real por aqui."""
+    try:
+        import json as _json
+        blob = _json.dumps(objs, default=str)
+        pns = _re.findall(r"(55\d{10,11})@s\.whatsapp\.net", blob)
+        lids = _re.findall(r"(\d{6,})@lid", blob)
+        if pns and lids:
+            pn = pns[0]
+            for lid in lids:
+                if len(_LID_PN_CACHE) < _LID_PN_MAX:
+                    _LID_PN_CACHE[lid] = pn
+    except Exception:
+        pass
+
+
+def _resolve_presence_pn(data: dict) -> str:
+    """Número PN (só dígitos, com 55) da presença, ou '' se não resolver.
+    Evolution v2.3 manda data.id como <lid>@lid → tenta campos PN auxiliares e o cache."""
+    cands = [
+        data.get("remoteJidAlt"), data.get("senderPn"), data.get("participantPn"),
+        data.get("remoteJid"), data.get("id"),
+    ]
+    pres = data.get("presences")
+    if isinstance(pres, dict):
+        cands.extend(pres.keys())
+    # 1) prefere @s.whatsapp.net direto (PN real)
+    for j in cands:
+        s = str(j or "")
+        if s.endswith("@s.whatsapp.net"):
+            return s.split("@", 1)[0]
+    # 2) LID → cache aprendido das mensagens
+    for j in cands:
+        s = str(j or "")
+        if s.endswith("@lid"):
+            pn = _LID_PN_CACHE.get(s.split("@", 1)[0])
+            if pn:
+                return pn
+    return ""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 #  Manager — gerencia todas as sessões e despacha webhooks
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -887,6 +939,7 @@ class EvoManager:
             # Chat/chamados: repassa texto E mídia recebidos pro sistema externo (best-effort)
             try:
                 key = data.get("key") or {}
+                _remember_lid_pn(key, data)   # aprende LID→PN pra resolver presença depois
                 if not key.get("fromMe") and "@g.us" not in (key.get("remoteJid") or ""):
                     msg = data.get("message") or {}
                     de = (key.get("remoteJid") or "").split("@", 1)[0]
@@ -909,16 +962,23 @@ class EvoManager:
                 pass
 
         elif event == "PRESENCE_UPDATE":
-            # Cliente digitando/parou → repassa pro sistema externo
+            # Cliente digitando/parou → repassa pro sistema externo.
+            # Evolution v2.3 manda data.id como <lid>@lid (NÃO é número). Resolve o PN
+            # real; se não der, DESCARTA (não manda LID = lixo pro consumidor).
             try:
-                jid = data.get("id") or data.get("remoteJid") or ""
+                _remember_lid_pn(data)
+                de = _resolve_presence_pn(data)
+                if not de or not de.startswith("55"):
+                    logger.debug("[evo] PRESENCE sem PN resolvível — descartado: %s",
+                                 data.get("id") or data.get("remoteJid"))
+                    return
                 pres = data.get("presences") or {}
                 st = ""
                 if isinstance(pres, dict):
                     for _k, v in pres.items():
                         st = (v or {}).get("lastKnownPresence") or st
                 asyncio.create_task(self._forward_chat(sess.empresa_id, {
-                    "tipo": "presenca", "de": jid.split("@", 1)[0], "estado": st,
+                    "tipo": "presenca", "de": de, "estado": st,
                 }))
             except Exception:
                 pass
