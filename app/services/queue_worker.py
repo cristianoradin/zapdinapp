@@ -61,6 +61,37 @@ async def requeue_offline_failures(empresa_id: int) -> None:
         logger.warning("[requeue] empresa=%s erro: %s", empresa_id, exc)
 
 
+# ── Varredura periódica de falhas-offline ──────────────────────────────────────
+# Além do reenfileiramento no reconnect do agente, varre a cada X (padrão 60min)
+# as empresas com agente online e reenfileira falhas-offline — cobre o caso do
+# agente ficar online mas a sessão WhatsApp ter piscado (sem evento de reconnect).
+_sweep_task = None
+
+
+async def _requeue_sweep_loop(interval: int = 3600) -> None:
+    await asyncio.sleep(120)  # espera o boot estabilizar
+    while True:
+        try:
+            from . import agent_bridge as _ab
+            ids = {a["empresa_id"] for a in _ab.list_agents()}
+            for eid in ids:
+                await requeue_offline_failures(eid)
+            if ids:
+                logger.info("[requeue-sweep] varredura em %s empresa(s) com agente online", len(ids))
+        except Exception as exc:
+            logger.warning("[requeue-sweep] erro: %s", exc)
+        await asyncio.sleep(interval)
+
+
+def start_requeue_sweep(interval: int = 3600) -> None:
+    """Inicia a varredura periódica (idempotente). interval em segundos."""
+    global _sweep_task
+    if _sweep_task and not _sweep_task.done():
+        return
+    _sweep_task = asyncio.create_task(_requeue_sweep_loop(interval))
+    logger.info("[requeue-sweep] iniciada (intervalo=%ss)", interval)
+
+
 # ── Heartbeat (P2) ────────────────────────────────────────────────────────────
 _HEARTBEAT_INTERVAL = 30   # escreve no banco a cada 30 iterações de ~1s
 

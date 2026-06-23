@@ -359,6 +359,7 @@ async def lifespan(app: FastAPI):
         updater.start()
         telegram_service.start()
         queue_worker.start()  # processa mensagens, arquivos e campanha_envios
+        queue_worker.start_requeue_sweep(3600)  # varre falhas-offline a cada 60min
         _startup_logger.info("[startup] Todos os serviços iniciados — sistema pronto")
     else:
         _startup_logger.warning(
