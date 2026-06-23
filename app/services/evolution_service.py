@@ -187,6 +187,7 @@ class EvoSession:
 
         if prev != self.status:
             logger.info("[evo] [%s] %s → %s", self.session_id, prev, self.status)
+            asyncio.create_task(self._persist_status())   # DB reflete o estado real
 
     def on_logout(self) -> None:
         """
@@ -201,6 +202,7 @@ class EvoSession:
         self.phone       = None
         self._stop_reconnect()
         logger.warning("[evo] [%s] LOGOUT REAL — dispositivo removido pelo usuário. Novo QR necessário.", self.session_id)
+        asyncio.create_task(self._persist_status())   # DB: disconnected + phone limpo
         if prev != self.status:
             logger.info("[evo] [%s] %s → disconnected (logout)", self.session_id, prev)
         # Notifica via Telegram — sessão foi desconectada por logout real
@@ -540,6 +542,23 @@ class EvoSession:
                     self.on_qr_updated(qr)
         except Exception as exc:
             logger.debug("[evo] fetch_qr_now [%s]: %s", self.session_id, exc)
+
+    async def _persist_status(self) -> None:
+        """Reflete o status REAL da sessão no banco. CRÍTICO: live_status (app+monitor)
+        e o worker leem o DB como verdade no modo agente. Sem isto, uma sessão que cai
+        ou desloga fica eternamente 'connected'+phone no banco (zumbi) → monitor mente,
+        worker tenta enviar e dá timeout. Limpa o phone quando não está conectado."""
+        try:
+            from ..core.database import get_db_direct
+            ph = self.phone if self.status == "connected" else None
+            async with get_db_direct() as db:
+                await db.execute(
+                    "UPDATE sessoes_wa SET status=?, phone=? WHERE empresa_id=? AND id=?",
+                    (self.status, ph, self.empresa_id, self.session_id),
+                )
+                await db.commit()
+        except Exception as exc:
+            logger.debug("[evo] _persist_status [%s]: %s", self.session_id, exc)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
