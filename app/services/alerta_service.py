@@ -97,35 +97,42 @@ def destinos_por_tipo(cfg: dict, tipo: str) -> list:
     return out
 
 
-async def enviar_para_numeros(empresa_id: int, telefones: list, mensagem: str) -> None:
-    """Envia `mensagem` para cada número (best-effort). Usa qualquer sessão conectada."""
+async def enviar_para_numeros(empresa_id: int, telefones: list, mensagem: str) -> bool:
+    """Envia `mensagem` para cada número (best-effort). Retorna True se enviou ao menos um.
+    Usa o MESMO manager que o app selecionou (evolution/agente ou playwright) e o
+    `pick_session` (resolve sessão do DB, inclusive modo agente) — não o get_status
+    em memória, que fica vazio em modo agente."""
     if not telefones or not mensagem:
-        return
-    try:
+        return False
+    from ..core.config import settings as _settings
+    if getattr(_settings, "use_evolution", False):
+        from .evolution_service import evo_manager as wa_manager
+    else:
         from .whatsapp_service import wa_manager
-    except ImportError:
-        try:
-            from .evolution_service import evo_manager as wa_manager
-        except ImportError:
-            logger.warning("[alerta] wa_manager indisponível")
-            return
 
-    sessoes = wa_manager.get_status(empresa_id)
-    conectadas = [s for s in sessoes if s["status"] == "connected"]
-    if not conectadas:
-        logger.warning("[alerta] empresa=%s sem sessão conectada — alerta não enviado", empresa_id)
-        return
-    sessao = conectadas[0]["id"]
+    sessao = None
+    try:
+        sessao = wa_manager.pick_session(empresa_id)
+    except Exception as exc:
+        logger.warning("[alerta] pick_session erro empresa=%s: %s", empresa_id, exc)
+    if not sessao:
+        logger.warning("[alerta] empresa=%s sem sessão disponível — alerta não enviado", empresa_id)
+        return False
+
+    enviou = False
     for fone in telefones:
         envio = fone.lstrip("+")
         if envio.startswith("55"):
             envio = envio[2:]
         try:
             ok, err = await wa_manager.send_text(sessao, empresa_id, envio, mensagem)
-            if not ok:
+            if ok:
+                enviou = True
+            else:
                 logger.warning("[alerta] falha ao enviar p/ %s: %s", fone, err)
         except Exception as exc:
             logger.warning("[alerta] erro ao enviar p/ %s: %s", fone, exc)
+    return enviou
 
 
 async def disparar_falha_cadastro(empresa_id: int, numero: str, nome: str, erro: str) -> None:

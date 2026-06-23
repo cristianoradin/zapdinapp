@@ -129,9 +129,12 @@ async def enviar_resumo(empresa_id: int, periodo: str = "ontem") -> bool:
     if not texto:
         logger.info("[resumo-aval] empresa=%s sem avaliações no período — nada a enviar", empresa_id)
         return False
-    await alerta_service.enviar_para_numeros(empresa_id, destinos, texto)
-    logger.info("[resumo-aval] empresa=%s resumo enviado p/ %s número(s)", empresa_id, len(destinos))
-    return True
+    ok = await alerta_service.enviar_para_numeros(empresa_id, destinos, texto)
+    if ok:
+        logger.info("[resumo-aval] empresa=%s resumo enviado p/ %s número(s)", empresa_id, len(destinos))
+    else:
+        logger.warning("[resumo-aval] empresa=%s resumo NÃO enviado (sem sessão/falha de envio)", empresa_id)
+    return ok
 
 
 async def _set_ultimo(empresa_id: int, dia_iso: str) -> None:
