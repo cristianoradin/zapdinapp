@@ -448,21 +448,31 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
         texto = process_spintax(msg["mensagem"]) if (spintax_on and not _prio) else msg["mensagem"]
         c_delay = _composing_delay(texto) if composing_on else 0.0
 
-        ok, err = await wa_manager.send_text(sessao_id, empresa_id, msg["destinatario"], texto, composing_delay=c_delay)
+        # Validação prévia (modo servidor): número não existe no WhatsApp → nem tenta (anti-ban)
+        existe = None
+        try:
+            existe = await wa_manager.number_exists(empresa_id, sessao_id, msg["destinatario"])
+        except Exception:
+            existe = None
+        if existe is False:
+            ok, err = False, "Numero invalido: nao esta no WhatsApp"
+        else:
+            ok, err = await wa_manager.send_text(sessao_id, empresa_id, msg["destinatario"], texto, composing_delay=c_delay)
         tent = (msg["tentativas"] if "tentativas" in msg.keys() else 0) or 0
 
         if ok:
             # Status de entrega reportado pelo backend (agente lê o tiquinho; Evolution = 'sent')
             entrega = getattr(wa_manager, "_last_send_status", None)
             st = entrega if entrega in ("sent", "delivered", "read") else "sent"
+            wa_id = getattr(wa_manager, "_last_wa_msg_id", None)
             _agora = now_dt()
             _deliv = _agora if st in ("delivered", "read") else None
             _read = _agora if st == "read" else None
             async with get_db_direct() as db:
                 await db.execute(
                     "UPDATE mensagens SET status=?, sessao_id=?, sent_at=?, delivered_at=?, read_at=?, "
-                    "erro=NULL, proximo_retry=NULL WHERE id=? AND empresa_id=?",
-                    (st, sessao_id, _agora, _deliv, _read, msg["id"], empresa_id),
+                    "wa_msg_id=?, erro=NULL, proximo_retry=NULL WHERE id=? AND empresa_id=?",
+                    (st, sessao_id, _agora, _deliv, _read, wa_id, msg["id"], empresa_id),
                 )
                 await db.commit()
             logger.info("Queue: mensagem %s → %s", msg["id"], st)
