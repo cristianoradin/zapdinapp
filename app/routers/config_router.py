@@ -411,7 +411,7 @@ async def delete_agenda_wa_usuario(
 
 # ── Sessões WA — configuração de propósito ───────────────────────────────────
 
-_USOS_VALIDOS = {"chatbot", "campanhas", "arquivos", "agenda", "pdv"}
+_USOS_VALIDOS = {"chatbot", "campanhas", "arquivos", "agenda", "pdv", "envios", "chamados", "sistema"}
 
 
 class SessaoUsoPayload(BaseModel):
