@@ -172,6 +172,16 @@ async def connect(sid, environ, auth):
         to=sid,
         namespace="/agent",
     )
+    # Agente reconectou → reenfileira automaticamente as falhas que foram por
+    # OFFLINE (não por número inválido). Espera a sessão estabilizar antes.
+    async def _requeue_on_reconnect(eid: int):
+        try:
+            await asyncio.sleep(10)
+            from .services.queue_worker import requeue_offline_failures
+            await requeue_offline_failures(eid)
+        except Exception as exc:
+            _agent_log.debug("[requeue] task erro empresa=%s: %s", eid, exc)
+    asyncio.create_task(_requeue_on_reconnect(empresa_id))
     return True
 
 

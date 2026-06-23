@@ -27,6 +27,40 @@ from typing import Dict
 logger = logging.getLogger(__name__)
 from .log_service import log_event_sync
 
+
+async def requeue_offline_failures(empresa_id: int) -> None:
+    """Reenfileira mensagens/arquivos que FALHARAM por estar OFFLINE (agente/sessão
+    caída) quando o agente da empresa reconecta. NÃO mexe em falha de número inválido
+    ('Composer não encontrado'/'não está no WhatsApp') — essas não têm como entregar.
+    Janela de 7 dias pra não ressuscitar envios antigos."""
+    from ..core.database import get_db_direct
+    cond = (
+        "status='failed' AND empresa_id=? "
+        "AND created_at > NOW() - INTERVAL '7 days' "
+        "AND (erro ILIKE '%não está conectado%' OR erro ILIKE '%sem sess%' "
+        "     OR erro ILIKE '%agent:%' OR erro ILIKE '%cancelado%' OR erro ILIKE '%desconect%') "
+        "AND erro NOT ILIKE '%Composer não encontrado%' "
+        "AND erro NOT ILIKE '%não está no WhatsApp%' "
+        "AND erro NOT ILIKE '%inválid%'"
+    )
+    try:
+        async with get_db_direct() as db:
+            total = 0
+            for tbl in ("mensagens", "arquivos"):
+                async with db.execute(f"SELECT count(*) AS n FROM {tbl} WHERE {cond}", (empresa_id,)) as cur:
+                    row = await cur.fetchone()
+                    total += (row["n"] if row else 0)
+                await db.execute(
+                    f"UPDATE {tbl} SET status='queued', erro=NULL, sent_at=NULL WHERE {cond}",
+                    (empresa_id,),
+                )
+            await db.commit()
+            if total:
+                logger.info("[requeue] empresa=%s reenfileiradas %s falhas-offline (agente reconectou)", empresa_id, total)
+    except Exception as exc:
+        logger.warning("[requeue] empresa=%s erro: %s", empresa_id, exc)
+
+
 # ── Heartbeat (P2) ────────────────────────────────────────────────────────────
 _HEARTBEAT_INTERVAL = 30   # escreve no banco a cada 30 iterações de ~1s
 
