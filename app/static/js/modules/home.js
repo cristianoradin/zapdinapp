@@ -593,7 +593,10 @@ function agwaAbrirConfig(id) {
   }
 
   document.getElementById('agwa-cfg-nome').textContent = u.nome;
-  document.getElementById('agwa-cfg-overlay').classList.add('open');
+  const ov = document.getElementById('agwa-cfg-overlay');
+  // Move pro <body> pra escapar de qualquer stacking context da home (abria atrás)
+  if (ov && ov.parentElement !== document.body) document.body.appendChild(ov);
+  ov.classList.add('open');
 }
 
 function agwaFecharConfig(event, force) {
