@@ -327,6 +327,22 @@ async def lifespan(app: FastAPI):
     except Exception as _e3:
         _startup_logger.debug("[startup] M3: falha ao carregar sessões revogadas: %s", _e3)
 
+    # Agente compartilhado: carrega o owner_map no boot. Antes só era setado quando
+    # um admin vinculava uma dona → após restart ficava VAZIO → postos compartilhados
+    # não resolviam o agente da dona → agents_count=0 → monitor mostrava "Servidor"
+    # (e oscilava). Carregar aqui mantém a resolução estável entre restarts.
+    try:
+        from .services import agent_bridge as _ab
+        async with get_db_direct() as _dbo:
+            async with _dbo.execute(
+                "SELECT id, agente_dono_empresa_id FROM empresas WHERE agente_dono_empresa_id IS NOT NULL"
+            ) as _curo:
+                _rowso = await _curo.fetchall()
+        _ab.set_owner_map({r["id"]: r["agente_dono_empresa_id"] for r in _rowso})
+        _startup_logger.info("[startup] owner_map (agente compartilhado): %d vínculo(s)", len(_rowso))
+    except Exception as _eo:
+        _startup_logger.debug("[startup] falha ao carregar owner_map: %s", _eo)
+
     # Protege o .env via DPAPI na primeira execução após instalação/update (Windows)
     # Máquinas já instaladas com .env em texto puro são protegidas automaticamente
     try:
@@ -513,7 +529,7 @@ _static_dir = os.path.join(os.path.dirname(__file__), "static")
 _logo_dir = os.path.join(_static_dir, "logo")
 
 _NO_CACHE = {"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
-APP_BUILD = "20260623g"
+APP_BUILD = "20260623h"
 
 
 from starlette.middleware.base import BaseHTTPMiddleware
