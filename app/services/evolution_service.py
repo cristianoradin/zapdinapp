@@ -193,6 +193,19 @@ class EvoSession:
         if prev != self.status:
             logger.info("[evo] [%s] %s → %s", self.session_id, prev, self.status)
             asyncio.create_task(self._persist_status())   # DB reflete o estado real
+            # Alerta IMEDIATO quando uma sessão CONECTADA cai (visibilidade — humano age
+            # rápido se o auto-recover não resolver). Ênfase extra se for dona de agente
+            # compartilhado (muitos postos dependem dela).
+            if prev == "connected" and self.status != "connected":
+                try:
+                    from . import agent_bridge as _ab
+                    from . import telegram_service
+                    n_deps = sum(1 for v in getattr(_ab, "_owner_map", {}).values() if v == self.empresa_id)
+                    extra = f" ⚠️ DONA COMPARTILHADA — {n_deps} posto(s) dependem!" if n_deps else ""
+                    asyncio.create_task(telegram_service.notify_send_failure(
+                        self.nome, "—", f"WhatsApp DESCONECTOU (auto-reconectando).{extra}"))
+                except Exception:
+                    pass
 
     def on_logout(self) -> None:
         """
