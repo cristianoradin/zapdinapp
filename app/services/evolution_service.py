@@ -587,6 +587,7 @@ import re as _re
 _LID_PN_CACHE: dict = {}        # lid(dígitos) → pn(dígitos, com 55)
 _LID_PN_MAX = 5000
 _LID_FETCH: dict = {}           # inst → ts do último findContacts (throttle)
+_PRESENCE_NUDGE: dict = {}      # "inst|pn" → ts do último nudge de subscribe (throttle)
 
 
 def _remember_lid_pn(*objs) -> None:
@@ -962,6 +963,11 @@ class EvoManager:
                 if not key.get("fromMe") and "@g.us" not in (key.get("remoteJid") or ""):
                     msg = data.get("message") or {}
                     de = (key.get("remoteJid") or "").split("@", 1)[0]
+                    # Nudge de presence-subscribe: após restart o Baileys perde o subscribe
+                    # (em memória) e a Evolution para de emitir PRESENCE_UPDATE. Tenta
+                    # re-disparar o subscribe ao receber msg do contato (best-effort).
+                    if de:
+                        asyncio.create_task(self._nudge_presence_subscribe(inst, de))
                     mtype = data.get("messageType") or ""
                     _MEDIA = {
                         "imageMessage", "documentMessage", "documentWithCaptionMessage",
@@ -1166,6 +1172,29 @@ class EvoManager:
         if not sess.qr_data and sess.status != "connected":
             asyncio.create_task(sess.fetch_qr_now())
         return sess.qr_data
+
+    async def _nudge_presence_subscribe(self, inst: str, pn: str) -> None:
+        """Best-effort: re-dispara o presence-subscribe do Baileys via Evolution.
+        Após restart do app, a Evolution para de emitir PRESENCE_UPDATE (subscribe em
+        memória perdido). A Evolution não expõe endpoint público de subscribe, mas
+        consultar o contato/numero costuma reativar o subscribe interno do Baileys.
+        Throttle 5min por contato."""
+        import time as _t
+        k = f"{inst}|{pn}"
+        now = _t.time()
+        if now - _PRESENCE_NUDGE.get(k, 0.0) < 300:
+            return
+        _PRESENCE_NUDGE[k] = now
+        num = phone_for_wa(pn) or pn
+        for path, body in (
+            (f"chat/whatsappNumbers/{inst}", {"numbers": [num]}),
+            (f"chat/fetchProfile/{inst}", {"number": num}),
+        ):
+            try:
+                async with httpx.AsyncClient(timeout=8.0) as client:
+                    await client.post(self._url_for_inst(inst, path), json=body, headers=_h())
+            except Exception:
+                pass
 
     async def _handle_presence(self, inst: str, data: dict, empresa_id: int) -> None:
         """Repassa presença (digitando/online) pro sistema externo. Evolution v2.3 manda
