@@ -586,6 +586,7 @@ import re as _re
 
 _LID_PN_CACHE: dict = {}        # lid(dígitos) → pn(dígitos, com 55)
 _LID_PN_MAX = 5000
+_LID_FETCH: dict = {}           # inst → ts do último findContacts (throttle)
 
 
 def _remember_lid_pn(*objs) -> None:
@@ -988,13 +989,16 @@ class EvoManager:
                 logger.info("[zapdin-dbg] PRESENCE raw data=%s", _dbg.dumps(data, default=str)[:900])
                 _remember_lid_pn(data)
                 de = _resolve_presence_pn(data)
-                logger.info("[zapdin-dbg] PRESENCE resolve: id=%s remoteJid=%s remoteJidAlt=%s senderPn=%s participantPn=%s presences_keys=%s -> pn=%s cache=%d",
-                            data.get("id"), data.get("remoteJid"), data.get("remoteJidAlt"),
-                            data.get("senderPn"), data.get("participantPn"),
-                            list((data.get("presences") or {}).keys()), de, len(_LID_PN_CACHE))
+                # Cache miss + veio LID → consulta a Evolution (mapping LID→PN dela) e re-resolve
+                if not de:
+                    _id = str(data.get("id") or "")
+                    if _id.endswith("@lid"):
+                        await self._evo_populate_lid_cache(inst)
+                        de = _resolve_presence_pn(data)
                 if not de or not de.startswith("55"):
-                    logger.info("[zapdin-dbg] PRESENCE DESCARTADA (sem PN): id=%s", data.get("id") or data.get("remoteJid"))
+                    logger.info("[zapdin-dbg] PRESENCE DESCARTADA (sem PN): id=%s cache=%d", data.get("id"), len(_LID_PN_CACHE))
                     return
+                logger.info("[zapdin-dbg] PRESENCE resolvida: id=%s -> pn=%s", data.get("id"), de)
                 pres = data.get("presences") or {}
                 st = ""
                 if isinstance(pres, dict):
@@ -1188,6 +1192,45 @@ class EvoManager:
         if not sess.qr_data and sess.status != "connected":
             asyncio.create_task(sess.fetch_qr_now())
         return sess.qr_data
+
+    async def _evo_populate_lid_cache(self, inst: str) -> None:
+        """Resolve LID→PN consultando a Evolution (ela mantém o mapping internamente).
+        Evolution v2.3 manda PRESENCE_UPDATE só com <lid>@lid, sem PN auxiliar e sem o
+        LID aparecer nas mensagens → cache não aprende sozinho. Aqui puxamos os contatos
+        e aprendemos todos os pares LID↔PN de uma vez (scan agnóstico de campo). Throttle
+        por instância pra não martelar a API."""
+        import time as _t
+        now = _t.time()
+        if now - _LID_FETCH.get(inst, 0.0) < 60:
+            return
+        _LID_FETCH[inst] = now
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                r = await client.post(
+                    self._url_for_inst(inst, f"chat/findContacts/{inst}"),
+                    json={"where": {}}, headers=_h(),
+                )
+            if r.status_code not in (200, 201):
+                logger.info("[zapdin-dbg] findContacts HTTP %s: %s", r.status_code, r.text[:300])
+                return
+            data = r.json()
+            rows = data if isinstance(data, list) else (data.get("contacts") or data.get("data") or [])
+            import json as _j
+            learned = 0
+            for row in rows:
+                blob = _j.dumps(row, default=str)
+                pns = _re.findall(r"(55\d{10,11})@s\.whatsapp\.net", blob)
+                lids = _re.findall(r"(\d{6,})@lid", blob)
+                if pns and lids:
+                    for lid in lids:
+                        if lid not in _LID_PN_CACHE:
+                            _LID_PN_CACHE[lid] = pns[0]; learned += 1
+            logger.info("[zapdin-dbg] findContacts: %d contatos, aprendidos=%d, cache=%d",
+                        len(rows), learned, len(_LID_PN_CACHE))
+            if rows and learned == 0:
+                logger.info("[zapdin-dbg] contato sample=%s", _j.dumps(rows[0], default=str)[:400])
+        except Exception as exc:
+            logger.info("[zapdin-dbg] findContacts erro: %s", exc)
 
     def get_status(self, empresa_id: int) -> list:
         """Retorna status de todas as sessões desta empresa."""
