@@ -984,11 +984,16 @@ class EvoManager:
             # Evolution v2.3 manda data.id como <lid>@lid (NÃO é número). Resolve o PN
             # real; se não der, DESCARTA (não manda LID = lixo pro consumidor).
             try:
+                import json as _dbg
+                logger.info("[zapdin-dbg] PRESENCE raw data=%s", _dbg.dumps(data, default=str)[:900])
                 _remember_lid_pn(data)
                 de = _resolve_presence_pn(data)
+                logger.info("[zapdin-dbg] PRESENCE resolve: id=%s remoteJid=%s remoteJidAlt=%s senderPn=%s participantPn=%s presences_keys=%s -> pn=%s cache=%d",
+                            data.get("id"), data.get("remoteJid"), data.get("remoteJidAlt"),
+                            data.get("senderPn"), data.get("participantPn"),
+                            list((data.get("presences") or {}).keys()), de, len(_LID_PN_CACHE))
                 if not de or not de.startswith("55"):
-                    logger.debug("[evo] PRESENCE sem PN resolvível — descartado: %s",
-                                 data.get("id") or data.get("remoteJid"))
+                    logger.info("[zapdin-dbg] PRESENCE DESCARTADA (sem PN): id=%s", data.get("id") or data.get("remoteJid"))
                     return
                 pres = data.get("presences") or {}
                 st = ""
