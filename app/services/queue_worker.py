@@ -525,7 +525,12 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
                 return False  # limite só desta empresa
 
         _rr_ptrs["msg"] = empresa_id
-        delay = random.uniform(delay_min, delay_max)
+        # Prioritários (alerta/sistema/resumo/teste) são TRANSACIONAIS (1 a 1, baixo risco
+        # de ban) → delay curto. Só campanha/ERP/texto em massa usam o delay anti-ban cheio.
+        if _prio:
+            delay = random.uniform(2.0, 4.0)
+        else:
+            delay = random.uniform(delay_min, delay_max)
         logger.info("Queue: mensagem %s (empresa %s) → delay %.1fs", msg["id"], empresa_id, delay)
         await asyncio.sleep(delay)
 
