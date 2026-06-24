@@ -981,34 +981,8 @@ class EvoManager:
                 pass
 
         elif event == "PRESENCE_UPDATE":
-            # Cliente digitando/parou → repassa pro sistema externo.
-            # Evolution v2.3 manda data.id como <lid>@lid (NÃO é número). Resolve o PN
-            # real; se não der, DESCARTA (não manda LID = lixo pro consumidor).
-            try:
-                import json as _dbg
-                logger.info("[zapdin-dbg] PRESENCE raw data=%s", _dbg.dumps(data, default=str)[:900])
-                _remember_lid_pn(data)
-                de = _resolve_presence_pn(data)
-                # Cache miss + veio LID → consulta a Evolution (mapping LID→PN dela) e re-resolve
-                if not de:
-                    _id = str(data.get("id") or "")
-                    if _id.endswith("@lid"):
-                        await self._evo_populate_lid_cache(inst)
-                        de = _resolve_presence_pn(data)
-                if not de or not de.startswith("55"):
-                    logger.info("[zapdin-dbg] PRESENCE DESCARTADA (sem PN): id=%s cache=%d", data.get("id"), len(_LID_PN_CACHE))
-                    return
-                logger.info("[zapdin-dbg] PRESENCE resolvida: id=%s -> pn=%s", data.get("id"), de)
-                pres = data.get("presences") or {}
-                st = ""
-                if isinstance(pres, dict):
-                    for _k, v in pres.items():
-                        st = (v or {}).get("lastKnownPresence") or st
-                asyncio.create_task(self._forward_chat(sess.empresa_id, {
-                    "tipo": "presenca", "de": de, "estado": st,
-                }))
-            except Exception:
-                pass
+            # handle_webhook é SYNC → presença (que pode consultar a Evolution) vai em task async
+            asyncio.create_task(self._handle_presence(inst, data, sess.empresa_id))
 
         elif event in ("MESSAGES_UPDATE", "MESSAGE_UPDATE"):
             # ACK de entrega/leitura (modo servidor/Evolution) → atualiza status no banco
@@ -1192,6 +1166,32 @@ class EvoManager:
         if not sess.qr_data and sess.status != "connected":
             asyncio.create_task(sess.fetch_qr_now())
         return sess.qr_data
+
+    async def _handle_presence(self, inst: str, data: dict, empresa_id: int) -> None:
+        """Repassa presença (digitando/online) pro sistema externo. Evolution v2.3 manda
+        só <lid>@lid → resolve PN (campos auxiliares + cache + findContacts da Evolution).
+        Descarta se não resolver (não manda LID lixo)."""
+        try:
+            _remember_lid_pn(data)
+            de = _resolve_presence_pn(data)
+            if not de:
+                _id = str(data.get("id") or "")
+                if _id.endswith("@lid"):
+                    await self._evo_populate_lid_cache(inst)
+                    de = _resolve_presence_pn(data)
+            if not de or not de.startswith("55"):
+                logger.info("[zapdin-dbg] PRESENCE DESCARTADA (sem PN): id=%s cache=%d",
+                            data.get("id"), len(_LID_PN_CACHE))
+                return
+            logger.info("[zapdin-dbg] PRESENCE resolvida: id=%s -> pn=%s", data.get("id"), de)
+            pres = data.get("presences") or {}
+            st = ""
+            if isinstance(pres, dict):
+                for _k, v in pres.items():
+                    st = (v or {}).get("lastKnownPresence") or st
+            await self._forward_chat(empresa_id, {"tipo": "presenca", "de": de, "estado": st})
+        except Exception as exc:
+            logger.debug("[evo] _handle_presence erro: %s", exc)
 
     async def _evo_populate_lid_cache(self, inst: str) -> None:
         """Resolve LID→PN consultando a Evolution (ela mantém o mapping internamente).
