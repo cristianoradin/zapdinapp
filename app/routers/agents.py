@@ -577,6 +577,79 @@ async def admin_push_update_all(
     return {"ok": True, "latest": AGENT_LATEST_VERSION, "enviados": sent, "ja_atualizados": skipped}
 
 
+class AgentCmdBody(BaseModel):
+    command: str = Field(min_length=2, max_length=40)
+    payload: dict = Field(default_factory=dict)
+
+
+_REMOTE_CMDS = {"get_diag", "get_logs", "run_cmd", "restart_service", "clear_profile",
+                "get_state", "get_qr", "ping", "delete_instance"}
+
+
+@router.post("/api/admin/agents/{empresa_id}/cmd")
+async def admin_agent_cmd(
+    empresa_id: int, body: AgentCmdBody, request: Request,
+    x_monitor_token: Optional[str] = Header(default=None, alias="X-Monitor-Token"),
+):
+    """Operação remota: manda um comando ao agente do posto e devolve o resultado.
+    Auth via X-Monitor-Token. Inclui run_cmd (executa na máquina do cliente) — auditado."""
+    expected = settings.monitor_client_token
+    if not expected or not x_monitor_token or x_monitor_token != expected:
+        raise HTTPException(401, "X-Monitor-Token inválido")
+    if body.command not in _REMOTE_CMDS:
+        raise HTTPException(400, f"comando não permitido: {body.command}")
+    if not agent_bridge.has_agent(empresa_id):
+        raise HTTPException(409, "Agente não está conectado.")
+    ip = request.client.host if request.client else "?"
+    import logging as _lg
+    _lg.getLogger("app.agent").warning(
+        "[remote-op] empresa=%s cmd=%s ip=%s payload=%.200s",
+        empresa_id, body.command, ip, str(body.payload))
+    from ..main import sio
+    _to = 130.0 if body.command in ("get_diag", "run_cmd", "get_qr") else 60.0
+    try:
+        res = await agent_bridge.send_command(sio, empresa_id, body.command, body.payload or {}, timeout=_to)
+        return {"ok": True, "result": res}
+    except Exception as exc:
+        raise HTTPException(502, f"Agente: {exc}")
+
+
+class AgentCmdTokenBody(BaseModel):
+    client_token: str = Field(min_length=8, max_length=256)
+    command: str = Field(min_length=2, max_length=40)
+    payload: dict = Field(default_factory=dict)
+
+
+@router.post("/api/admin/agents/cmd-by-token")
+async def admin_agent_cmd_by_token(
+    body: AgentCmdTokenBody, request: Request,
+    x_monitor_token: Optional[str] = Header(default=None, alias="X-Monitor-Token"),
+):
+    """Igual /agents/{id}/cmd mas resolve a empresa pelo TOKEN do cliente (o monitor
+    tem o token, não o empresa_id do app)."""
+    expected = settings.monitor_client_token
+    if not expected or not x_monitor_token or x_monitor_token != expected:
+        raise HTTPException(401, "X-Monitor-Token inválido")
+    if body.command not in _REMOTE_CMDS:
+        raise HTTPException(400, f"comando não permitido: {body.command}")
+    from ..core import database as _dbm
+    pool = _dbm._pool
+    empresa_id = await agent_bridge._resolve_empresa_by_token(pool, body.client_token) if pool else None
+    if not empresa_id:
+        raise HTTPException(404, "Token não resolve nenhuma empresa.")
+    if not agent_bridge.has_agent(empresa_id):
+        raise HTTPException(409, "Agente não está conectado.")
+    import logging as _lg
+    _lg.getLogger("app.agent").warning("[remote-op/token] empresa=%s cmd=%s", empresa_id, body.command)
+    from ..main import sio
+    _to = 130.0 if body.command in ("get_diag", "run_cmd", "get_qr") else 60.0
+    try:
+        res = await agent_bridge.send_command(sio, empresa_id, body.command, body.payload or {}, timeout=_to)
+        return {"ok": True, "empresa_id": empresa_id, "result": res}
+    except Exception as exc:
+        raise HTTPException(502, f"Agente: {exc}")
+
+
 @router.get("/api/agents/all")
 async def list_all_agents(
     x_monitor_token: Optional[str] = Header(default=None, alias="X-Monitor-Token"),
