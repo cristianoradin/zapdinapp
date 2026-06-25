@@ -526,11 +526,18 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
 
         _rr_ptrs["msg"] = empresa_id
         # Prioritários (alerta/sistema/resumo/teste) são TRANSACIONAIS (1 a 1, baixo risco
-        # de ban) → delay curto. Só campanha/ERP/texto em massa usam o delay anti-ban cheio.
-        if _prio:
-            delay = random.uniform(2.0, 4.0)
+        # de ban) → delay curto + passam pelo disjuntor. Só campanha/ERP/texto em massa
+        # usam o delay anti-ban cheio + são barrados pelo disjuntor (protege o número).
+        from . import dispatch_guard as _dg
+        caps = _dg.caps_from_cfg(cfg)
+        if not _prio:
+            allowed, reason, retry = _dg.check(sessao_id, caps)
+            if not allowed:
+                _dg.note_blocked(sessao_id, reason, retry, empresa_id)
+                return False  # sessão pausada — msg fica na fila, tenta depois
+            delay = _dg.delay_for(sessao_id, delay_min, delay_max, caps)
         else:
-            delay = random.uniform(delay_min, delay_max)
+            delay = random.uniform(2.0, 4.0)
         logger.info("Queue: mensagem %s (empresa %s) → delay %.1fs", msg["id"], empresa_id, delay)
         await asyncio.sleep(delay)
 
@@ -554,6 +561,7 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
             ok, err = False, "Numero invalido: nao esta no WhatsApp"
         else:
             ok, err = await wa_manager.send_text(sessao_id, empresa_id, msg["destinatario"], texto, composing_delay=c_delay)
+            _dg.record_send(sessao_id, ok, caps)  # alimenta taxa/aquecimento/disjuntor (só envio real)
         tent = (msg["tentativas"] if "tentativas" in msg.keys() else 0) or 0
 
         if ok:
@@ -677,7 +685,13 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
                 return False
 
         _rr_ptrs["arq"] = empresa_id
-        delay = random.uniform(delay_min, delay_max)
+        from . import dispatch_guard as _dg
+        caps = _dg.caps_from_cfg(cfg)
+        allowed, reason, retry = _dg.check(sessao_id, caps)
+        if not allowed:
+            _dg.note_blocked(sessao_id, reason, retry, empresa_id)
+            return False  # sessão pausada — arquivo fica na fila, tenta depois
+        delay = _dg.delay_for(sessao_id, delay_min, delay_max, caps)
         logger.info("Queue: arquivo %s (empresa %s) → delay %.1fs", arq["id"], empresa_id, delay)
         await asyncio.sleep(delay)
 
@@ -721,6 +735,7 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
                 arq["nome_original"], caption or None,
                 composing_delay=c_delay,
             )
+        _dg.record_send(sessao_id, ok, caps)  # taxa/aquecimento/disjuntor
         st = "sent" if ok else "failed"
         async with get_db_direct() as db:
             await db.execute(
@@ -798,7 +813,13 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
             return False
 
         _rr_ptrs["camp"] = empresa_id
-        delay = random.uniform(delay_min, delay_max)
+        from . import dispatch_guard as _dg
+        caps = _dg.caps_from_cfg(cfg)
+        allowed, reason, retry = _dg.check(sessao_id, caps)
+        if not allowed:
+            _dg.note_blocked(sessao_id, reason, retry, empresa_id)
+            return False  # sessão pausada — envio fica na fila, tenta depois
+        delay = _dg.delay_for(sessao_id, delay_min, delay_max, caps)
         logger.info("Queue: campanha_envio %s campanha %s → delay %.1fs", env["id"], campanha_id, delay)
         await asyncio.sleep(delay)
 
@@ -844,6 +865,7 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
                         break
                     await asyncio.sleep(random.uniform(1, 3))
 
+        _dg.record_send(sessao_id, ok, caps)  # taxa/aquecimento/disjuntor
         st = "sent" if ok else "failed"
         async with get_db_direct() as db3:
             await db3.execute(

@@ -229,6 +229,29 @@ async def notify_queue_blocked(pending_count: int) -> None:
     )
 
 
+_last_dispatch_paused_alert: dict = {}
+_DISPATCH_PAUSED_COOLDOWN = 1800  # 30 min por empresa
+
+
+async def notify_dispatch_paused(empresa_id: int, reason: str, retry_secs: int) -> None:
+    """Disjuntor anti-ban pausou os envios de uma empresa (protege o número de deslogar).
+    Throttle: 1 alerta a cada 30 min por empresa."""
+    now = time.time()
+    last = _last_dispatch_paused_alert.get(empresa_id, 0.0)
+    if now - last < _DISPATCH_PAUSED_COOLDOWN:
+        return
+    _last_dispatch_paused_alert[empresa_id] = now
+    await send(
+        f"🟡 <b>ZapDin — Envios pausados (proteção anti-ban)</b>\n"
+        f"{_header()}\n\n"
+        f"⏸️ {reason}\n"
+        f"🛡️ Pausa automática pra NÃO deslogar o número.\n"
+        f"🔁 Retoma sozinho em ~{retry_secs}s. Mensagens seguem na fila.\n"
+        f"🕐 {_now()}",
+        alert_key="erro_critico",
+    )
+
+
 async def notify_worker_stuck(worker_name: str, minutes: int) -> None:
     """
     Worker sem heartbeat por mais de N minutos.
