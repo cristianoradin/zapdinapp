@@ -1324,8 +1324,18 @@ class EvoManager:
         e = err or ""
         if "Timeout" in e or "não respondeu" in e or "agent:" in e:
             sess._send_fail_streak = getattr(sess, "_send_fail_streak", 0) + 1
-            if sess._send_fail_streak >= 3 and sess.status == "connected":
-                asyncio.create_task(self._force_agent_reauth(sess))
+            # REGRA: NUNCA deslogar o cliente automaticamente. Antes 3 timeouts disparavam
+            # _force_agent_reauth → delete_instance (limpa perfil = LOGOUT). Removido.
+            # Agora só ALERTA um humano; quem decide reescanear é pessoa, não o sistema.
+            if sess._send_fail_streak == 3 and sess.status == "connected":
+                logger.warning("[evo] [%s] 3 envios sem resposta — sessão pode estar travada. "
+                               "ALERTA (não desloga automático).", sess.session_id)
+                try:
+                    from . import telegram_service
+                    asyncio.create_task(telegram_service.notify_send_failure(
+                        sess.nome, "—", "WhatsApp possivelmente travado (envios sem resposta) — verificar painel"))
+                except Exception:
+                    pass
 
     async def _force_agent_reauth(self, sess) -> None:
         """Zumbi parcial: agente reporta connected mas não envia (página WA travada).
