@@ -80,15 +80,18 @@ async def dispatch_status(db=Depends(get_db), user: dict = Depends(get_current_u
     """Status ao vivo do disjuntor/aquecimento por sessão (msgs/min, em aquecimento,
     em cooldown). Pro painel Config de Envio."""
     from ..services import dispatch_guard as dg
+    from ..services import agent_bridge as ab
     empresa_id = user["empresa_id"]
+    # Disjuntor agrega por NÚMERO (agente dono) — status reflete o bucket do número.
+    key = f"agent:{ab._eff(empresa_id)}"
     out = []
     try:
         async with db.execute(
             "SELECT id, nome, status FROM sessoes_wa WHERE empresa_id=? ORDER BY id", (empresa_id,)
         ) as cur:
             rows = await cur.fetchall()
+        s = dg.status(key)
         for r in rows:
-            s = dg.status(r["id"])
             out.append({"sessao_id": r["id"], "nome": r["nome"], "conn": r["status"], **s})
     except Exception as exc:
         return {"sessoes": [], "erro": str(exc), "defaults": dg.DEFAULTS}
