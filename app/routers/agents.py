@@ -583,7 +583,9 @@ class AgentCmdBody(BaseModel):
 
 
 _REMOTE_CMDS = {"get_diag", "get_logs", "run_cmd", "restart_service", "clear_profile",
-                "get_state", "get_qr", "ping", "delete_instance"}
+                "get_state", "get_qr", "ping", "delete_instance",
+                "get_screenshot", "set_env", "read_file", "write_file", "get_metrics", "reboot",
+                "update_now"}
 
 
 @router.post("/api/admin/agents/{empresa_id}/cmd")
