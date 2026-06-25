@@ -463,8 +463,11 @@ class EvoSession:
                 return
             if state == "open" and self.status != "connected":
                 self.on_connection_update("open")
-            elif state != "open" and self.status == "connected":
-                logger.warning("[evo-agent] [%s] heartbeat detectou queda", self.session_id)
+            elif self.status == "connected" and state in ("close", "qr", "qr_code", "connecting", "disconnected", "logged_out"):
+                # SÓ derruba sessão conectada em sinal DEFINITIVO de queda/logout.
+                # "loading"/"unknown" = detecção transitória do agente (seletor falhando)
+                # → NÃO flapa connected→disconnected à toa (mantém o número conectado).
+                logger.warning("[evo-agent] [%s] heartbeat detectou queda real: %s", self.session_id, state)
                 self.on_connection_update(state)
             return
 
