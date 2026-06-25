@@ -75,6 +75,26 @@ async def set_config(
     return {"ok": True}
 
 
+@router.get("/dispatch-status")
+async def dispatch_status(db=Depends(get_db), user: dict = Depends(get_current_user)):
+    """Status ao vivo do disjuntor/aquecimento por sessão (msgs/min, em aquecimento,
+    em cooldown). Pro painel Config de Envio."""
+    from ..services import dispatch_guard as dg
+    empresa_id = user["empresa_id"]
+    out = []
+    try:
+        async with db.execute(
+            "SELECT id, nome, status FROM sessoes_wa WHERE empresa_id=? ORDER BY id", (empresa_id,)
+        ) as cur:
+            rows = await cur.fetchall()
+        for r in rows:
+            s = dg.status(r["id"])
+            out.append({"sessao_id": r["id"], "nome": r["nome"], "conn": r["status"], **s})
+    except Exception as exc:
+        return {"sessoes": [], "erro": str(exc), "defaults": dg.DEFAULTS}
+    return {"sessoes": out, "defaults": dg.DEFAULTS}
+
+
 # ── Alerta Crítico de Avaliação ───────────────────────────────────────────────
 
 _ALERTA_KEY = "alerta_critico"
