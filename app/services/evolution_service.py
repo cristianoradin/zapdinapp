@@ -1391,7 +1391,7 @@ class EvoManager:
             try:
                 # 90s: o agente pode levar ~30s só abrindo o chat + achando o
                 # composer. Default 30s estourava antes e mascarava o erro real.
-                resp = await _ab.send_command(_sio, empresa_id, "send_text", payload_agent, timeout=90.0)
+                resp = await _ab.send_command(_sio, empresa_id, "send_text", payload_agent, timeout=45.0)
                 if resp.get("ok"):
                     # Agente reporta o tiquinho lido na tela (sent/delivered/read)
                     self._last_send_status = resp.get("status") or "sent"

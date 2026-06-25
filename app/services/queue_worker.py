@@ -127,6 +127,10 @@ async def _pick_uso(wa_manager, empresa_id: int, uso: str):
 
 # ── Heartbeat (P2) ────────────────────────────────────────────────────────────
 _HEARTBEAT_INTERVAL = 30   # escreve no banco a cada 30 iterações de ~1s
+# Teto duro por empresa num tick: blinda contra chamada ao agente que pendure
+# (conexão WS morta) — uma empresa travada NÃO congela a fila global.
+_EMPRESA_TICK_TIMEOUT = 120.0
+_WATCHDOG_STALL_SECS = 240.0   # sem tick por isso = loop travado → reinicia o worker
 
 async def _write_heartbeat(get_db_direct, status: str = "ok", detail: str = "") -> None:
     """Persiste timestamp no banco para watchdog do reporter."""
@@ -164,9 +168,11 @@ async def _notify_monitor_numero(phone: str, nome: str, settings) -> None:
         logger.debug("_notify_monitor_numero erro: %s", exc)
 
 _task = None
+_watchdog_task = None
 
 # ── Métricas do worker ────────────────────────────────────────────────────────
 _last_processed_at: float = 0.0   # timestamp do último item processado
+_last_tick_at: float = 0.0         # timestamp do início da última iteração do loop (liveness)
 _processed_count: int = 0          # total de itens processados nesta sessão
 _last_error: str = ""              # último erro registrado
 
@@ -326,7 +332,7 @@ async def _daily_sent(db, sessao_id: str, empresa_id: int) -> int:
 # ── Loop principal ────────────────────────────────────────────────────────────
 
 async def _loop() -> None:
-    global _last_processed_at, _processed_count, _last_error
+    global _last_processed_at, _last_tick_at, _processed_count, _last_error
     from ..core.config import settings
     from ..core.database import get_db_direct
     if settings.use_evolution:
@@ -338,6 +344,7 @@ async def _loop() -> None:
     _bv_check_counter = 0  # verifica pendentes a cada ~30s (30 ciclos de 1s)
     _hb_counter = 0        # escreve heartbeat a cada _HEARTBEAT_INTERVAL ciclos
     while True:
+        _last_tick_at = time.time()   # liveness p/ o watchdog
         try:
             dispatched = await _process_next(wa_manager, settings, get_db_direct)
             if dispatched:
@@ -413,7 +420,13 @@ async def _gather_empresas(empresas: list, fn) -> bool:
     async def _guarded(e):
         async with sem:
             try:
-                return bool(await fn(e))
+                # Teto duro por empresa: chamada ao agente/WhatsApp que pendure (conexão
+                # WS morta sem timeout) NÃO pode congelar o worker single-thread.
+                return bool(await asyncio.wait_for(fn(e), timeout=_EMPRESA_TICK_TIMEOUT))
+            except asyncio.TimeoutError:
+                logger.error("[worker] empresa=%s ESTOUROU %ss (chamada pendurada) — pulando",
+                             e, _EMPRESA_TICK_TIMEOUT)
+                return False
             except Exception as exc:
                 logger.error("[worker] empresa=%s erro no processamento: %s", e, exc, exc_info=True)
                 return False
@@ -904,14 +917,46 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
     return disp_msg or disp_arq or disp_camp
 
 
-def start() -> None:
+async def _watchdog_loop() -> None:
+    """Vigia a liveness do loop. Se não houver tick por _WATCHDOG_STALL_SECS, o loop
+    travou (await pendurado que escapou dos timeouts) → cancela e recria o worker.
+    Última linha de defesa: garante que a fila NUNCA fica congelada pra sempre."""
     global _task
+    await asyncio.sleep(120)  # deixa o boot estabilizar
+    while True:
+        await asyncio.sleep(30)
+        try:
+            if not _task or _task.done():
+                logger.error("[worker-watchdog] task morta — recriando")
+                _task = asyncio.create_task(_loop())
+                continue
+            idle = time.time() - _last_tick_at
+            if _last_tick_at and idle > _WATCHDOG_STALL_SECS:
+                logger.error("[worker-watchdog] loop SEM TICK há %.0fs — reiniciando worker", idle)
+                try:
+                    from . import telegram_service
+                    asyncio.create_task(telegram_service.notify_worker_stuck("queue", int(idle // 60)))
+                except Exception:
+                    pass
+                _task.cancel()
+                _task = asyncio.create_task(_loop())
+        except Exception as exc:
+            logger.warning("[worker-watchdog] erro: %s", exc)
+
+
+def start() -> None:
+    global _task, _watchdog_task
     _task = asyncio.create_task(_loop())
+    if not _watchdog_task or _watchdog_task.done():
+        _watchdog_task = asyncio.create_task(_watchdog_loop())
     logger.info("Queue worker iniciado")
 
 
 def stop() -> None:
-    global _task
+    global _task, _watchdog_task
     if _task:
         _task.cancel()
         _task = None
+    if _watchdog_task:
+        _watchdog_task.cancel()
+        _watchdog_task = None
