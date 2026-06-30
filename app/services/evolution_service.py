@@ -679,10 +679,11 @@ class EvoManager:
         return cand[0][0].split(":", 1)[1]
 
     async def send_presence(self, empresa_id: int, number: str,
-                            presence: str = "composing", delay_ms: int = 1500) -> tuple:
+                            presence: str = "composing", delay_ms: int = 1500,
+                            session_id: Optional[str] = None) -> tuple:
         """Envia presença (composing/paused/available) → cliente vê 'digitando…'.
-        Separado do envio de mensagem. Só Evolution."""
-        sid = self._first_session_id(empresa_id)
+        Separado do envio de mensagem. Só Evolution. session_id força a sessão (SGADesk)."""
+        sid = session_id or self._first_session_id(empresa_id)
         if not sid:
             return False, "sem sessão"
         inst = _instance_name(empresa_id, sid)
@@ -792,6 +793,7 @@ class EvoManager:
         fname = node.get("fileName") or ""
         b64, mime2, fname2 = await self._fetch_media_b64(inst, data)
         de = (key.get("remoteJid") or "").split("@", 1)[0]
+        _sess = self._inst_index.get(inst)
         payload = {
             "tipo": "midia",
             "de": de,
@@ -800,6 +802,8 @@ class EvoManager:
             "nome_arquivo": fname2 or fname or "arquivo",
             "caption": caption,
             "nome": data.get("pushName") or "",
+            "sessao_id": _sess.session_id if _sess else None,   # qual sessão recebeu (SGADesk)
+            "numero_conectado": _sess.phone if _sess else None,
         }
         if b64:
             payload["media_base64"] = b64
@@ -985,6 +989,8 @@ class EvoManager:
                                 "tipo": "mensagem", "de": de, "texto": texto,
                                 "nome": data.get("pushName") or "",
                                 "message_id": key.get("id") or "",
+                                "sessao_id": sess.session_id,      # qual sessão/número recebeu (SGADesk)
+                                "numero_conectado": sess.phone,    # número conectado (rótulo)
                             }))
             except Exception:
                 pass
@@ -1221,7 +1227,12 @@ class EvoManager:
             if isinstance(pres, dict):
                 for _k, v in pres.items():
                     st = (v or {}).get("lastKnownPresence") or st
-            await self._forward_chat(empresa_id, {"tipo": "presenca", "de": de, "estado": st})
+            _sp = self._inst_index.get(inst)
+            await self._forward_chat(empresa_id, {
+                "tipo": "presenca", "de": de, "estado": st,
+                "sessao_id": _sp.session_id if _sp else None,
+                "numero_conectado": _sp.phone if _sp else None,
+            })
         except Exception as exc:
             logger.debug("[evo] _handle_presence erro: %s", exc)
 
