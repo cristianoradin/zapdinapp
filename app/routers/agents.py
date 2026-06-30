@@ -64,7 +64,7 @@ async def activate_agent(body: ActivatePayload):
 # ── Auto-update (agent polls daily) ──────────────────────────────────────────
 
 # Versão alvo do agent. Bump quando uma release nova estiver pronta no GitHub.
-AGENT_LATEST_VERSION = "0.2.56"
+AGENT_LATEST_VERSION = "0.2.63"
 # .exe hospedado no próprio servidor (evita exigir GitHub auth — repo zapdinagent é private)
 # Usa o instalador PRO (tray sem consoles) — é o que os clientes rodam.
 AGENT_DOWNLOAD_URL = f"/static/downloads/ZapDinAgentSetup-Pro-{AGENT_LATEST_VERSION}.exe"
