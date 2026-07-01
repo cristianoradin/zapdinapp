@@ -25,6 +25,11 @@
     setIf('waCfgMaxHora',     toNum(cfg.wa_max_per_hour, 250));
     setIf('waCfgCooldownMin', Math.round(toNum(cfg.wa_cooldown_secs, 300) / 60));
     setIf('waCfgWarmup',      toNum(cfg.wa_warmup_msgs,  20));
+    // Rodapé
+    const rodChk = document.getElementById('waCfgRodapeAtivo');
+    const rodTxt = document.getElementById('waCfgRodapeTexto');
+    if (rodChk) rodChk.checked = cfg.rodape_ativo === '1';
+    if (rodTxt) rodTxt.value = cfg.rodape_texto || '';
     _carregarDispatchStatus();
     const alertEl = document.getElementById('waCfgAlert');
     const spinBox = document.getElementById('spinPreviewBox');
@@ -150,6 +155,8 @@
         wa_max_per_min: String(maxMin), wa_max_per_hour: String(maxHora),
         wa_cooldown_secs: String(coolMin * 60),
         wa_warmup_msgs: String(isNaN(warmup) ? 20 : warmup),
+        rodape_ativo: document.getElementById('waCfgRodapeAtivo')?.checked ? '1' : '0',
+        rodape_texto: (document.getElementById('waCfgRodapeTexto')?.value || '').trim(),
       };
       const res = await api('POST', '/api/config', payload);
       if (res && res.ok) { _waCfgAlert('ok', '✅ Configurações salvas com sucesso!'); _carregarDispatchStatus(); }

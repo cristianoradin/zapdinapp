@@ -209,7 +209,13 @@ _WA_CFG_KEYS = (
     "wa_delay_min", "wa_delay_max",
     "wa_daily_limit",
     "wa_hora_inicio", "wa_hora_fim",
-    "wa_spintax",
+    "wa_spintax", "wa_composing",
+    # Disjuntor / aquecimento (dispatch_guard.caps_from_cfg) — antes NÃO eram
+    # carregadas aqui, então a config por posto era ignorada (rodava no default).
+    "wa_max_per_min", "wa_max_per_hour", "wa_cooldown_secs",
+    "wa_warmup_msgs", "wa_idle_reset_secs", "wa_fail_trip",
+    # Rodapé anexado a toda mensagem enviada (opt-in anti-ban).
+    "rodape_ativo", "rodape_texto",
 )
 
 
@@ -232,6 +238,20 @@ async def _load_cfg(empresa_id: int, get_db_direct) -> dict:
         logger.debug("_load_cfg error [empresa %s]: %s", empresa_id, exc)
         _cfg_cache.setdefault(empresa_id, {})
     return _cfg_cache[empresa_id]
+
+
+def _append_rodape(texto: str, cfg: dict) -> str:
+    """Anexa o rodapé configurado ao FINAL da mensagem (opt-in por posto, key
+    rodape_ativo/rodape_texto). No-op se desligado, vazio, ou já presente."""
+    if cfg.get("rodape_ativo", "0") in ("0", "false", ""):
+        return texto
+    rod = (cfg.get("rodape_texto") or "").strip()
+    if not rod:
+        return texto
+    base = (texto or "").rstrip()
+    if base.endswith(rod):
+        return texto
+    return f"{base}\n\n{rod}" if base else rod
 
 
 def _cfg_float(cfg: dict, key: str, default: float) -> float:
@@ -572,6 +592,7 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
             raw_txt = "{saudacao} " + raw_txt
         base_txt = aplicar_saudacao(raw_txt)
         texto = process_spintax(base_txt) if (spintax_on and not _prio) else base_txt
+        texto = _append_rodape(texto, cfg)
         c_delay = _composing_delay(texto) if composing_on else 0.0
 
         # Validação prévia (modo servidor): número não existe no WhatsApp → nem tenta (anti-ban)
@@ -722,6 +743,7 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
         # Modo só-texto: arquivo vazio = enviar apenas a caption como mensagem
         nome_file_db = arq["nome_arquivo"] or ""
         caption = process_spintax(arq["caption"] or "") if spintax_on else (arq["caption"] or "")
+        caption = _append_rodape(caption, cfg)
         c_delay = _composing_delay(caption) if composing_on and caption else (random.uniform(1.5, 3.0) if composing_on else 0.0)
 
         if not nome_file_db:
@@ -856,6 +878,7 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
             mensagem = env["mensagem"] or ""
             if spintax_on:
                 mensagem = process_spintax(mensagem)
+            mensagem = _append_rodape(mensagem, cfg)
             c_delay = _composing_delay(mensagem) if composing_on else 0.0
             ok, err = await wa_manager.send_text(sessao_id, empresa_id, env["phone"], mensagem, composing_delay=c_delay)
 
@@ -881,6 +904,7 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
                     mensagem = env["mensagem"] or ""
                     if spintax_on:
                         mensagem = process_spintax(mensagem)
+                    mensagem = _append_rodape(mensagem, cfg)
                     _ok, _err = await wa_manager.send_file(
                         sessao_id, empresa_id, env["phone"], file_path,
                         ca["nome_original"], mensagem or None,

@@ -189,6 +189,28 @@
     </div>
   </div>
 
+  <!-- Rodapé fixo (full-width) -->
+  <div class="card pad" style="margin-top:var(--gap)">
+    <div class="card-head" style="margin-bottom:14px">
+      <span class="ci t-blue">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="8" y1="18" x2="16" y2="18"/></svg>
+      </span>
+      <h2 style="font-size:16px">Rodapé nas Mensagens</h2>
+      <span class="grow"></span>
+      <span class="badge info">🛡️ Anti-bloqueio</span>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <span style="font-weight:600">Anexar rodapé ao final de toda mensagem enviada</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="waCfgRodapeAtivo">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <p class="cfg-desc" style="margin-top:12px">Adiciona um texto fixo no fim de cada mensagem (venda, campanha, arquivo). Peça para o cliente <b>salvar o número</b> — contatos que salvam e respondem reduzem o risco de bloqueio do WhatsApp.</p>
+    <label class="flbl" style="margin-top:6px">Texto do rodapé</label>
+    <textarea class="field" id="waCfgRodapeTexto" rows="2" maxlength="300" placeholder="Favor cadastrar esse número para continuar recebendo mensagens." style="margin-top:6px"></textarea>
+  </div>
+
   <!-- Alert + Save -->
   <div id="waCfgAlert" style="display:none;padding:.6rem 1rem;border-radius:8px;font-size:.84rem;margin-top:var(--gap)"></div>
 
