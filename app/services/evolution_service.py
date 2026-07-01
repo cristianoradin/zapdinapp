@@ -46,6 +46,11 @@ _RECONNECT_BACKOFF: List[int] = [5, 10, 20, 40, 60, 60, 60]
 # para o agente local (atravessa NAT do cliente). Nada de HTTP direto.
 AGENT_SCHEME = "agent://"
 
+# Cache de existência de número (onWhatsApp) — num -> (exists: bool, monotonic_ts).
+# TTL longo: existência quase não muda; protege o número árbitro de excesso de queries.
+_NUMEXIST_CACHE: dict = {}
+_NUMEXIST_TTL = 6 * 3600
+
 # Injetado por app.main.py após criar o socketio.AsyncServer.
 # Mantido fora do EvoManager para evitar import circular.
 _sio = None
@@ -1299,15 +1304,39 @@ class EvoManager:
         sess = self._sessions.get(self._key(empresa_id, session_id))
         return bool(sess and _is_agent_mode(sess.evolution_url))
 
+    def _verifier_instance(self) -> Optional[str]:
+        """Nome de uma instância Evolution SERVIDOR conectada, pra usar como ÁRBITRO
+        do onWhatsApp. A checagem de existência é query de protocolo — independe da
+        empresa — então serve pra validar números de postos em modo agente (onde o
+        WhatsApp Web dá falso 'não tem WhatsApp' em conta degradada)."""
+        for inst, sess in self._inst_index.items():
+            try:
+                if getattr(sess, "status", "") == "connected" and not _is_agent_mode(sess.evolution_url):
+                    return inst
+            except Exception:
+                continue
+        return None
+
     async def number_exists(self, empresa_id: int, session_id: str, phone: str):
-        """Checa se o número tem WhatsApp (Evolution onWhatsApp). Retorna:
-        True/False no modo servidor; None se não dá pra saber (agente, erro, sem resposta)."""
+        """Checa se o número tem WhatsApp (Evolution onWhatsApp). Retorna True/False;
+        None se não dá pra saber. No modo AGENTE (sem onWhatsApp próprio) usa uma
+        instância SERVIDOR conectada como árbitro."""
         if self._is_agent_session(empresa_id, session_id):
-            return None  # agente não tem onWhatsApp — não checa
-        inst = _instance_name(empresa_id, session_id)
+            inst = self._verifier_instance()
+            if not inst:
+                return None  # sem árbitro disponível — não dá pra checar
+        else:
+            inst = _instance_name(empresa_id, session_id)
         num = phone_for_wa(phone)
         if not num:
             return None
+        # Cache TTL: existência quase não muda. Evita marretar o onWhatsApp do árbitro
+        # (proteção do número servidor) e corta latência por envio.
+        import time as _t
+        now = _t.monotonic()
+        hit = _NUMEXIST_CACHE.get(num)
+        if hit is not None and (now - hit[1]) < _NUMEXIST_TTL:
+            return hit[0]
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
                 r = await client.post(
@@ -1317,7 +1346,9 @@ class EvoManager:
             if r.status_code in (200, 201):
                 arr = r.json()
                 if isinstance(arr, list) and arr and isinstance(arr[0], dict):
-                    return bool(arr[0].get("exists"))
+                    val = bool(arr[0].get("exists"))
+                    _NUMEXIST_CACHE[num] = (val, now)
+                    return val
             return None
         except Exception as exc:
             logger.debug("[evo] number_exists erro: %s", exc)

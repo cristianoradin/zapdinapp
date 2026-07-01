@@ -628,6 +628,12 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
             # Falha: retry com backoff (recuperável) OU dead-letter (permanente / máx tentativas)
             from .alerta_service import is_invalid_number_error
             permanente = is_invalid_number_error(err)
+            # Árbitro (Evolution onWhatsApp) confirmou que o número EXISTE, mas o agente
+            # (WhatsApp Web) devolveu 'inválido' → FALSO inválido (conta degradada resolve
+            # o contato errado). Trata como TRANSITÓRIO: retry, sem dead-letter permanente
+            # nem alerta de cadastro. Só é 'permanente' quando o árbitro NÃO confirma.
+            if permanente and existe is True:
+                permanente = False
             novo_tent = tent + 1
             if permanente or novo_tent >= _MAX_RETRIES:
                 st = "failed"
@@ -644,15 +650,18 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
                 logger.error("Queue: mensagem %s FALHOU (def.) para %s: %s", msg["id"], msg["destinatario"], err)
                 log_event_sync(empresa_id=empresa_id, nivel="error", modulo="worker", acao="msg_erro",
                                mensagem=f"Falhou: {msg['destinatario']} — {str(err or '')[:100]}")
-                # Alerta de falha (número inválido) → avisa os adms só na falha definitiva
-                try:
-                    from .alerta_service import disparar_falha_cadastro
-                    nome_dest = msg["nome_destinatario"] if "nome_destinatario" in msg.keys() else ""
-                    asyncio.create_task(
-                        disparar_falha_cadastro(empresa_id, msg["destinatario"], nome_dest or "", str(err or ""))
-                    )
-                except Exception:
-                    pass
+                # Alerta de falha (número inválido) → avisa os adms só na falha definitiva.
+                # NÃO alerta se o árbitro confirmou que o número EXISTE (falha de entrega,
+                # não de cadastro) — evita flood de alerta falso em conta degradada.
+                if existe is not True:
+                    try:
+                        from .alerta_service import disparar_falha_cadastro
+                        nome_dest = msg["nome_destinatario"] if "nome_destinatario" in msg.keys() else ""
+                        asyncio.create_task(
+                            disparar_falha_cadastro(empresa_id, msg["destinatario"], nome_dest or "", str(err or ""))
+                        )
+                    except Exception:
+                        pass
             else:
                 backoff = _RETRY_BACKOFF.get(novo_tent, 1800)
                 async with get_db_direct() as db:
@@ -796,14 +805,22 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
             )
             log_event_sync(empresa_id=empresa_id, nivel="error", modulo="worker", acao="msg_erro",
                            mensagem=f"Erro ao enviar: {arq['destinatario']} — {str(err or '')[:100]}")
+            # Não alerta cadastro se o árbitro (Evolution) confirma que o número EXISTE
+            # (falso 'inválido' do WhatsApp Web em conta degradada).
+            _existe_arq = None
             try:
-                from .alerta_service import disparar_falha_cadastro
-                nome_dest = arq["nome_destinatario"] if "nome_destinatario" in arq.keys() else ""
-                asyncio.create_task(
-                    disparar_falha_cadastro(empresa_id, arq["destinatario"], nome_dest or "", str(err or ""))
-                )
+                _existe_arq = await wa_manager.number_exists(empresa_id, sessao_id, arq["destinatario"])
             except Exception:
-                pass
+                _existe_arq = None
+            if _existe_arq is not True:
+                try:
+                    from .alerta_service import disparar_falha_cadastro
+                    nome_dest = arq["nome_destinatario"] if "nome_destinatario" in arq.keys() else ""
+                    asyncio.create_task(
+                        disparar_falha_cadastro(empresa_id, arq["destinatario"], nome_dest or "", str(err or ""))
+                    )
+                except Exception:
+                    pass
         logger.info("Queue: arquivo %s → %s", arq["id"], st)
         if ok:
             log_event_sync(empresa_id=empresa_id, nivel="info", modulo="worker", acao="msg_enviada",
