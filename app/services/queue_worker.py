@@ -601,11 +601,17 @@ async def _process_next(wa_manager, settings, get_db_direct) -> bool:
             existe = await wa_manager.number_exists(empresa_id, sessao_id, msg["destinatario"])
         except Exception:
             existe = None
+        from .alerta_service import is_invalid_number_error as _is_inv
         if existe is False:
             ok, err = False, "Numero invalido: nao esta no WhatsApp"
         else:
             ok, err = await wa_manager.send_text(sessao_id, empresa_id, msg["destinatario"], texto, composing_delay=c_delay)
-            _dg.record_send(dg_key, ok, caps)  # alimenta taxa/aquecimento/disjuntor (só envio real)
+            # False-inválido (agente diz inválido mas árbitro confirma existência) NÃO
+            # alimenta o disjuntor — não é sinal de ban, é glitch de resolução do WhatsApp
+            # Web. Senão a rajada de false-inválido tripa o breaker e PAUSA a fila toda.
+            _falso_inv = (not ok) and existe is True and _is_inv(err)
+            if not _falso_inv:
+                _dg.record_send(dg_key, ok, caps)  # alimenta taxa/aquecimento/disjuntor
         tent = (msg["tentativas"] if "tentativas" in msg.keys() else 0) or 0
 
         if ok:
