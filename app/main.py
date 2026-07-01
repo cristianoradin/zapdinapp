@@ -438,6 +438,8 @@ fastapi_app.include_router(syslog_router)            # /api/syslog/* (log do sis
 fastapi_app.include_router(ia_central_router)       # /api/ia-central/* (IA Central)
 fastapi_app.include_router(home_router)             # /api/home/* (Home Dashboard)
 fastapi_app.include_router(agents_router)           # /api/agents + /metrics (NAT agent + Prometheus)
+from .routers.qr_connect import router as qr_connect_router
+fastapi_app.include_router(qr_connect_router)       # /conectar/{token} + /api/qr-live (link QR dinâmico)
 fastapi_app.include_router(chat_router)             # /api/chat/* (integração chat/chamados — Evolution)
 from .routers.kit import router as kit_router
 fastapi_app.include_router(kit_router)               # /instalar/{kit} + /api/kit/* (onboarding self-service)
