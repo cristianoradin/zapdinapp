@@ -69,6 +69,29 @@ async def _resolve_session(session_id: Optional[str], empresa_id: int, db) -> st
     return sid
 
 
+@router.get("/profile-pic")
+async def chat_profile_pic(number: str, request: Request,
+                           session_id: Optional[str] = None,
+                           x_token: Optional[str] = Header(default=None), db=Depends(get_db)):
+    """Foto de perfil (profilePicUrl cacheada) do contato — SGADesk avatar.
+    Retorna {foto_url: url|null}. NÃO falha se não houver sessão/foto (null)."""
+    empresa_id = await _verify_token(x_token, db, request)
+    sid = session_id
+    if sid:
+        async with db.execute(
+            "SELECT 1 FROM sessoes_wa WHERE id=? AND empresa_id=? AND status='connected'",
+            (sid, empresa_id),
+        ) as cur:
+            if not await cur.fetchone():
+                sid = None
+    if not sid:
+        sid = await evo_manager.pick_session_uso(empresa_id, "chamados", strict=True)
+    if not sid:
+        return {"foto_url": None}
+    foto = await evo_manager.get_profile_pic(empresa_id, sid, number)
+    return {"foto_url": foto}
+
+
 @router.post("/send")
 async def chat_send(body: SendBody, request: Request,
                     x_token: Optional[str] = Header(default=None), db=Depends(get_db)):

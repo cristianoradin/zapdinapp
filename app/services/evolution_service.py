@@ -51,6 +51,10 @@ AGENT_SCHEME = "agent://"
 _NUMEXIST_CACHE: dict = {}
 _NUMEXIST_TTL = 6 * 3600
 
+# Cache de foto de perfil — "inst:num" -> (url|None, monotonic_ts).
+_PROFILEPIC_CACHE: dict = {}
+_PROFILEPIC_TTL = 6 * 3600
+
 # Injetado por app.main.py após criar o socketio.AsyncServer.
 # Mantido fora do EvoManager para evitar import circular.
 _sio = None
@@ -1376,6 +1380,53 @@ class EvoManager:
         except Exception as exc:
             logger.debug("[evo] number_exists erro: %s", exc)
             return None
+
+    async def get_profile_pic(self, empresa_id: int, session_id: str, number: str) -> Optional[str]:
+        """Foto de perfil (profilePicUrl CACHEADA) do contato — SGADesk avatar.
+        Fonte primária: findContacts (cacheado, confiável). Fallback: fetchProfilePictureUrl
+        (ao vivo, quase sempre null por privacidade). Retorna URL ou None. Modo agente = None
+        (findContacts é Evolution-only). Cache TTL 6h (inclui None, evita bater à toa)."""
+        if self._is_agent_session(empresa_id, session_id):
+            return None
+        inst = _instance_name(empresa_id, session_id)
+        num = phone_for_wa(number)
+        if not num:
+            return None
+        import time as _t
+        ck, now = f"{inst}:{num}", _t.monotonic()
+        hit = _PROFILEPIC_CACHE.get(ck)
+        if hit is not None and (now - hit[1]) < _PROFILEPIC_TTL:
+            return hit[0]
+        jid = f"{num}@s.whatsapp.net"
+        url = None
+        # 1) findContacts (cacheado)
+        try:
+            async with httpx.AsyncClient(timeout=12.0) as client:
+                r = await client.post(self._url_for_inst(inst, f"chat/findContacts/{inst}"),
+                                      json={"where": {"remoteJid": jid}}, headers=_h())
+            if r.status_code in (200, 201):
+                j = r.json()
+                arr = j if isinstance(j, list) else (j.get("data") if isinstance(j, dict) else None)
+                if isinstance(arr, list) and arr and isinstance(arr[0], dict):
+                    url = arr[0].get("profilePicUrl") or arr[0].get("profilePictureUrl")
+                elif isinstance(j, dict):
+                    url = j.get("profilePicUrl") or j.get("profilePictureUrl")
+        except Exception as exc:
+            logger.debug("[evo] findContacts erro: %s", exc)
+        # 2) fallback ao vivo
+        if not url:
+            try:
+                async with httpx.AsyncClient(timeout=12.0) as client:
+                    r = await client.post(self._url_for_inst(inst, f"chat/fetchProfilePictureUrl/{inst}"),
+                                          json={"number": num}, headers=_h())
+                if r.status_code in (200, 201):
+                    j = r.json()
+                    url = (j.get("profilePictureUrl") or j.get("profilePicUrl")
+                           or (j.get("data") or {}).get("profilePictureUrl") if isinstance(j, dict) else None)
+            except Exception as exc:
+                logger.debug("[evo] fetchProfilePictureUrl erro: %s", exc)
+        _PROFILEPIC_CACHE[ck] = (url or None, now)
+        return url or None
 
     def _note_agent_send(self, inst: str, ok: bool, err: str = "") -> None:
         """Conta envios sem resposta do agente. 3 seguidos (com a sessão ainda
