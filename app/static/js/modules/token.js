@@ -84,6 +84,8 @@ window.tokenModule = (() => {
     if (cfgRes.ok) {
       const d = await cfgRes.json();
       document.getElementById('inputToken').value = d.token || '';
+      const hEl = document.getElementById('inputTokenHomolog');
+      if (hEl) hEl.value = d.homolog_token || '';
     }
     if (statRes.ok) {
       const s = await statRes.json();
@@ -139,6 +141,34 @@ window.tokenModule = (() => {
       const val = document.getElementById('inputToken').value;
       if (!val) return;
       _copiarTexto(val, document.getElementById('btnCopiarToken'), '📋', '✅ Copiado!');
+    });
+
+    // Gerar token de HOMOLOGAÇÃO (credencial separada, mesma empresa, envio real)
+    const btnGerarH = document.getElementById('btnGerarTokenHomolog');
+    if (btnGerarH) btnGerarH.addEventListener('click', async () => {
+      const ok = await window.showConfirm({
+        title: 'Gerar novo token de homologação?',
+        body: 'O token de homologação atual (se houver) será invalidado. O token de PRODUÇÃO não é afetado.',
+        okLabel: 'Sim, gerar',
+        type: 'warning',
+        icon: '⚠',
+      });
+      if (!ok) return;
+      const res = await _fetch('POST', '/api/erp/gerar-token', { ambiente: 'homologacao' });
+      if (res && res.token) {
+        document.getElementById('inputTokenHomolog').value = res.token;
+        _alert('alertTokenHomolog', 'Token de homologação gerado e salvo!');
+      } else {
+        _alert('alertTokenHomolog', 'Erro ao gerar token de homologação.', 'error');
+      }
+    });
+
+    // Copiar token de homologação
+    const btnCopiarH = document.getElementById('btnCopiarTokenHomolog');
+    if (btnCopiarH) btnCopiarH.addEventListener('click', () => {
+      const val = document.getElementById('inputTokenHomolog').value;
+      if (!val) return;
+      _copiarTexto(val, btnCopiarH, '📋', '✅ Copiado!');
     });
 
     // Atualizar status ERP

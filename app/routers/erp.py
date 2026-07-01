@@ -8,7 +8,7 @@ from typing import List, Optional
 from urllib.parse import quote
 
 import httpx
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Body, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, field_validator
 
 from ..core.database import get_db
@@ -40,6 +40,13 @@ logger = logging.getLogger(__name__)
 _MAX_B64_LEN = 67 * 1024 * 1024
 
 router = APIRouter(prefix="/api/erp", tags=["erp"])
+
+
+def _erp_key(ambiente: Optional[str]) -> str:
+    """Mapeia o ambiente para a key no config. 'homologacao' → erp_token_homolog,
+    qualquer outra coisa → erp_token (produção, default)."""
+    amb = (ambiente or "producao").strip().lower()
+    return "erp_token_homolog" if amb in ("homologacao", "homolog", "homologação") else "erp_token"
 
 UPLOAD_DIR = "data/arquivos"
 
@@ -96,12 +103,14 @@ async def _verify_token(x_token: Optional[str], db, request: Request = None) -> 
             # M8: migração transparente — se ainda era plaintext, salva hash no banco
             if len(row["value"]) != 64:
                 try:
+                    _matched_key = row["key"] if "key" in row.keys() else "erp_token"
                     await db.execute(
-                        """UPDATE config SET value = ? WHERE key='erp_token' AND empresa_id = ?""",
-                        (hash_erp_token(x_token), row["empresa_id"]),
+                        """UPDATE config SET value = ? WHERE key = ? AND empresa_id = ?""",
+                        (hash_erp_token(x_token), _matched_key, row["empresa_id"]),
                     )
                     await db.commit()
-                    logger.info("[erp] Token ERP migrado para SHA-256 (empresa %s)", row["empresa_id"])
+                    logger.info("[erp] Token ERP (%s) migrado para SHA-256 (empresa %s)",
+                                _matched_key, row["empresa_id"])
                 except Exception:
                     pass
             return row["empresa_id"]
@@ -432,16 +441,23 @@ async def get_erp_config(
     O token bruto só é exibido no momento da geração (/gerar-token).
     """
     empresa_id = user["empresa_id"]
-    async with db.execute(
-        "SELECT value FROM config WHERE key='erp_token' AND empresa_id=?", (empresa_id,)
-    ) as cur:
-        row = await cur.fetchone()
-    if not row:
-        return {"token": "", "configurado": False}
-    # Retorna últimos 8 chars se plaintext legado, ou prefixo do hash para indicar existência
-    stored = row["value"]
-    preview = f"••••••••{stored[-4:]}" if stored else ""
-    return {"token": preview, "configurado": bool(stored)}
+
+    async def _preview(key: str) -> dict:
+        async with db.execute(
+            "SELECT value FROM config WHERE key=? AND empresa_id=?", (key, empresa_id)
+        ) as cur:
+            row = await cur.fetchone()
+        stored = row["value"] if row else ""
+        preview = f"••••••••{stored[-4:]}" if stored else ""
+        return {"token": preview, "configurado": bool(stored)}
+
+    prod = await _preview("erp_token")
+    homolog = await _preview("erp_token_homolog")
+    # Compat: campos antigos = produção. Novos = homologação.
+    return {
+        "token": prod["token"], "configurado": prod["configurado"],
+        "homolog_token": homolog["token"], "homolog_configurado": homolog["configurado"],
+    }
 
 
 @router.post("/config")
@@ -455,11 +471,12 @@ async def set_erp_config(
     token = body.get("token", "").strip()
     if not token:
         return {"ok": False, "detail": "Token não pode ser vazio"}
+    key = _erp_key(body.get("ambiente", "producao"))
     hashed = hash_erp_token(token)
     await db.execute(
-        """INSERT INTO config (empresa_id, key, value) VALUES (?, 'erp_token', ?)
+        """INSERT INTO config (empresa_id, key, value) VALUES (?, ?, ?)
            ON CONFLICT (empresa_id, key) DO UPDATE SET value = EXCLUDED.value""",
-        (empresa_id, hashed),
+        (empresa_id, key, hashed),
     )
     await db.commit()
     return {"ok": True}
@@ -467,23 +484,29 @@ async def set_erp_config(
 
 @router.post("/gerar-token")
 async def gerar_token(
+    body: dict = Body(default={}),
     db=Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
     """
     M8: gera novo token seguro, salva hash no banco.
     O token bruto é retornado APENAS nesta resposta — não há como recuperá-lo depois.
+    Aceita {ambiente: 'producao'|'homologacao'} (default produção). Homologação é uma
+    2ª credencial da MESMA empresa (envio real) — invalidar/gerar um NÃO afeta o outro.
     """
     empresa_id = user["empresa_id"]
+    ambiente = (body or {}).get("ambiente", "producao")
+    key = _erp_key(ambiente)
     # Hex puro (0-9a-f) com prefixo: sem '-', '_' ou case → o ERP/PDV não mexe nos
     # caracteres ao salvar/enviar (token_urlsafe quebrava em alguns ERPs).
-    novo_token = "zap_" + secrets.token_hex(20)
+    prefixo = "zaph_" if key == "erp_token_homolog" else "zap_"
+    novo_token = prefixo + secrets.token_hex(20)
     hashed = hash_erp_token(novo_token)
     await db.execute(
-        """INSERT INTO config (empresa_id, key, value) VALUES (?, 'erp_token', ?)
+        """INSERT INTO config (empresa_id, key, value) VALUES (?, ?, ?)
            ON CONFLICT (empresa_id, key) DO UPDATE SET value = EXCLUDED.value""",
-        (empresa_id, hashed),
+        (empresa_id, key, hashed),
     )
     await db.commit()
-    logger.info("[erp] Novo token ERP gerado para empresa %s (armazenado como hash)", empresa_id)
-    return {"ok": True, "token": novo_token}  # token bruto: visível UMA VEZ, copie agora
+    logger.info("[erp] Novo token ERP (%s) gerado para empresa %s (hash)", key, empresa_id)
+    return {"ok": True, "token": novo_token, "ambiente": ambiente}  # bruto: visível UMA VEZ

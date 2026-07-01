@@ -67,8 +67,10 @@ class ConfigRepository(BaseRepository):
         return val or fallback
 
     async def get_all_erp_tokens(self) -> list:
-        """Retorna todos os tokens ERP com empresa_id (para autenticação)."""
+        """Retorna todos os tokens ERP (produção + homologação) com empresa_id e key
+        (para autenticação). Ambos os ambientes autenticam a MESMA empresa."""
         return await self._fetchall(
-            "SELECT empresa_id, value FROM config WHERE key='erp_token'",
+            "SELECT empresa_id, value, key FROM config "
+            "WHERE key IN ('erp_token', 'erp_token_homolog')",
             (),
         )
