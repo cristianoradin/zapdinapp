@@ -33,10 +33,14 @@ _INVALID_MARKERS = (
     "destinatário inválido", "destinatario invalido", "recipient",
 )
 # Erros de INFRA (conexão/sessão) — NUNCA alertam (senão spam quando WhatsApp cai).
+# NÃO incluir "agent:" — é só o prefixo do erro que vem do agente; número inválido chega
+# como "agent: Numero invalido..." e PRECISA alertar (senão o cadastro nunca é corrigido).
+# Os markers específicos abaixo (timeout/sessão/etc) já pegam a infra real.
 _INFRA_MARKERS = (
     "sem sessão", "sem sessao", "no session", "disconnected", "desconect",
-    "timeout", "timed out", "connection", "conexão", "conexao", "agent:",
+    "timeout", "timed out", "connection", "conexão", "conexao",
     "econnrefused", "503", "502", "500", "closed", "fechad", "offline",
+    "não está conectado", "nao esta conectado",
 )
 
 
