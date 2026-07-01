@@ -193,6 +193,40 @@ def _agents_for_empresa(empresa_id: int) -> list:
         return []
 
 
+async def _sessoes_for_empresa(empresa_id: int) -> list:
+    """Lista de sessões (NÚMEROS) da empresa, cada uma com o MODO (servidor/agente).
+    Pro monitor mostrar 1 número no servidor + 1 no agente separados. Modo = 'agente'
+    se a sessão usa transporte agent:// (evolution_url), senão 'servidor' (Evolution)."""
+    import json as _json
+    out = []
+    try:
+        from ..core.database import get_db_direct
+        from .evolution_service import _is_agent_mode
+        async with get_db_direct() as db:
+            async with db.execute(
+                "SELECT id, nome, phone, status, usos, evolution_url FROM sessoes_wa "
+                "WHERE empresa_id=? ORDER BY id", (empresa_id,),
+            ) as cur:
+                rows = await cur.fetchall()
+        for r in rows:
+            usos = r["usos"]
+            try:
+                usos = _json.loads(usos) if isinstance(usos, str) else (usos or [])
+            except Exception:
+                usos = []
+            out.append({
+                "id":     r["id"],
+                "nome":   r["nome"] or "",
+                "phone":  r["phone"] or "",
+                "status": r["status"] or "disconnected",
+                "modo":   "agente" if _is_agent_mode(r["evolution_url"]) else "servidor",
+                "usos":   usos,
+            })
+    except Exception as exc:
+        logger.debug("[reporter] _sessoes_for_empresa(%s) erro: %s", empresa_id, exc)
+    return out
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 #  Lógica principal do heartbeat
 # ─────────────────────────────────────────────────────────────────────────────
@@ -235,6 +269,7 @@ async def _send_heartbeat() -> None:
 
             wa_info = await _wa_info_for_empresa(emp.get("id", 0))
             agents_list = _agents_for_empresa(emp.get("id", 0))
+            sessoes_list = await _sessoes_for_empresa(emp.get("id", 0))
 
             # Coleta logs acumulados desde o último heartbeat para enviar ao Monitor
             from ..core import log_collector as _lc
@@ -249,6 +284,7 @@ async def _send_heartbeat() -> None:
                 "wa_phone":     wa_info["wa_phone"],
                 "agents":       agents_list,                # F3.6 — agentes WS conectados
                 "agents_count": len(agents_list),
+                "sessoes":      sessoes_list,               # por NÚMERO: {nome,phone,status,modo,usos}
                 "logs":         logs_batch,                 # lista de {ts, nivel, cat, msg}
             }
 
