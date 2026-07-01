@@ -1006,11 +1006,13 @@ class EvoManager:
 
         elif event in ("MESSAGES_UPDATE", "MESSAGE_UPDATE"):
             # ACK de entrega/leitura (modo servidor/Evolution) → atualiza status no banco
-            asyncio.create_task(self._on_message_update(data))
+            # + repassa webhook 'status' pro sistema externo (SGADesk, duplo-check ao vivo)
+            asyncio.create_task(self._on_message_update(data, sess))
 
-    async def _on_message_update(self, data) -> None:
-        """Processa ACK de status (DELIVERY_ACK/READ/PLAYED) e atualiza mensagens
-        pelo wa_msg_id. Só vale modo servidor (Evolution emite esses eventos)."""
+    async def _on_message_update(self, data, sess=None) -> None:
+        """Processa ACK de status (SERVER_ACK/DELIVERY_ACK/READ/PLAYED/ERROR):
+        atualiza mensagens pelo wa_msg_id E repassa um webhook tipo='status' ao
+        sistema externo (SGADesk) pra duplo-check ao vivo. Só vale modo servidor."""
         try:
             from ..core.database import get_db_direct
             items = data if isinstance(data, list) else [data]
@@ -1019,20 +1021,41 @@ class EvoManager:
                     continue
                 key = it.get("key") or {}
                 mid = key.get("id") or it.get("keyId") or it.get("id")
-                status = (it.get("status") or (it.get("update") or {}).get("status") or "").upper()
+                raw = it.get("status") or (it.get("update") or {}).get("status") or ""
+                status = str(raw).upper()
                 if not mid or not status:
                     continue
-                if status in ("READ", "PLAYED"):
+                # Baileys ack → estado externo + (opcional) update no banco
+                if status in ("READ", "PLAYED", "4", "5"):
+                    estado = "lida"
                     sql = ("UPDATE mensagens SET status='read', read_at=NOW(), "
                            "delivered_at=COALESCE(delivered_at, NOW()) WHERE wa_msg_id=?")
-                elif status in ("DELIVERY_ACK", "DELIVERED"):
+                elif status in ("DELIVERY_ACK", "DELIVERED", "3"):
+                    estado = "entregue"
                     sql = ("UPDATE mensagens SET delivered_at=COALESCE(delivered_at, NOW()), "
                            "status=CASE WHEN status='read' THEN status ELSE 'delivered' END WHERE wa_msg_id=?")
+                elif status in ("SERVER_ACK", "2"):
+                    estado, sql = "enviada", None
+                elif status in ("ERROR", "0"):
+                    estado, sql = "falha", None
                 else:
                     continue
-                async with get_db_direct() as db:
-                    await db.execute(sql, (str(mid),))
-                    await db.commit()
+                if sql:
+                    async with get_db_direct() as db:
+                        await db.execute(sql, (str(mid),))
+                        await db.commit()
+                # Repassa ao sistema externo (best-effort; no-op se a empresa não tem
+                # webhook configurado). SGADesk casa pelo message_id (externalId).
+                if sess is not None:
+                    de = (key.get("remoteJid") or "").split("@", 1)[0]
+                    asyncio.create_task(self._forward_chat(sess.empresa_id, {
+                        "tipo": "status",
+                        "message_id": str(mid),
+                        "estado": estado,
+                        "de": de,
+                        "sessao_id": sess.session_id,
+                        "numero_conectado": sess.phone,
+                    }))
         except Exception as exc:
             logger.debug("[evo] message_update erro: %s", exc)
 
@@ -1516,6 +1539,7 @@ class EvoManager:
         self, inst, number, file_path, filename, mime, mtype, caption, composing_delay: float = 0.0
     ) -> Tuple[bool, Optional[str]]:
         """Envia arquivo como data URI base64 (mais confiável que URL pública)."""
+        self._last_wa_msg_id = None   # id da msg no WhatsApp p/ casar o ACK (SGADesk)
         try:
             def _read_blocking():
                 with open(file_path, "rb") as f:
@@ -1545,6 +1569,7 @@ class EvoManager:
                     )
                     if resp.get("ok"):
                         logger.info("[evo-agent] send_file OK: %s → %s", filename, number)
+                        self._last_wa_msg_id = ((resp.get("key") or {}).get("id")) or resp.get("message_id")
                         try:
                             from . import telegram_service
                             telegram_service.record_sent("file")
@@ -1574,6 +1599,10 @@ class EvoManager:
                 )
             if r.status_code in (200, 201):
                 logger.info("[evo] send_file OK: %s → %s", filename, number)
+                try:
+                    self._last_wa_msg_id = ((r.json().get("key") or {}).get("id")) or None
+                except Exception:
+                    self._last_wa_msg_id = None
                 try:
                     from . import telegram_service
                     telegram_service.record_sent("file")

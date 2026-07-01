@@ -77,7 +77,8 @@ async def chat_send(body: SendBody, request: Request,
     ok, err = await evo_manager.send_text(sid, empresa_id, body.number, body.text)
     if not ok:
         raise HTTPException(502, err or "Falha ao enviar")
-    return {"ok": True}
+    # message_id (key.id do WhatsApp) → SGADesk casa o ack de entrega/leitura
+    return {"ok": True, "message_id": getattr(evo_manager, "_last_wa_msg_id", None)}
 
 
 @router.post("/send-file")
@@ -96,7 +97,7 @@ async def chat_send_file(body: SendFileBody, request: Request,
         # 409 = sem sessão; 502 = falha de envio
         code = 409 if (err or "").startswith("Nenhuma sessão") else 502
         raise HTTPException(code, err or "Falha ao enviar arquivo")
-    return {"ok": True}
+    return {"ok": True, "message_id": getattr(evo_manager, "_last_wa_msg_id", None)}
 
 
 @router.post("/typing")
