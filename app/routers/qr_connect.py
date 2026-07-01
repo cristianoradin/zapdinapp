@@ -85,8 +85,22 @@ async def qr_live(token: str):
 
 @router.get("/conectar/{token}", response_class=HTMLResponse)
 async def conectar_page(token: str):
-    _verify(token)   # valida antes de servir (senão 403/410)
-    return HTMLResponse(_PAGE.replace("__TOKEN__", token))
+    empresa_id = _verify(token)   # valida antes de servir (senão 403/410)
+    nome, cnpj = "", ""
+    try:
+        from ..core.database import get_db_direct
+        async with get_db_direct() as db:
+            async with db.execute("SELECT nome, cnpj FROM empresas WHERE id=? LIMIT 1", (empresa_id,)) as cur:
+                row = await cur.fetchone()
+        if row:
+            nome = (row["nome"] or "").replace("<", "").replace(">", "")
+            cnpj = (row["cnpj"] or "").replace("<", "").replace(">", "")
+    except Exception:
+        pass
+    html = (_PAGE.replace("__TOKEN__", token)
+                 .replace("__NOME__", nome or "Posto")
+                 .replace("__CNPJ__", ("CNPJ " + cnpj) if cnpj else ""))
+    return HTMLResponse(html)
 
 
 _PAGE = """<!doctype html><html lang="pt-br"><head>
@@ -116,6 +130,8 @@ _PAGE = """<!doctype html><html lang="pt-br"><head>
 <div class="card">
   <span class="badge">ZapDin</span>
   <h1>Conectar WhatsApp</h1>
+  <div class="posto" style="font-size:15px;font-weight:700;color:var(--accent);margin:2px 0 2px">__NOME__</div>
+  <div class="sub" style="margin-bottom:4px">__CNPJ__</div>
   <div class="sub">Escaneie o código abaixo no seu WhatsApp</div>
   <div class="qrbox" id="box"><div class="spin"></div></div>
   <div class="msg" id="msg">Gerando código…</div>
