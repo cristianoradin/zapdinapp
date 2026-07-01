@@ -12,6 +12,7 @@ Fluxo:
 
 Segurança: token assinado (SECRET_KEY) + TTL 30min + 1 empresa. Não é QR eterno.
 """
+import os
 from typing import Optional
 
 from fastapi import APIRouter, Header, HTTPException, Request
@@ -26,6 +27,8 @@ router = APIRouter(tags=["qr-connect"])
 
 _ser = URLSafeTimedSerializer(settings.secret_key, salt="qr-connect")
 _TTL = 30 * 60  # 30 minutos
+# Base pública do link (o monitor chama o app internamente → request.base_url = localhost).
+_PUBLIC_BASE = (os.environ.get("PUBLIC_URL") or "https://zapdin.gruposgapetro.com.br").rstrip("/")
 
 
 def _make_token(empresa_id: int) -> str:
@@ -62,8 +65,7 @@ async def gerar_qr_link(body: QrLinkBody, request: Request,
     if not empresa_id:
         raise HTTPException(404, "empresa não resolvida (empresa_id ou client_token)")
     tok = _make_token(empresa_id)
-    base = str(request.base_url).rstrip("/")
-    return {"ok": True, "url": f"{base}/conectar/{tok}", "ttl_min": _TTL // 60}
+    return {"ok": True, "url": f"{_PUBLIC_BASE}/conectar/{tok}", "ttl_min": _TTL // 60}
 
 
 @router.get("/api/qr-live/{token}")
