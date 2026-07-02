@@ -13,6 +13,7 @@ Endpoints:
 Inbound + presence do cliente são repassados pra config.chat_webhook_url
 (ver evolution_service.handle_webhook → _forward_chat).
 """
+import re
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
@@ -48,6 +49,15 @@ class SendFileBody(BaseModel):
 class WebhookCfg(BaseModel):
     webhook_url: str = Field(default="", max_length=500)
     webhook_secret: str = Field(default="", max_length=200)   # segredo HMAC do webhook
+    session_id: Optional[str] = None   # webhook POR SESSÃO (multi-ambiente PROD/HML na mesma empresa)
+
+
+def _wh_keys(session_id: Optional[str]):
+    """Keys do config pro webhook. Com session_id → por sessão (isola PROD/HML);
+    sem → legado (empresa-wide, fallback)."""
+    if session_id:
+        return f"chat_webhook_url__{session_id}", f"chat_webhook_secret__{session_id}"
+    return "chat_webhook_url", "chat_webhook_secret"
 
 
 async def _resolve_session(session_id: Optional[str], empresa_id: int, db) -> str:
@@ -156,6 +166,37 @@ async def chat_sessions(request: Request, x_token: Optional[str] = Header(defaul
     return out
 
 
+@router.get("/config")
+async def chat_get_config(request: Request,
+                          x_token: Optional[str] = Header(default=None), db=Depends(get_db)):
+    """Devolve os webhooks registrados (legado empresa-wide + por sessão) — pro
+    SGADesk diagnosticar sem ficar cego. Segredo não é exposto (só secret_set)."""
+    empresa_id = await _verify_token(x_token, db, request)
+    async with db.execute(
+        "SELECT key, value FROM config WHERE empresa_id=? AND (key LIKE 'chat_webhook_url%' OR key LIKE 'chat_webhook_secret%')",
+        (empresa_id,),
+    ) as cur:
+        rows = await cur.fetchall()
+    default_url, sessions = "", {}
+    secrets_set = set()
+    for r in rows:
+        k, v = r["key"], (r["value"] or "")
+        if k == "chat_webhook_url":
+            default_url = v
+        elif k == "chat_webhook_secret":
+            if v: secrets_set.add("__default__")
+        elif k.startswith("chat_webhook_url__"):
+            sessions.setdefault(k[len("chat_webhook_url__"):], {})["webhook_url"] = v
+        elif k.startswith("chat_webhook_secret__"):
+            sid = k[len("chat_webhook_secret__"):]
+            sessions.setdefault(sid, {})["secret_set"] = bool(v)
+    return {
+        "webhook_url": default_url,
+        "secret_set": "__default__" in secrets_set,
+        "sessions": sessions,   # {session_id: {webhook_url, secret_set}}
+    }
+
+
 @router.post("/config")
 async def chat_config(body: WebhookCfg, request: Request,
                       x_token: Optional[str] = Header(default=None), db=Depends(get_db)):
@@ -163,17 +204,24 @@ async def chat_config(body: WebhookCfg, request: Request,
     url = (body.webhook_url or "").strip()
     if url and not url.lower().startswith(("http://", "https://")):
         raise HTTPException(422, "webhook_url inválida")
+    # session_id → webhook POR SESSÃO (isola PROD/HML na mesma empresa); sem → legado.
+    # session_id só dígitos/hex/_- (evita key esquisita no config).
+    sid = body.session_id
+    if sid and not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", sid):
+        raise HTTPException(422, "session_id inválido")
+    url_key, secret_key = _wh_keys(sid)
     await db.execute(
-        """INSERT INTO config (empresa_id, key, value) VALUES (?, 'chat_webhook_url', ?)
+        """INSERT INTO config (empresa_id, key, value) VALUES (?, ?, ?)
            ON CONFLICT (empresa_id, key) DO UPDATE SET value = EXCLUDED.value""",
-        (empresa_id, url),
+        (empresa_id, url_key, url),
     )
     secret = (body.webhook_secret or "").strip()
     if secret:
         await db.execute(
-            """INSERT INTO config (empresa_id, key, value) VALUES (?, 'chat_webhook_secret', ?)
+            """INSERT INTO config (empresa_id, key, value) VALUES (?, ?, ?)
                ON CONFLICT (empresa_id, key) DO UPDATE SET value = EXCLUDED.value""",
-            (empresa_id, secret),
+            (empresa_id, secret_key, secret),
         )
     await db.commit()
-    return {"ok": True, "webhook_url": url, "secret_set": bool(secret)}
+    return {"ok": True, "webhook_url": url, "secret_set": bool(secret),
+            "session_id": body.session_id, "scope": "session" if body.session_id else "empresa"}

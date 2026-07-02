@@ -719,19 +719,27 @@ class EvoManager:
           pra não perder mensagem do cliente se o sistema externo estiver reiniciando."""
         try:
             from ..core.database import get_db_direct
+            # Webhook POR SESSÃO (isola PROD/HML na mesma empresa): usa a chave da
+            # sessão que originou o evento (payload.sessao_id); cai no legado empresa-wide
+            # se a sessão não tiver webhook próprio. Evita que um ambiente apague o outro.
+            sid = payload.get("sessao_id") or ""
             url, secret = "", ""
+            url_s, secret_s = "", ""
             async with get_db_direct() as db:
                 async with db.execute(
-                    "SELECT key, value FROM config WHERE empresa_id=? "
-                    "AND key IN ('chat_webhook_url', 'chat_webhook_secret')",
+                    "SELECT key, value FROM config WHERE empresa_id=? AND key LIKE 'chat_webhook_%'",
                     (empresa_id,),
                 ) as cur:
                     rows = await cur.fetchall()
             for r in rows:
-                if r["key"] == "chat_webhook_url":
-                    url = (r["value"] or "")
-                elif r["key"] == "chat_webhook_secret":
-                    secret = (r["value"] or "")
+                k, v = r["key"], (r["value"] or "")
+                if k == "chat_webhook_url":                 url = v
+                elif k == "chat_webhook_secret":            secret = v
+                elif sid and k == f"chat_webhook_url__{sid}":    url_s = v
+                elif sid and k == f"chat_webhook_secret__{sid}": secret_s = v
+            # Sessão-específico tem prioridade sobre o legado (isola PROD/HML)
+            if url_s:
+                url, secret = url_s, (secret_s or secret)
             if not url:
                 return
 
