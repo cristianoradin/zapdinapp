@@ -202,26 +202,66 @@ async def _sessoes_for_empresa(empresa_id: int) -> list:
     try:
         from ..core.database import get_db_direct
         from .evolution_service import _is_agent_mode
-        async with get_db_direct() as db:
-            async with db.execute(
-                "SELECT id, nome, phone, status, usos, evolution_url FROM sessoes_wa "
-                "WHERE empresa_id=? ORDER BY id", (empresa_id,),
-            ) as cur:
-                rows = await cur.fetchall()
-        for r in rows:
+
+        def _mk(r, compartilhado=False, dona=None):
             usos = r["usos"]
             try:
                 usos = _json.loads(usos) if isinstance(usos, str) else (usos or [])
             except Exception:
                 usos = []
-            out.append({
+            d = {
                 "id":     r["id"],
                 "nome":   r["nome"] or "",
                 "phone":  r["phone"] or "",
                 "status": r["status"] or "disconnected",
                 "modo":   "agente" if _is_agent_mode(r["evolution_url"]) else "servidor",
                 "usos":   usos,
-            })
+            }
+            if compartilhado:
+                d["compartilhado"] = True          # número da DONA (agente compartilhado)
+                d["dona_empresa_id"] = dona
+            return d
+
+        async with get_db_direct() as db:
+            # Agente compartilhado: descobre a DONA e o número dela (mesmo número físico
+            # das filiais). Usado pra preencher o número que a sessão da filial não tem.
+            async with db.execute(
+                "SELECT agente_dono_empresa_id FROM empresas WHERE id=?", (empresa_id,)
+            ) as cur:
+                drow = await cur.fetchone()
+            dona = drow["agente_dono_empresa_id"] if drow else None
+            dona_phone = None
+            if dona:
+                async with db.execute(
+                    "SELECT phone FROM sessoes_wa WHERE empresa_id=? AND status='connected' "
+                    "AND phone IS NOT NULL AND phone <> '' ORDER BY last_seen DESC NULLS LAST LIMIT 1",
+                    (dona,),
+                ) as cur:
+                    pr = await cur.fetchone()
+                dona_phone = pr["phone"] if pr else None
+
+            async with db.execute(
+                "SELECT id, nome, phone, status, usos, evolution_url FROM sessoes_wa "
+                "WHERE empresa_id=? ORDER BY id", (empresa_id,),
+            ) as cur:
+                rows = await cur.fetchall()
+            for r in rows:
+                d = _mk(r)
+                # Filial de agente compartilhado: sessão própria sem número → herda o da dona
+                if dona and dona_phone and not d["phone"]:
+                    d["phone"] = dona_phone
+                    d["compartilhado"] = True
+                    d["dona_empresa_id"] = dona
+                out.append(d)
+
+            # Filial SEM sessão própria → herda as sessões da DONA inteiras
+            if not out and dona:
+                async with db.execute(
+                    "SELECT id, nome, phone, status, usos, evolution_url FROM sessoes_wa "
+                    "WHERE empresa_id=? ORDER BY id", (dona,),
+                ) as cur:
+                    drows = await cur.fetchall()
+                out = [_mk(r, compartilhado=True, dona=dona) for r in drows]
     except Exception as exc:
         logger.debug("[reporter] _sessoes_for_empresa(%s) erro: %s", empresa_id, exc)
     return out
